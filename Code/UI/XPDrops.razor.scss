@@ -1,0 +1,42 @@
+// XP Drops (OSRS-style, right side like minimap area)
+XPDrops {
+	position: absolute;
+	right: 32px;
+	top: 50%;
+	transform: translateY(-50%);
+	pointer-events: none;
+
+	.xp-drops-container {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 4px;
+	}
+
+	.xp-drop {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		position: relative;
+		transition: opacity 0.3s ease, top 0.1s linear;
+
+		.xp-icon {
+			font-size: 18px;
+			filter: drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000);
+		}
+
+		.xp-amount {
+			font-family: 'Courier New', monospace;
+			font-size: 16px;
+			font-weight: bold;
+			color: #00ff00;
+			text-shadow: 
+				1px 1px 0 #000, 
+				-1px -1px 0 #000, 
+				1px -1px 0 #000, 
+				-1px 1px 0 #000,
+				2px 2px 4px rgba(0, 0, 0, 0.8);
+		}
+	}
+}
+

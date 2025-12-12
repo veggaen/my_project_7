@@ -1,0 +1,109 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+
+<root>
+	@if ( _hasBuff )
+	{
+		<div class="forge-panel">
+			<div class="forge-header">
+				<span class="title">FORGE</span>
+				<span class="subtitle">Stand near the furnace to smelt faster.</span>
+			</div>
+
+			<div class="forge-body">
+				<div class="forge-row">
+					<span class="label">Gold Bars</span>
+					<span class="value">@_goldBarCount</span>
+				</div>
+				<div class="forge-row">
+					<span class="label">Current Bar Grams</span>
+					<span class="value">@_currentBarGrams g</span>
+				</div>
+				<div class="forge-row">
+					<span class="label">Smelt Speed</span>
+					<span class="value">@_speedLabel</span>
+				</div>
+
+				<div class="forge-actions">
+					<button class="forge-btn" @onclick="StartForgeSmelt" disabled=@(!_canSmelt || _isSmelting)>
+						@(_isSmelting ? "Smelting..." : "Smelt Gold Bar")
+					</button>
+				</div>
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	[Property] public PlayerVeggaStats PlayerStats { get; set; }
+
+	bool _hasBuff;
+	bool _isSmelting;
+	bool _canSmelt;
+	int _goldBarCount;
+	int _currentBarGrams;
+	string _speedLabel = "1x (hand)";
+
+	protected override void OnStart()
+	{
+		// Silent start; everything happens in OnUpdate.
+	}
+
+	protected override void OnUpdate()
+	{
+		var stats = PlayerStats ?? PlayerVeggaStats.Local;
+		if ( stats == null || !stats.IsValid() )
+		{
+			_hasBuff = false;
+			_isSmelting = false;
+			_canSmelt = false;
+			return;
+		}
+
+		_hasBuff = stats.HasForgeBuff;
+
+		// Only bother updating details if buffed
+		if ( !_hasBuff )
+		{
+			_isSmelting = false;
+			_canSmelt = false;
+			return;
+		}
+
+		var inventory = stats.GameObject.Components.Get<VeggaInventory>();
+		var smelter = stats.GameObject.Components.Get<PlayerGoldSmelter>();
+
+		_goldBarCount = inventory?.GetItemCount( 100 ) ?? 0;
+		_canSmelt = _goldBarCount > 0;
+		_isSmelting = smelter?.IsSmelting ?? false;
+
+		// Show grams for the first bar, if any
+		if ( inventory != null && inventory.IsValid() && _goldBarCount > 0 )
+		{
+			int slot = inventory.FindFirstSlot( 100 );
+			_currentBarGrams = slot >= 0 ? inventory.GetSlotDurability( slot ) : 0;
+		}
+		else
+		{
+			_currentBarGrams = 0;
+		}
+
+		// Show current forge speed label (approximate)
+		float speed = stats.GetSmeltSpeedMultiplier( useForgeSpeed: true );
+		_speedLabel = speed <= 1f ? "1x (hand)" : $"{speed:0.#}x (forge)";
+	}
+
+	void StartForgeSmelt()
+	{
+		var stats = PlayerStats ?? PlayerVeggaStats.Local;
+		if ( stats == null || !stats.IsValid() )
+			return;
+
+		var smelter = stats.GameObject.Components.Get<PlayerGoldSmelter>() ?? stats.GameObject.Components.Create<PlayerGoldSmelter>();
+		smelter.StartSmeltingFirstGoldBar( useForgeSpeed: true );
+	}
+}

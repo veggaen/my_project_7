@@ -1,0 +1,263 @@
+﻿@using Sandbox
+@using Sandbox.UI
+@using System
+@inherits PanelComponent
+
+<root>
+	<div class="hud-card">
+
+		<!-- Top row: Name + Wallet -->
+		<div class="row row-top">
+			<div class="name-section">
+				<span class="label">NAME</span>
+				<span class="player-name">@_playerName</span>
+			</div>
+			<div class="money @(_moneyPulse ? "pulse" : "")">
+				<span class="value">$@FormatStat( _money )</span>
+			</div>
+		</div>
+
+		<!-- Second row: Job + Salary combined: e.g. "Citizen $50" -->
+		<div class="row row-job">
+			<div class="job-label">
+				<span class="label">JOB</span>
+				<span class="job-name">@_jobName</span>
+			</div>
+			<div class="job-values @(_jobPulse ? "pulse" : "")">
+				@if ( _salary > 0 )
+				{
+					<span class="job-salary">$@_salary</span>
+				}
+			</div>
+		</div>
+
+		<!-- Health bar -->
+		<div class="row">
+			<div class="bar-label">
+				<span class="label">HP</span>
+				<span class="value">@_health / @_maxHealth</span>
+			</div>
+			<div class="bar-frame bar-health @(_healthPulse ? "pulse" : "")">
+				<div @ref="_healthBarRef" class="bar-fill"></div>
+			</div>
+		</div>
+
+		<!-- Armor bar -->
+		<div class="row">
+			<div class="bar-label">
+				<span class="label">ARMOR</span>
+				<span class="value">@_armor / @_maxArmor</span>
+			</div>
+			<div class="bar-frame bar-armor @(_armorPulse ? "pulse" : "")">
+				<div @ref="_armorBarRef" class="bar-fill"></div>
+			</div>
+		</div>
+
+	</div>
+</root>
+
+@code
+{
+	/// <summary>
+	/// Link to the player's stats. Can be set manually in inspector or by HUDManager.
+	/// </summary>
+	[Property] public PlayerVeggaStats PlayerStats { get; set; }
+
+	string _playerName = "Player";
+	int _health;
+	int _maxHealth;
+	int _armor;
+	int _maxArmor;
+	int _money;
+	string _jobName = "Citizen";
+	int _salary;
+	int _salaryInterval;
+
+	float _healthPct;
+	float _armorPct;
+	bool _moneyPulse;
+	RealTimeSince _timeSinceMoneyChanged;
+	bool _jobPulse;
+	RealTimeSince _timeSinceJobChanged;
+	bool _healthPulse;
+	RealTimeSince _timeSinceHealthChanged;
+	bool _armorPulse;
+	RealTimeSince _timeSinceArmorChanged;
+
+	bool _hasLoggedStart = false;
+
+	Panel _healthBarRef;
+	Panel _armorBarRef;
+
+	protected override void OnStart()
+	{
+		if ( !_hasLoggedStart )
+		{
+			Log.Info( "✅ PlayerHud: Started!" );
+			_hasLoggedStart = true;
+		}
+	}
+
+	protected override void OnUpdate()
+	{
+		// Try Property first, then fall back to Local
+		var stats = PlayerStats ?? PlayerVeggaStats.Local;
+
+		if ( stats is null || !stats.IsValid() )
+		{
+			_playerName = "Waiting...";
+			_jobName = "Waiting...";
+			_health = 0;
+			_maxHealth = 100;
+			_armor = 0;
+			_maxArmor = 100;
+			_money = 0;
+			_healthPct = 0f;
+			_armorPct = 0f;
+			return;
+		}
+
+		// Resolve player display name via PlayerSessionStats when possible
+		var session = stats.GameObject?.Components.Get<PlayerSessionStats>();
+		if ( session != null && session.IsValid() )
+		{
+			var sessionName = session.GetDisplayName();
+
+			// If session gives us something meaningful, use it
+			if ( !string.IsNullOrWhiteSpace( sessionName ) && sessionName != "Player" )
+			{
+				_playerName = sessionName;
+			}
+			else
+			{
+				// Otherwise fall back to connection display name
+				_playerName = stats.Network?.Owner?.DisplayName ?? "Player";
+			}
+		}
+		else
+		{
+			// No session component – use connection display name
+			_playerName = stats.Network?.Owner?.DisplayName ?? "Player";
+		}
+
+		// Round to nearest integer
+		var newHealth = (int)MathF.Round( stats.Health );
+		var newMaxHealth = (int)MathF.Round( stats.MaxHealth );
+		var newArmor = (int)MathF.Round( stats.Armor );
+		var newMaxArmor = (int)MathF.Round( stats.MaxArmor );
+
+		if ( newHealth != _health || newMaxHealth != _maxHealth )
+		{
+			_healthPulse = true;
+			_timeSinceHealthChanged = 0;
+		}
+
+		if ( newArmor != _armor || newMaxArmor != _maxArmor )
+		{
+			_armorPulse = true;
+			_timeSinceArmorChanged = 0;
+		}
+
+		_health = newHealth;
+		_maxHealth = newMaxHealth;
+		_armor = newArmor;
+		_maxArmor = newMaxArmor;
+
+		// Money pulse when value changes
+		if ( _money != stats.Money )
+		{
+			_money = stats.Money;
+			_moneyPulse = true;
+			_timeSinceMoneyChanged = 0;
+		}
+
+		if ( _jobName != stats.JobName )
+		{
+			_jobName = stats.JobName;
+			_jobPulse = true;
+			_timeSinceJobChanged = 0;
+		}
+
+		// Get salary info from PlayerSalary component (for now we only show flat amount)
+		var salaryComponent = stats.GameObject?.Components.Get<PlayerSalary>();
+		_salary = GetSalaryForJob( _jobName );
+		_salaryInterval = (int)(salaryComponent?.SalaryIntervalSeconds ?? 300f);
+
+		_healthPct = _maxHealth > 0 ? (stats.Health / stats.MaxHealth) * 100f : 0f;
+		_armorPct = _maxArmor > 0 ? (stats.Armor / stats.MaxArmor) * 100f : 0f;
+
+		_healthPct = _healthPct.Clamp( 0f, 100f );
+		_armorPct = _armorPct.Clamp( 0f, 100f );
+
+		if ( _healthBarRef != null )
+		{
+			_healthBarRef.Style.Set( "width", $"{_healthPct}%" );
+		}
+
+		if ( _armorBarRef != null )
+		{
+			_armorBarRef.Style.Set( "width", $"{_armorPct}%" );
+		}
+
+		// Stop pulsing after a brief duration
+		if ( _moneyPulse && _timeSinceMoneyChanged > 0.6f )
+		{
+			_moneyPulse = false;
+		}
+		if ( _jobPulse && _timeSinceJobChanged > 0.6f )
+		{
+			_jobPulse = false;
+		}
+		if ( _healthPulse && _timeSinceHealthChanged > 0.4f )
+		{
+			_healthPulse = false;
+		}
+		if ( _armorPulse && _timeSinceArmorChanged > 0.4f )
+		{
+			_armorPulse = false;
+		}
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(
+			_health, _maxHealth,
+			_armor, _maxArmor,
+			_money, _jobName, _playerName,
+			_salary
+		);
+	}
+
+	string FormatStat( int v )
+	{
+		if ( v >= 1_000_000 ) return $"{v / 1_000_000f:0.#}M";
+		if ( v >= 1_000 ) return $"{v / 1_000f:0.#}k";
+		return v.ToString();
+	}
+
+	string FormatInterval( int seconds )
+	{
+		if ( seconds >= 60 )
+		{
+			int mins = seconds / 60;
+			return $"{mins}m";
+		}
+		return $"{seconds}s";
+	}
+
+	int GetSalaryForJob( string job )
+	{
+		if ( string.IsNullOrWhiteSpace( job ) )
+			return 0;
+
+		job = job.ToLowerInvariant();
+
+		return job switch
+		{
+			"citizen" => 50,
+			"police" or "guard" => 150,
+			"doctor" => 120,
+			_ => 30
+		};
+	}
+}

@@ -1,0 +1,89 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+
+<root>
+	@if ( _showHint && _targetItem != null )
+	{
+		<div class="pickup-hint @GetRarityClass()">
+			<div class="item-name">@GetItemName()</div>
+			@if ( _targetItem.Quantity > 1 )
+			{
+				<div class="item-quantity">x@_targetItem.Quantity</div>
+			}
+			<div class="interact-key">
+				<span class="key">E</span>
+				<span class="action">Pick Up</span>
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	VeggaPickupItem _targetItem;
+	bool _showHint = false;
+
+	protected override void OnUpdate()
+	{
+		_showHint = false;
+		_targetItem = null;
+
+		var camera = Scene.Camera;
+		if ( camera == null ) return;
+
+		// Raycast from screen center
+		var ray = camera.ScreenNormalToRay( new Vector2( 0.5f, 0.5f ) );
+		var tr = Scene.Trace.Ray( ray, 200f )
+			.WithoutTags( "player", "trigger" )
+			.Run();
+
+		if ( !tr.Hit ) return;
+
+		// Check if we hit a pickup item
+		var pickup = tr.GameObject?.Components.Get<VeggaPickupItem>();
+		if ( pickup == null )
+		{
+			// Also check parent
+			pickup = tr.GameObject?.Parent?.Components.Get<VeggaPickupItem>();
+		}
+
+		if ( pickup == null ) return;
+
+		// Check distance
+		var localPlayer = PlayerVeggaStats.Local;
+		if ( localPlayer == null ) return;
+
+		var dist = Vector3.DistanceBetween( localPlayer.WorldPosition, pickup.WorldPosition );
+		if ( dist > pickup.InteractRange ) return;
+
+		_targetItem = pickup;
+		_showHint = true;
+	}
+
+	string GetItemName()
+	{
+		return _targetItem?.ItemDef?.Name ?? "Unknown Item";
+	}
+
+	string GetRarityClass()
+	{
+		var rarity = _targetItem?.ItemDef?.Rarity ?? ItemRarity.Common;
+		return rarity switch
+		{
+			ItemRarity.Common => "common",
+			ItemRarity.Uncommon => "uncommon",
+			ItemRarity.Rare => "rare",
+			ItemRarity.Epic => "epic",
+			ItemRarity.Legendary => "legendary",
+			_ => "common"
+		};
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine( _showHint, _targetItem?.ItemId, _targetItem?.Quantity );
+	}
+}

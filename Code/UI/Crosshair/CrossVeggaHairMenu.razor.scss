@@ -1,0 +1,214 @@
+CrossVeggaHairMenu {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 2000;
+
+	// Simple placeholder block (current markup uses .crosshair-menu-simple)
+	.crosshair-menu-simple {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		min-width: 320px;
+		padding: 20px 24px;
+		background: rgba(15, 23, 42, 0.96);
+		border-radius: 8px;
+		border: 1px solid rgba(148, 163, 184, 0.5);
+		pointer-events: all;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+
+		h1 {
+			font-size: 18px;
+			font-weight: 700;
+			color: #e5e7eb;
+			margin: 0;
+			text-align: center;
+		}
+
+		p {
+			font-size: 13px;
+			color: #9ca3af;
+			margin: 0;
+			text-align: center;
+		}
+
+		.close-btn {
+			align-self: center;
+			margin-top: 8px;
+			padding: 6px 16px;
+			background: rgba(34, 197, 94, 0.15);
+			border-radius: 999px;
+			border: 1px solid rgba(34, 197, 94, 0.6);
+			color: #bbf7d0;
+			font-size: 13px;
+			font-weight: 600;
+			cursor: pointer;
+		}
+	}
+
+	// Future full editor styling (currently unused by markup, kept for later)
+	.crosshair-menu {
+		position: absolute;
+		right: 20px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 400px;
+		max-height: 90vh;
+		background: rgba(10, 10, 15, 0.95);
+		border: 2px solid rgba(100, 50, 200, 0.6);
+		border-radius: 8px;
+		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+		pointer-events: all;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.menu-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 15px 20px;
+		background: linear-gradient(135deg, rgba(100, 50, 200, 0.3), rgba(200, 50, 150, 0.3));
+		border-bottom: 1px solid rgba(100, 50, 200, 0.4);
+
+		h1 {
+			font-size: 18px;
+			font-weight: 700;
+			color: #fff;
+			margin: 0;
+			text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+		}
+
+		.close-btn {
+			background: rgba(255, 50, 50, 0.2);
+			border: 1px solid rgba(255, 50, 50, 0.4);
+			color: #fff;
+			font-size: 20px;
+			width: 30px;
+			height: 30px;
+			border-radius: 4px;
+			cursor: pointer;
+			transition: all 0.2s;
+
+			&:hover {
+				background: rgba(255, 50, 50, 0.4);
+				transform: scale(1.1);
+			}
+		}
+	}
+
+	.menu-content {
+		/* s&box UI doesn't support overflow-y:auto – use scroll instead */
+		overflow-y: scroll;
+		padding: 20px;
+		flex: 1;
+	}
+
+	.section {
+		margin-bottom: 25px;
+
+		h2 {
+			font-size: 14px;
+			font-weight: 600;
+			color: rgba(200, 150, 255, 1);
+			margin: 0 0 12px 0;
+			text-transform: uppercase;
+			letter-spacing: 1px;
+		}
+
+		label {
+			display: flex;
+			flex-direction: column;
+			margin-bottom: 12px;
+			color: #ccc;
+			font-size: 13px;
+
+			span {
+				margin-bottom: 6px;
+				font-weight: 500;
+			}
+
+			input[type="range"] {
+				width: 100%;
+				height: 6px;
+				background: rgba(255, 255, 255, 0.1);
+				border-radius: 3px;
+				cursor: pointer;
+			}
+
+			input[type="checkbox"] {
+				width: 18px;
+				height: 18px;
+				margin-right: 8px;
+				cursor: pointer;
+			}
+
+			select {
+				padding: 8px 12px;
+				background: rgba(255, 255, 255, 0.05);
+				border: 1px solid rgba(255, 255, 255, 0.1);
+				border-radius: 4px;
+				color: #fff;
+				font-size: 13px;
+				cursor: pointer;
+
+				&:hover {
+					background: rgba(255, 255, 255, 0.08);
+				}
+			}
+		}
+	}
+
+	.preset-buttons {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+
+		button {
+			flex: 1;
+			padding: 10px 16px;
+			background: linear-gradient(135deg, rgba(100, 50, 200, 0.3), rgba(200, 50, 150, 0.3));
+			border: 1px solid rgba(100, 50, 200, 0.5);
+			border-radius: 6px;
+			color: #fff;
+			font-size: 12px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s;
+
+			&:hover {
+				background: linear-gradient(135deg, rgba(100, 50, 200, 0.5), rgba(200, 50, 150, 0.5));
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(100, 50, 200, 0.4);
+			}
+		}
+	}
+
+	.color-presets {
+		display: flex;
+		gap: 8px;
+		margin-bottom: 12px;
+
+		.color-btn {
+			width: 40px;
+			height: 40px;
+			border: 2px solid rgba(255, 255, 255, 0.3);
+			border-radius: 6px;
+			cursor: pointer;
+			transition: all 0.2s;
+
+			&:hover {
+				transform: scale(1.1);
+				box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+			}
+		}
+	}
+}
+

@@ -1,0 +1,69 @@
+@using Sandbox
+@using Sandbox.UI
+@namespace Sandbox.UI
+@inherits PanelComponent
+@* Force recompile - Dec 11 2025 *@
+
+<root>
+	@if ( _isOpen )
+	{
+		<div class="crosshair-menu-simple">
+			<h1>CROSSHAIR MENU (WIP)</h1>
+			<p>Advanced settings UI is disabled for now to keep the game compiling cleanly.</p>
+			<button class="close-btn" onclick="@Toggle">Close</button>
+		</div>
+	}
+</root>
+
+@code
+{
+	static CrossVeggaHairMenu _instance;
+
+	bool _isOpen = false;
+
+	// Instance wrapper to avoid static method substitution errors
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+
+	protected override void OnStart()
+	{
+		_instance = this;
+	}
+
+	protected override void OnUpdate()
+	{
+		// Toggle with Shift+Tab (Run + Score)
+		if ( Input.Pressed( "Score" ) && Input.Down( "Run" ) )
+		{
+			Toggle();
+		}
+	}
+
+	void Toggle()
+	{
+		ToggleInternal();
+	}
+
+	void ToggleInternal()
+	{
+		_isOpen = !_isOpen;
+		// Don't hide the cursor if HUD layout mode is active.
+		if ( _isOpen )
+		{
+			Panel.Style.PointerEvents = PointerEvents.All;
+		}
+		else if ( !IsLayoutActive )
+		{
+			Panel.Style.PointerEvents = PointerEvents.None;
+		}
+		StateHasChanged();
+	}
+
+	/// <summary>
+	/// Allow other UI (pause menu) to open/close the crosshair editor.
+	/// </summary>
+	public static void ToggleFromMenu()
+	{
+		_instance?.ToggleInternal();
+	}
+}
+

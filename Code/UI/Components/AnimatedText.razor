@@ -1,0 +1,83 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Linq
+@namespace Sandbox.UI
+@inherits Panel
+
+<root>
+	@if (_splitMode == "letters")
+	{
+		@foreach (var (letter, index) in _letters.Select((l, i) => (l, i)))
+		{
+			<span class="letter" style="animation-delay: @(index * _delayMs)ms;">@letter</span>
+		}
+	}
+	else if (_splitMode == "words")
+	{
+		@foreach (var (word, index) in _words.Select((w, i) => (w, i)))
+		{
+			<span class="word" style="animation-delay: @(index * _delayMs)ms;">@word</span>
+			@if (index < _words.Count - 1)
+			{
+				<span class="space"> </span>
+			}
+		}
+	}
+	else
+	{
+		<span class="full-text">@Text</span>
+	}
+</root>
+
+@code
+{
+	/// <summary>
+	/// The text to animate
+	/// </summary>
+	[Property] public string Text { get; set; } = "";
+
+	/// <summary>
+	/// Animation mode: "letters", "words", or "none"
+	/// </summary>
+	[Property] public string Mode { get; set; } = "letters";
+
+	/// <summary>
+	/// Delay between each letter/word in milliseconds
+	/// </summary>
+	[Property] public float DelayMs { get; set; } = 30f;
+
+	/// <summary>
+	/// Animation type: "fadeIn", "slideUp", "typewriter"
+	/// </summary>
+	[Property] public string AnimationType { get; set; } = "fadeIn";
+
+	private List<string> _letters = new();
+	private List<string> _words = new();
+	private string _splitMode = "letters";
+	private float _delayMs = 30f;
+
+	protected override void OnParametersSet()
+	{
+		_splitMode = Mode.ToLower();
+		_delayMs = DelayMs;
+
+		if (_splitMode == "letters")
+		{
+			_letters = Text.Select(c => c.ToString()).ToList();
+		}
+		else if (_splitMode == "words")
+		{
+			_words = Text.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+		}
+
+		// Add animation class to root
+		SetClass($"anim-{AnimationType}", true);
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(Text, Mode, DelayMs, AnimationType);
+	}
+}
+

@@ -1,0 +1,99 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+
+<root>
+	@if ( _isDead )
+	{
+		<div class="death-screen">
+			<div class="death-overlay"></div>
+			<div class="death-content">
+				<div class="death-title">YOU DIED</div>
+				<div class="death-subtitle">Respawning in @_respawnTime seconds...</div>
+				<div class="death-stats">
+					<div class="death-stat">
+						<span class="stat-label">Time Survived:</span>
+						<span class="stat-value">@FormatTime(_survivalTime)</span>
+					</div>
+				</div>
+				<div class="death-hint">Press SPACE to respawn immediately</div>
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	bool _isDead = false;
+	int _respawnTime = 5;
+	float _survivalTime = 0f;
+	PlayerVeggaDeath _deathComponent;
+
+	protected override void OnStart()
+	{
+		Log.Info( "✅ DeathScreen: Started!" );
+	}
+
+	protected override void OnUpdate()
+	{
+		// Find local player's death component
+		if ( _deathComponent == null )
+		{
+			var player = PlayerVeggaStats.Local;
+			if ( player != null )
+			{
+				_deathComponent = player.GameObject.Components.Get<PlayerVeggaDeath>();
+				if ( _deathComponent != null )
+				{
+					_deathComponent.OnDeath += OnPlayerDeath;
+					_deathComponent.OnRespawn += OnPlayerRespawn;
+					Log.Info( "✅ DeathScreen: Subscribed to death events!" );
+				}
+			}
+		}
+
+		// Update death state
+		if ( _deathComponent != null && _deathComponent.IsDead )
+		{
+			_isDead = true;
+			_respawnTime = (int)MathF.Ceiling( _deathComponent.RespawnDelay - _deathComponent.TimeSinceDeath );
+			_respawnTime = Math.Max( 0, _respawnTime );
+
+			// Allow instant respawn with spacebar
+			if ( Input.Pressed( "Jump" ) && _deathComponent.TimeSinceDeath > 1f )
+			{
+				_deathComponent.ForceRespawn();
+			}
+
+			StateHasChanged();
+		}
+		else if ( _isDead )
+		{
+			_isDead = false;
+			StateHasChanged();
+		}
+	}
+
+	void OnPlayerDeath()
+	{
+		_isDead = true;
+		_survivalTime = Time.Now; // You can track actual survival time if needed
+		StateHasChanged();
+	}
+
+	void OnPlayerRespawn()
+	{
+		_isDead = false;
+		StateHasChanged();
+	}
+
+	string FormatTime( float seconds )
+	{
+		int minutes = (int)(seconds / 60f);
+		int secs = (int)(seconds % 60f);
+		return $"{minutes:00}:{secs:00}";
+	}
+}
+

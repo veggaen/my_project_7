@@ -1,0 +1,85 @@
+ForgeHud {
+	position: absolute;
+	left: 50%;
+	bottom: 120px;
+	transform: translateX(-50%);
+	font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+	pointer-events: none;
+
+	.forge-panel {
+		min-width: 260px;
+		padding: 12px 16px;
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.85);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		color: #e5e7eb;
+		pointer-events: all;
+	}
+
+	.forge-header {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin-bottom: 8px;
+
+		.title {
+			font-size: 14px;
+			font-weight: 800;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+		}
+
+		.subtitle {
+			font-size: 11px;
+			color: rgba(209, 213, 219, 0.8);
+		}
+	}
+
+	.forge-body {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.forge-row {
+		display: flex;
+		justify-content: space-between;
+		font-size: 12px;
+
+		.label {
+			color: rgba(209, 213, 219, 0.9);
+		}
+
+		.value {
+			font-weight: 700;
+		}
+	}
+
+	.forge-actions {
+		margin-top: 8px;
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	.forge-btn {
+		background: #4ade80;
+		color: #022c22;
+		border: none;
+		border-radius: 3px;
+		padding: 4px 10px;
+		font-size: 12px;
+		font-weight: 700;
+		cursor: pointer;
+		transition: background 0.15s ease, transform 0.1s ease, opacity 0.1s ease;
+	}
+
+	.forge-btn:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	.forge-btn:not(:disabled):hover {
+		background: #22c55e;
+		transform: translateY(-1px);
+	}
+}

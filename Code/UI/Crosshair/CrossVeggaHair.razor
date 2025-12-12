@@ -1,0 +1,154 @@
+@using Sandbox
+@using Sandbox.UI
+@namespace Sandbox.UI
+@inherits PanelComponent
+
+<root>
+	<div class="crosshair-container">
+		@if ( _settings.Style == CrossVeggaHairSettings.CrossVeggaHairStyle.Dot )
+		{
+			<!-- Just a dot -->
+			<div class="crosshair-dot" style="@GetDotStyle()"></div>
+		}
+		else
+		{
+			<!-- Top line -->
+			@if ( _settings.ShowTopLine )
+			{
+				<div class="crosshair-line crosshair-top" style="@GetLineStyle( "top" )"></div>
+			}
+			
+			<!-- Bottom line -->
+			<div class="crosshair-line crosshair-bottom" style="@GetLineStyle( "bottom" )"></div>
+			
+			<!-- Left line -->
+			<div class="crosshair-line crosshair-left" style="@GetLineStyle( "left" )"></div>
+			
+			<!-- Right line -->
+			<div class="crosshair-line crosshair-right" style="@GetLineStyle( "right" )"></div>
+			
+			<!-- Center dot -->
+			@if ( _settings.DotSize > 0 )
+			{
+				<div class="crosshair-dot" style="@GetDotStyle()"></div>
+			}
+		}
+	</div>
+</root>
+
+@code
+{
+	CrossVeggaHairSettings _settings = new CrossVeggaHairSettings();
+	float _currentGap = 3f;
+
+	protected override void OnStart()
+	{
+		// Load saved settings
+		_settings = CrossVeggaHairSettings.Load();
+		_currentGap = _settings.Gap;
+	}
+
+	protected override void OnUpdate()
+	{
+		// Dynamic crosshair: expand when moving
+		if ( _settings.IsDynamic )
+		{
+			var player = PlayerVeggaMovement.Local;
+			if ( player != null )
+			{
+				// Check if player is moving
+				bool isMoving = player.WishVelocity.Length > 1f;
+				float targetGap = isMoving ? _settings.DynamicGap : _settings.Gap;
+
+				// Smooth lerp
+				_currentGap = MathX.Lerp( _currentGap, targetGap, Time.Delta * 10f );
+			}
+		}
+		else
+		{
+			_currentGap = _settings.Gap;
+		}
+
+		StateHasChanged();
+	}
+
+	string GetLineStyle( string direction )
+	{
+		var color = _settings.Color.WithAlpha( _settings.Opacity );
+		var outlineColor = _settings.OutlineColor.WithAlpha( _settings.Opacity );
+
+		var styles = new List<string>();
+
+		// Size
+		if ( direction == "top" || direction == "bottom" )
+		{
+			styles.Add( $"width: {_settings.Thickness}px" );
+			styles.Add( $"height: {_settings.Length}px" );
+		}
+		else
+		{
+			styles.Add( $"width: {_settings.Length}px" );
+			styles.Add( $"height: {_settings.Thickness}px" );
+		}
+
+		// Position (gap from center)
+		if ( direction == "top" )
+			styles.Add( $"bottom: calc(50% + {_currentGap}px)" );
+		else if ( direction == "bottom" )
+			styles.Add( $"top: calc(50% + {_currentGap}px)" );
+		else if ( direction == "left" )
+			styles.Add( $"right: calc(50% + {_currentGap}px)" );
+		else if ( direction == "right" )
+			styles.Add( $"left: calc(50% + {_currentGap}px)" );
+
+		// Color
+		styles.Add( $"background-color: {color.Hex}" );
+
+		// Outline
+		if ( _settings.ShowOutline )
+		{
+			styles.Add( $"box-shadow: 0 0 0 {_settings.OutlineThickness}px {outlineColor.Hex}" );
+		}
+
+		return string.Join( "; ", styles );
+	}
+
+	string GetDotStyle()
+	{
+		var color = _settings.Color.WithAlpha( _settings.Opacity );
+		var outlineColor = _settings.OutlineColor.WithAlpha( _settings.Opacity );
+
+		var styles = new List<string>();
+
+		styles.Add( $"width: {_settings.DotSize}px" );
+		styles.Add( $"height: {_settings.DotSize}px" );
+		styles.Add( $"background-color: {color.Hex}" );
+		styles.Add( $"border-radius: 50%" );
+
+		if ( _settings.ShowOutline )
+		{
+			styles.Add( $"box-shadow: 0 0 0 {_settings.OutlineThickness}px {outlineColor.Hex}" );
+		}
+
+		return string.Join( "; ", styles );
+	}
+
+	/// <summary>
+	/// Update settings from menu
+	/// </summary>
+	public void UpdateSettings( CrossVeggaHairSettings newSettings )
+	{
+		_settings = newSettings;
+		_settings.Save();
+		StateHasChanged();
+	}
+
+	/// <summary>
+	/// Get current settings (for menu)
+	/// </summary>
+	public CrossVeggaHairSettings GetSettings()
+	{
+		return _settings;
+	}
+}
+

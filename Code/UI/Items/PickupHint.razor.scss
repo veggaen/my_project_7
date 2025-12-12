@@ -1,0 +1,114 @@
+PickupHint {
+	position: absolute;
+	left: 50%;
+	top: 60%;
+	transform: translateX(-50%);
+	pointer-events: none;
+	z-index: 100;
+}
+
+.pickup-hint {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 12px 20px;
+	border-radius: 8px;
+	background: rgba(0, 0, 0, 0.75);
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	backdrop-filter: blur(8px);
+	animation: hint-in 0.15s ease-out;
+
+	// Rarity border colors
+	&.common {
+		border-color: rgba(255, 255, 255, 0.4);
+	}
+
+	&.uncommon {
+		border-color: rgba(30, 255, 0, 0.6);
+		box-shadow: 0 0 10px rgba(30, 255, 0, 0.3);
+	}
+
+	&.rare {
+		border-color: rgba(0, 112, 221, 0.7);
+		box-shadow: 0 0 12px rgba(0, 112, 221, 0.4);
+	}
+
+	&.epic {
+		border-color: rgba(163, 53, 238, 0.7);
+		box-shadow: 0 0 14px rgba(163, 53, 238, 0.4);
+	}
+
+	&.legendary {
+		border-color: rgba(255, 128, 0, 0.8);
+		box-shadow: 0 0 16px rgba(255, 128, 0, 0.5);
+		animation: hint-in 0.15s ease-out, legendary-glow 2s ease-in-out infinite;
+	}
+}
+
+.item-name {
+	font-size: 16px;
+	font-weight: 600;
+	color: #ffffff;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+
+	.common & { color: #ffffff; }
+	.uncommon & { color: #1eff00; }
+	.rare & { color: #0070dd; }
+	.epic & { color: #a335ee; }
+	.legendary & { color: #ff8000; }
+}
+
+.item-quantity {
+	font-size: 13px;
+	font-weight: 500;
+	color: rgba(255, 255, 255, 0.7);
+}
+
+.interact-key {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 4px;
+}
+
+.key {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.15);
+	border: 1px solid rgba(255, 255, 255, 0.4);
+	font-size: 12px;
+	font-weight: 700;
+	color: #ffffff;
+}
+
+.action {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.6);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+@keyframes hint-in {
+	0% {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes legendary-glow {
+	0%, 100% {
+		box-shadow: 0 0 16px rgba(255, 128, 0, 0.5);
+	}
+	50% {
+		box-shadow: 0 0 24px rgba(255, 128, 0, 0.8), 0 0 40px rgba(255, 128, 0, 0.3);
+	}
+}

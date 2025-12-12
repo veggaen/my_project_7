@@ -1,0 +1,159 @@
+VeggaChat {
+	position: absolute;
+	left: 16px;
+	bottom: 120px;
+	width: 450px;
+	pointer-events: none;
+	z-index: 50;
+}
+
+.chat-container {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	transition: opacity 0.3s ease;
+
+	&.closed {
+		opacity: 0.3;
+	}
+
+	&.open {
+		opacity: 1;
+	}
+
+	&.focused {
+		opacity: 1;
+
+		.messages-container {
+			background: rgba(0, 0, 0, 0.85);
+			max-height: 300px;
+		}
+	}
+}
+
+.messages-container {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: rgba(0, 0, 0, 0.5);
+	max-height: 150px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	backdrop-filter: blur(4px);
+}
+
+.message {
+	display: flex;
+	gap: 6px;
+	font-size: 13px;
+	line-height: 1.4;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+	animation: message-in 0.2s ease-out;
+
+	.sender {
+		font-weight: 600;
+		color: #60a5fa;
+		flex-shrink: 0;
+	}
+
+	.text {
+		color: #e2e8f0;
+		word-wrap: break-word;
+		flex: 1;
+	}
+
+	.time {
+		font-size: 10px;
+		color: rgba(148, 163, 184, 0.6);
+		flex-shrink: 0;
+		align-self: flex-end;
+	}
+
+	// Message types
+	&.normal {
+		.sender { color: #60a5fa; }
+	}
+
+	&.system {
+		.text {
+			color: #fbbf24;
+			font-style: italic;
+		}
+	}
+
+	&.admin {
+		.sender { color: #f87171; }
+		.text { color: #fca5a5; }
+	}
+
+	&.private {
+		.sender { color: #a78bfa; }
+		.text { color: #c4b5fd; }
+	}
+
+	&.action {
+		.text {
+			color: #34d399;
+			font-style: italic;
+		}
+	}
+
+	&.error {
+		.text {
+			color: #f87171;
+		}
+	}
+}
+
+.input-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	border-radius: 8px;
+	background: rgba(15, 23, 42, 0.95);
+	border: 2px solid rgba(99, 102, 241, 0.6);
+	pointer-events: all;
+}
+
+.input-prefix {
+	font-size: 13px;
+	font-weight: 600;
+	color: rgba(148, 163, 184, 0.9);
+}
+
+.input-field {
+	flex: 1;
+	font-size: 14px;
+	color: #f1f5f9;
+	min-height: 18px;
+}
+
+.cursor {
+	animation: blink 1s step-end infinite;
+	color: #60a5fa;
+}
+
+.chat-hint {
+	font-size: 11px;
+	color: rgba(148, 163, 184, 0.5);
+	padding: 4px 8px;
+}
+
+@keyframes message-in {
+	0% {
+		opacity: 0;
+		transform: translateX(-10px);
+	}
+	100% {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes blink {
+	0%, 50% { opacity: 1; }
+	51%, 100% { opacity: 0; }
+}

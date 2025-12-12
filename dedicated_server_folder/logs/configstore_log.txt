@@ -1,0 +1,30 @@
+
+
+[2025-12-11 09:28:53] Client version: 1763795194
+[2025-12-11 09:28:53] Failed to read store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf.tmp'
+[2025-12-11 09:28:53] Failed to read store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf.tmp'
+[2025-12-11 09:28:53] Failed to read store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf.tmp'
+[2025-12-11 09:28:53] Failed to read store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf.tmp'
+[2025-12-11 09:28:54] Flushed store 'install' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf'
+[2025-12-11 09:28:54] Loaded store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf' successfully
+[2025-12-11 09:28:56] Failed to read store 'userlocal' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\userdata\anonymous\config\localconfig.vdf.tmp'
+[2025-12-11 09:28:56] Flushed store 'install' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf'
+[2025-12-11 09:28:58] Flushed store 'userlocal' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\userdata\anonymous\config\localconfig.vdf'
+[2025-12-11 09:29:01] Loaded store 'userlocal' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\userdata\anonymous\config\localconfig.vdf' successfully
+
+
+[2025-12-11 09:32:11] Client version: 1763795194
+[2025-12-11 09:32:11] Loaded store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf' successfully
+[2025-12-11 09:32:11] Loaded store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf' successfully
+[2025-12-11 09:32:11] Loaded store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf' successfully
+[2025-12-11 09:32:12] Loaded store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf' successfully
+[2025-12-11 09:32:12] Loaded store 'install' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf' successfully
+[2025-12-11 09:32:13] Loaded store 'userlocal' from 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\userdata\anonymous\config\localconfig.vdf' successfully
+[2025-12-11 09:32:13] Flushed store 'install' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf'
+[2025-12-11 09:32:14] Flushed store 'userlocal' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\userdata\anonymous\config\localconfig.vdf'
+[2025-12-11 09:32:15] Flushed store 'userlocal' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\userdata\anonymous\config\localconfig.vdf'
+[2025-12-11 09:32:15] Flushed store 'install' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf'
+[2025-12-11 09:32:16] Flushed store 'install' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf'
+[2025-12-11 09:32:17] Flushed store 'install' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf'
+[2025-12-11 09:32:46] Flushed store 'install' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf'
+[2025-12-11 09:33:16] Flushed store 'install' to 'C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\config\config.vdf'

@@ -1,0 +1,114 @@
+AnimatedText {
+	display: inline;
+	white-space: pre-wrap;
+
+	.letter,
+	.word {
+		display: inline-block;
+		opacity: 0;
+		white-space: pre;
+	}
+
+	.space {
+		display: inline;
+		white-space: pre;
+	}
+
+	.full-text {
+		display: inline;
+	}
+
+	// ===== FADE IN ANIMATION =====
+	&.anim-fadeIn {
+		.letter,
+		.word {
+			animation: letterFadeIn 0.4s ease forwards;
+		}
+	}
+
+	@keyframes letterFadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	// ===== SLIDE UP ANIMATION =====
+	&.anim-slideUp {
+		.letter,
+		.word {
+			animation: letterSlideUp 0.5s ease forwards;
+		}
+	}
+
+	@keyframes letterSlideUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	// ===== TYPEWRITER ANIMATION =====
+	&.anim-typewriter {
+		.letter,
+		.word {
+			animation: letterTypewriter 0.1s steps(1) forwards;
+		}
+	}
+
+	@keyframes letterTypewriter {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	// ===== SCALE IN ANIMATION =====
+	&.anim-scaleIn {
+		.letter,
+		.word {
+			animation: letterScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+		}
+	}
+
+	@keyframes letterScaleIn {
+		from {
+			opacity: 0;
+			transform: scale(0.5);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	// ===== GLOW IN ANIMATION =====
+	&.anim-glowIn {
+		.letter,
+		.word {
+			animation: letterGlowIn 0.6s ease forwards;
+		}
+	}
+
+	@keyframes letterGlowIn {
+		from {
+			opacity: 0;
+			filter: blur(10px);
+		}
+		to {
+			opacity: 1;
+			filter: blur(0);
+		}
+	}
+}
+

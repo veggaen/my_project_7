@@ -1,0 +1,117 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Threading.Tasks
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/ui/setup/firsttimesetup.razor.scss" )]
+
+<root>
+	@if ( _showSetup )
+	{
+		<div class="setup-overlay">
+			<div class="top-brand">
+				VEGGA ROLEPLAY
+			</div>
+
+			<div class="center-content">
+				<div class="question-text">
+					Welcome, @_steamName!
+				</div>
+
+				<div class="sub-question">
+					Server Rules
+				</div>
+
+				<div class="rules-list">
+					<div class="rule-item">Stay in character</div>
+					<div class="rule-item">Respect other players</div>
+					<div class="rule-item">No RDM or trolling</div>
+					<div class="rule-item">Use voice chat appropriately</div>
+				</div>
+
+				<div class="consent-box @(_consentToRules ? "active" : "")" onclick="@ToggleConsent">
+					<div class="consent-checkbox @(_consentToRules ? "checked" : "")">
+						<span class="check-mark">✓</span>
+					</div>
+					<div class="consent-text">I agree to the rules</div>
+				</div>
+
+				<div class="action-buttons">
+					<button class="btn-primary @(_consentToRules ? "" : "disabled")" onclick="@CompleteSetup" disabled="@(!_consentToRules)">
+						@if (_isSubmitting)
+						{
+							<span>Loading...</span>
+						}
+						else
+						{
+							<span>Enter Server</span>
+						}
+					</button>
+				</div>
+			</div>
+
+			<div class="bottom-footer">
+				Welcome to VEGGA ROLEPLAY
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	bool _showSetup = false;
+	bool _consentToRules = false;
+	bool _isSubmitting = false;
+	string _steamName = "";
+	PlayerSessionStats _sessionStats;
+
+	protected override void OnStart()
+	{
+		_sessionStats = Scene.GetAllComponents<PlayerSessionStats>()
+			.FirstOrDefault( s => s.Network.IsOwner );
+
+		if ( _sessionStats == null )
+		{
+			Log.Warning( "FirstTimeSetup: Could not find PlayerSessionStats" );
+			return;
+		}
+
+		_steamName = Connection.Local?.DisplayName ?? "Player";
+
+		if ( !_sessionStats.HasCompletedSetup )
+		{
+			_showSetup = true;
+			Log.Info( "FirstTimeSetup: Showing setup UI" );
+		}
+	}
+
+	void ToggleConsent()
+	{
+		_consentToRules = !_consentToRules;
+		StateHasChanged();
+	}
+
+	async void CompleteSetup()
+	{
+		if ( !_consentToRules || _isSubmitting ) return;
+
+		_isSubmitting = true;
+		StateHasChanged();
+
+		await Task.Delay( 500 );
+
+		_sessionStats.PreferredUsername = _steamName;
+		_sessionStats.SteamName = _steamName;
+		_sessionStats.HasCompletedSetup = true;
+		_sessionStats.ConsentToDataCollection = _consentToRules;
+		_sessionStats.ConsentDate = DateTime.UtcNow;
+
+		Log.Info( $"Setup complete! Username: {_steamName}, Consent: {_consentToRules}" );
+
+		_showSetup = false;
+		_isSubmitting = false;
+		StateHasChanged();
+	}
+}
+

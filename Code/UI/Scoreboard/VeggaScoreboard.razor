@@ -1,0 +1,353 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Linq
+@namespace Sandbox.UI
+@inherits PanelComponent
+
+<root>
+	@if ( _isOpen )
+	{
+		<div class="scoreboard-overlay">
+			<div class="scoreboard-container">
+				<!-- Header -->
+				<div class="scoreboard-header">
+					<div class="header-left">
+						<span class="server-name">VEGGA ROLEPLAY</span>
+						<span class="player-count">@_playerCount Players Online</span>
+					</div>
+					<div class="header-right">
+						<span class="server-time">@DateTime.Now.ToString("HH:mm")</span>
+					</div>
+				</div>
+
+				<!-- Column Headers (Sortable) -->
+				<div class="table-header">
+					<span class="col-avatar"></span>
+					<span class="col-name clickable" onclick="@(() => SortBy("name"))">
+						NAME @GetSortIcon("name")
+					</span>
+					<span class="col-rank clickable" onclick="@(() => SortBy("rank"))">
+						RANK @GetSortIcon("rank")
+					</span>
+					<span class="col-job clickable" onclick="@(() => SortBy("job"))">
+						JOB @GetSortIcon("job")
+					</span>
+					<span class="col-money clickable" onclick="@(() => SortBy("money"))">
+						$ @GetSortIcon("money")
+					</span>
+					<span class="col-kd clickable" onclick="@(() => SortBy("kd"))">
+						K/D @GetSortIcon("kd")
+					</span>
+					<span class="col-qp clickable" onclick="@(() => SortBy("qp"))">
+						QP @GetSortIcon("qp")
+					</span>
+					<span class="col-props clickable" onclick="@(() => SortBy("props"))">
+						PROPS @GetSortIcon("props")
+					</span>
+					<span class="col-ping clickable" onclick="@(() => SortBy("ping"))">
+						PING @GetSortIcon("ping")
+					</span>
+					<span class="col-playtime clickable" onclick="@(() => SortBy("playtime"))">
+						TIME @GetSortIcon("playtime")
+					</span>
+				</div>
+
+				<!-- Player Rows -->
+				<div class="table-body">
+					@foreach ( var player in _sortedPlayers )
+					{
+						<div class="player-row @(player.IsLocal ? "local-player" : "") @(player.IsAdmin ? "admin-row" : "")">
+							<div class="col-avatar">
+								<div class="avatar">👤</div>
+							</div>
+							<span class="col-name">
+								<span class="player-name">@player.Name</span>
+								@if ( player.IsLocal )
+								{
+									<span class="you-badge">YOU</span>
+								}
+								@if ( player.IsStealthMode )
+								{
+									<span class="stealth-badge">👁️</span>
+								}
+							</span>
+							<span class="col-rank" style="color: @player.RankColor">@player.Rank</span>
+							<span class="col-job" style="color: @player.JobColor">@player.Job</span>
+							<span class="col-money">$@player.Networth.ToString("N0")</span>
+							<span class="col-kd">@player.Kills/@player.Deaths</span>
+							<span class="col-qp">@player.QuestPoints</span>
+							<span class="col-props">@player.PropsSpawned</span>
+							<span class="col-ping">@player.Ping ms</span>
+							<span class="col-playtime">@player.Playtime</span>
+						</div>
+					}
+				</div>
+
+				<!-- Footer -->
+				<div class="scoreboard-footer">
+					<span class="footer-text">@(_isLocked ? "Press TAB to unlock and close" : "Press TAB to toggle")</span>
+				</div>
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	class PlayerData
+	{
+		public string Name { get; set; }
+		public string Rank { get; set; }
+		public string RankColor { get; set; }
+		public string Job { get; set; }
+		public string JobColor { get; set; }
+		public int Networth { get; set; }
+		public int Kills { get; set; }
+		public int Deaths { get; set; }
+		public int Arrests { get; set; }
+		public int Quests { get; set; }
+		public int QuestPoints { get; set; }
+		public int PropsSpawned { get; set; }
+		public int Ping { get; set; }
+		public string Playtime { get; set; }
+		public bool IsLocal { get; set; }
+		public bool IsAdmin { get; set; }
+		public bool IsStealthMode { get; set; }
+		public float KDRatio { get; set; }
+	}
+
+	bool _isOpen = false;
+	bool _isLocked = false; // Locked when user clicks on scoreboard
+	int _playerCount = 0;
+	string _sortColumn = "money";
+	bool _sortDescending = true;
+	List<PlayerData> _sortedPlayers = new();
+
+	// TypeScript: let lastUpdateTime = 0;
+	float _lastUpdateTime = 0f;
+	const float UPDATE_INTERVAL = 1f; // Update every 1 second instead of 60 times/sec
+
+	protected override void OnStart()
+	{
+		Log.Info( "✅ VeggaScoreboard: Started!" );
+	}
+
+	protected override void OnUpdate()
+	{
+		// Toggle with Tab key
+		if ( Input.Pressed( "score" ) || Input.Pressed( "tab" ) )
+		{
+			if ( _isLocked )
+			{
+				// If locked, unlock and close
+				_isLocked = false;
+				_isOpen = false;
+			}
+			else
+			{
+				// Toggle open/close
+				_isOpen = !_isOpen;
+
+				if ( _isOpen )
+				{
+					UpdatePlayerList();
+					_lastUpdateTime = Time.Now;
+				}
+			}
+
+			StateHasChanged();
+		}
+
+		// Update while open (TypeScript: if (isOpen && now - lastUpdate > interval))
+		if ( _isOpen && (Time.Now - _lastUpdateTime) >= UPDATE_INTERVAL )
+		{
+			UpdatePlayerList();
+			_lastUpdateTime = Time.Now;
+		}
+	}
+
+	void UpdatePlayerList()
+	{
+		_sortedPlayers.Clear();
+
+		// Get all players (TypeScript style: const allPlayers = ...)
+		var allPlayers = Game.ActiveScene?.GetAllComponents<PlayerVeggaStats>();
+		if ( allPlayers == null || !allPlayers.Any() )
+		{
+			_playerCount = 0;
+			return;
+		}
+
+		_playerCount = allPlayers.Count();
+
+		var localPlayer = PlayerVeggaStats.Local;
+
+		foreach ( var player in allPlayers )
+		{
+			// TypeScript style: if (!player) continue;
+			if ( player == null || !player.IsValid() ) continue;
+
+			// TypeScript style: const sessionStats = player.Components.Get<...>() ?? null;
+			var sessionStats = player.Components?.Get<PlayerSessionStats>();
+
+			// TypeScript style: if (!sessionStats) { ... }
+			if ( sessionStats == null )
+			{
+				// Add player with fallback data (like TypeScript default values)
+				_sortedPlayers.Add( new PlayerData
+				{
+					Name = "Player (No Stats)",
+					Rank = "Guest",
+					RankColor = GetRankColor( "Guest" ),
+					Job = player.JobName ?? "Unknown",
+					JobColor = "#fbbf24",
+					Networth = player.Money,
+					Kills = 0,
+					Deaths = 0,
+					Arrests = 0,
+					Quests = 0,
+					QuestPoints = 0,
+					PropsSpawned = 0,
+					Ping = 0,
+					Playtime = "0h 0m",
+					IsLocal = (player == localPlayer),
+					IsAdmin = false,
+					IsStealthMode = false,
+					KDRatio = 0
+				} );
+				continue;
+			}
+
+			// TypeScript style: const isLocal = player === localPlayer;
+			bool isLocal = (player == localPlayer);
+
+			// TypeScript style: const isAdmin = ["Admin", "Superadmin", "Owner"].includes(rank);
+			bool isAdmin = sessionStats.Rank == "Admin"
+			            || sessionStats.Rank == "Superadmin"
+			            || sessionStats.Rank == "Owner";
+
+			// Resolve display name, with a strong fallback to connection.DisplayName
+			var displayName = sessionStats.GetDisplayName();
+			if ( string.IsNullOrWhiteSpace( displayName ) || displayName == "Player" )
+			{
+				displayName = player.Network.Owner?.DisplayName ?? "Player";
+			}
+
+			// Add player with full data
+			_sortedPlayers.Add( new PlayerData
+			{
+				Name = displayName,
+				Rank = sessionStats.Rank ?? "Guest",
+				RankColor = GetRankColor( sessionStats.Rank ?? "Guest" ),
+				Job = player.JobName ?? "Unknown",
+				JobColor = "#fbbf24",
+				Networth = sessionStats.GetNetworth(),
+				Kills = sessionStats.SessionKills,
+				Deaths = sessionStats.SessionDeaths,
+				Arrests = sessionStats.SessionArrests,
+				Quests = sessionStats.SessionQuestsCompleted,
+				QuestPoints = sessionStats.TotalQuestPoints,
+				PropsSpawned = sessionStats.TotalPropsSpawned,
+				Ping = sessionStats.GetPing(),
+				Playtime = sessionStats.GetPlaytimeFormatted(),
+				IsLocal = isLocal,
+				IsAdmin = isAdmin,
+				IsStealthMode = sessionStats.IsStealthMode,
+				KDRatio = sessionStats.GetKDRatio()
+			} );
+		}
+
+		// Sort (TypeScript style: sortedPlayers.sort(...))
+		ApplySort();
+	}
+
+	void SortBy( string column )
+	{
+		// Lock scoreboard when user clicks
+		_isLocked = true;
+
+		if ( _sortColumn == column )
+		{
+			_sortDescending = !_sortDescending;
+		}
+		else
+		{
+			_sortColumn = column;
+			_sortDescending = true;
+		}
+
+		ApplySort();
+		StateHasChanged();
+	}
+
+	void ApplySort()
+	{
+		_sortedPlayers = _sortColumn switch
+		{
+			"name" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.Name ).ToList()
+				: _sortedPlayers.OrderBy( p => p.Name ).ToList(),
+
+			"rank" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.Rank ).ToList()
+				: _sortedPlayers.OrderBy( p => p.Rank ).ToList(),
+
+			"job" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.Job ).ToList()
+				: _sortedPlayers.OrderBy( p => p.Job ).ToList(),
+
+			"money" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.Networth ).ToList()
+				: _sortedPlayers.OrderBy( p => p.Networth ).ToList(),
+
+			"kd" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.KDRatio ).ToList()
+				: _sortedPlayers.OrderBy( p => p.KDRatio ).ToList(),
+
+			"qp" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.QuestPoints ).ToList()
+				: _sortedPlayers.OrderBy( p => p.QuestPoints ).ToList(),
+
+			"props" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.PropsSpawned ).ToList()
+				: _sortedPlayers.OrderBy( p => p.PropsSpawned ).ToList(),
+
+			"ping" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.Ping ).ToList()
+				: _sortedPlayers.OrderBy( p => p.Ping ).ToList(),
+
+			"playtime" => _sortDescending
+				? _sortedPlayers.OrderByDescending( p => p.Playtime ).ToList()
+				: _sortedPlayers.OrderBy( p => p.Playtime ).ToList(),
+
+			_ => _sortedPlayers
+		};
+	}
+
+	string GetSortIcon( string column )
+	{
+		if ( _sortColumn != column ) return "";
+		return _sortDescending ? "▼" : "▲";
+	}
+
+	string GetRankColor( string rank )
+	{
+		return rank switch
+		{
+			"Owner" => "#ff0000",
+			"Superadmin" => "#ff4444",
+			"Admin" => "#ff8800",
+			"Moderator" => "#00aaff",
+			"VIP" => "#ffaa00",
+			"Member" => "#4ade80",
+			_ => "#888888" // Guest
+		};
+	}
+
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine( _isOpen, _playerCount, _sortColumn, _sortDescending, _isLocked );
+	}
+}
+

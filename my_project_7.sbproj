@@ -1,0 +1,36 @@
+{
+  "Title": "Project 7",
+  "Type": "game",
+  "Org": "original",
+  "Ident": "my_project_7",
+  "Schema": 1,
+  "IncludeSourceFiles": false,
+  "Resources": null,
+  "PackageReferences": [],
+  "EditorReferences": null,
+  "Mounts": null,
+  "IsStandaloneOnly": false,
+  "Metadata": {
+    "MaxPlayers": 64,
+    "MinPlayers": 1,
+    "TickRate": 50,
+    "GameNetworkType": "Multiplayer",
+    "MapSelect": "Unrestricted",
+    "MapList": [
+      "facepunch.flatgrass"
+    ],
+    "RankType": "None",
+    "PerMapRanking": false,
+    "LeaderboardType": "None",
+    "CsProjName": "",
+    "StartupScene": "scenes/testscenevegga.scene",
+    "ControlModes": {
+      "Keyboard": true,
+      "VR": false,
+      "Gamepad": true
+    },
+    "Summary": "RuneScape meets DarkRP - A deep roleplay game with 23 skills, progression systems, and player-driven stories.",
+    "Description": "VEGGA ROLEPLAY combines RuneScape's addictive skill progression with DarkRP's chaotic roleplay freedom. Level 23 skills, earn money, choose jobs, and create your own story in a persistent multiplayer world.",
+    "Public": true
+  }
+}

@@ -1,0 +1,405 @@
+@using Sandbox
+@using Sandbox.UI
+@namespace Sandbox.UI
+@inherits PanelComponent
+@* Force recompile - Dec 11 2025 *@
+
+<root>
+	@if ( _isOpen )
+	{
+		<div class="pause-overlay">
+			<div class="pause-blur"></div>
+
+			@* === MAIN MENU === *@
+			@if ( _currentView == MenuView.Main )
+			{
+				<div class="pause-card">
+					<div class="pause-header">
+						<div class="pause-logo">
+							<div class="logo-box">
+								<span class="logo-title">project 7</span>
+							</div>
+						</div>
+						<div class="pause-title-block">
+							<h1>Project 7</h1>
+							<p>This is and continues to be my seventh project so feel that it has earned its name by now!</p>
+						</div>
+					</div>
+
+					<div class="pause-menu">
+						<button class="menu-item primary" onclick="@Resume">
+							<span class="icon">▶</span>
+							<span class="label">Resume</span>
+						</button>
+
+						<button class="menu-item" onclick="@(() => GoToView(MenuView.About))">
+							<span class="icon">ℹ</span>
+							<span class="label">About</span>
+						</button>
+
+						<button class="menu-item" onclick="@(() => GoToView(MenuView.Players))">
+							<span class="icon">👥</span>
+							<span class="label">Players</span>
+						</button>
+
+						<button class="menu-item" onclick="@(() => GoToView(MenuView.Controls))">
+							<span class="icon">⌨</span>
+							<span class="label">Controls</span>
+						</button>
+
+						<button class="menu-item" onclick="@(() => GoToView(MenuView.HudSettings))">
+							<span class="icon">⛶</span>
+							<span class="label">HUD &amp; UI Settings</span>
+						</button>
+
+						<button class="menu-item" onclick="@ShowCrosshairEditor">
+							<span class="icon">✚</span>
+							<span class="label">Crosshair Editor</span>
+						</button>
+
+						<button class="menu-item" onclick="@(() => GoToView(MenuView.Settings))">
+							<span class="icon">⚙</span>
+							<span class="label">Settings</span>
+						</button>
+
+						<button class="menu-item danger" onclick="@LeaveGame">
+							<span class="icon">✖</span>
+							<span class="label">Leave Game</span>
+						</button>
+					</div>
+				</div>
+			}
+
+			@* === ABOUT PAGE === *@
+			@if ( _currentView == MenuView.About )
+			{
+				<div class="page-card">
+					<div class="page-header">
+						<button class="back-btn" onclick="@GoBack">
+							<span class="back-icon">←</span>
+							<span class="back-text">Back</span>
+						</button>
+						<h2 class="page-title">About</h2>
+					</div>
+					<div class="page-content">
+						<p class="page-text">
+							Vegga Roleplay / Project 7 is an OSRS-inspired multiplayer sandbox RPG built on s&amp;box,
+							with persistent stats, skills, and a fully networked HUD.
+						</p>
+						<p class="page-text">
+							This page will later show full whitepaper / roadmap content.
+						</p>
+					</div>
+				</div>
+			}
+
+			@* === PLAYERS PAGE === *@
+			@if ( _currentView == MenuView.Players )
+			{
+				<div class="page-card">
+					<div class="page-header">
+						<button class="back-btn" onclick="@GoBack">
+							<span class="back-icon">←</span>
+							<span class="back-text">Back</span>
+						</button>
+						<h2 class="page-title">Players</h2>
+					</div>
+					<div class="page-content">
+						<p class="page-text">
+							Press TAB to open the full scoreboard. This section will later embed a compact
+							player list and admin tools directly into the pause menu.
+						</p>
+					</div>
+				</div>
+			}
+
+			@* === CONTROLS PAGE === *@
+			@if ( _currentView == MenuView.Controls )
+			{
+				<div class="page-card">
+					<div class="page-header">
+						<button class="back-btn" onclick="@GoBack">
+							<span class="back-icon">←</span>
+							<span class="back-text">Back</span>
+						</button>
+						<h2 class="page-title">Controls</h2>
+					</div>
+					<div class="page-content">
+						<p class="page-text">
+							Primary Attack, FPView, ShoulderSwap and other actions can be bound in the standard
+							s&amp;box controls menu. In a future pass, this section will expose a full keybinding
+							editor for all custom actions.
+						</p>
+					</div>
+				</div>
+			}
+
+			@* === SETTINGS PAGE === *@
+			@if ( _currentView == MenuView.Settings )
+			{
+				<div class="page-card">
+					<div class="page-header">
+						<button class="back-btn" onclick="@GoBack">
+							<span class="back-icon">←</span>
+							<span class="back-text">Back</span>
+						</button>
+						<h2 class="page-title">Settings</h2>
+					</div>
+					<div class="page-content">
+						<div class="settings-section">
+							<h3 class="settings-title">Trading</h3>
+							<div class="setting-row">
+								<div class="setting-info">
+									<span class="setting-label">Auto-Accept Trades</span>
+									<span class="setting-desc">Automatically accept incoming trade requests from other players</span>
+								</div>
+								<button class="toggle-btn @(_autoAcceptTrades ? "on" : "off")" onclick="@ToggleAutoAcceptTrades">
+									<span class="toggle-label">@(_autoAcceptTrades ? "ON" : "OFF")</span>
+								</button>
+							</div>
+						</div>
+
+						<div class="settings-section">
+							<h3 class="settings-title">Looting</h3>
+							<div class="setting-row">
+								<div class="setting-info">
+									<span class="setting-label">Auto-Loot Items</span>
+									<span class="setting-desc">Automatically pick up nearby items when walking over them</span>
+								</div>
+								<button class="toggle-btn @(_autoLootEnabled ? "on" : "off")" onclick="@ToggleAutoLoot">
+									<span class="toggle-label">@(_autoLootEnabled ? "ON" : "OFF")</span>
+								</button>
+							</div>
+						</div>
+
+						<div class="settings-section">
+							<h3 class="settings-title">Other Settings</h3>
+							<p class="page-text">
+								Coming soon: graphics, audio, and Vegga-specific gameplay settings.
+							</p>
+						</div>
+					</div>
+				</div>
+			}
+
+			@* === HUD & UI SETTINGS PAGE === *@
+			@if ( _currentView == MenuView.HudSettings )
+			{
+				<div class="page-card">
+					<div class="page-header">
+						<button class="back-btn" onclick="@GoBack">
+							<span class="back-icon">←</span>
+							<span class="back-text">Back</span>
+						</button>
+						<h2 class="page-title">HUD &amp; UI Settings</h2>
+					</div>
+					<div class="page-content">
+						<p class="page-text">
+							Customize your HUD layout. Click the button below to enter edit mode where you can
+							drag and nudge HUD elements to your preferred positions.
+						</p>
+
+						<div class="action-buttons">
+							<button class="action-btn primary" onclick="@EnterLayoutMode">
+								<span class="btn-icon">🎨</span>
+								<span class="btn-text">Edit HUD Layout</span>
+							</button>
+							<button class="action-btn" onclick="@ResetHudLayout">
+								<span class="btn-icon">↺</span>
+								<span class="btn-text">Reset to Default</span>
+							</button>
+						</div>
+
+						<div class="info-box">
+							<div class="info-row">
+								<span class="info-icon">💡</span>
+								<span class="info-text">In edit mode: drag the blue handle or use arrow buttons to move elements</span>
+							</div>
+							<div class="info-row">
+								<span class="info-icon">💾</span>
+								<span class="info-text">Positions save automatically per user</span>
+							</div>
+							<div class="info-row">
+								<span class="info-icon">⎋</span>
+								<span class="info-text">Press ESC to exit edit mode and return here</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			}
+		</div>
+	}
+</root>
+
+@code
+{
+	enum MenuView
+	{
+		Main,
+		About,
+		Players,
+		Controls,
+		Settings,
+		HudSettings
+	}
+
+	bool _isOpen = false;
+	MenuView _currentView = MenuView.Main;
+	bool _hasLoggedStart;
+
+	// Auto-accept trades setting (mirrors TradeManager)
+	bool _autoAcceptTrades
+	{
+		get
+		{
+			var tm = TradeManager.Local;
+			return tm?.AutoAcceptTrades ?? true;
+		}
+	}
+
+	// Auto-loot setting (mirrors VeggaAutoLootCollector)
+	bool _autoLootEnabled
+	{
+		get
+		{
+			var player = PlayerVeggaStats.Local;
+			if ( player == null ) return true;
+			var collector = player.Components.GetInDescendantsOrSelf<VeggaAutoLootCollector>();
+			return collector?.AutoLootEnabled ?? true;
+		}
+	}
+
+	// Instance wrappers to avoid static method substitution errors
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+	void SetLayoutActive( bool active ) => VeggaHudLayoutState.SetActive( active );
+	void ResetAllPositions() => VeggaHudLayoutState.ResetAll();
+
+	protected override void OnUpdate()
+	{
+		if ( !_hasLoggedStart )
+		{
+			_hasLoggedStart = true;
+			Log.Info( "[VeggaPauseMenu] OnUpdate started (menu component is running)." );
+		}
+
+		if ( Input.EscapePressed )
+		{
+			Input.EscapePressed = false;
+			bool layoutActive = IsLayoutActive;
+			Log.Info( $"[VeggaPauseMenu] ESC pressed. isOpen={_isOpen}, view={_currentView}, layoutActive={layoutActive}" );
+
+			// If in layout mode, ESC exits layout and reopens menu to HUD settings
+			if ( layoutActive )
+			{
+				SetLayoutActive( false );
+				_isOpen = true;
+				_currentView = MenuView.HudSettings;
+				Log.Info( "[VeggaPauseMenu] ESC: Exited layout mode, reopened HUD settings." );
+			}
+			// If on a subpage, go back to main menu
+			else if ( _isOpen && _currentView != MenuView.Main )
+			{
+				_currentView = MenuView.Main;
+				Log.Info( "[VeggaPauseMenu] ESC: Went back to main menu." );
+			}
+			// Otherwise toggle menu open/close
+			else
+			{
+				_isOpen = !_isOpen;
+				if ( _isOpen )
+				{
+					_currentView = MenuView.Main;
+				}
+				Log.Info( $"[VeggaPauseMenu] ESC: Toggled menu. Now isOpen={_isOpen}" );
+			}
+
+			StateHasChanged();
+		}
+	}
+
+	void GoToView( MenuView view )
+	{
+		_currentView = view;
+		Log.Info( $"[VeggaPauseMenu] Navigated to {view}" );
+		StateHasChanged();
+	}
+
+	void GoBack()
+	{
+		_currentView = MenuView.Main;
+		Log.Info( "[VeggaPauseMenu] Back button clicked, returning to main menu." );
+		StateHasChanged();
+	}
+
+	void Resume()
+	{
+		_isOpen = false;
+		_currentView = MenuView.Main;
+		Log.Info( "[VeggaPauseMenu] Resume clicked. Closing menu." );
+		StateHasChanged();
+	}
+
+	void EnterLayoutMode()
+	{
+		_isOpen = false;
+		SetLayoutActive( true );
+		Log.Info( "[VeggaPauseMenu] Entered HUD layout mode." );
+		StateHasChanged();
+	}
+
+	void ResetHudLayout()
+	{
+		ResetAllPositions();
+		Log.Info( "[VeggaPauseMenu] Reset HUD layout to defaults." );
+		StateHasChanged();
+	}
+
+	void ShowCrosshairEditor()
+	{
+		Log.Info( "[VeggaPauseMenu] ShowCrosshairEditor clicked. Toggling crosshair menu." );
+		CrossVeggaHairMenu.ToggleFromMenu();
+	}
+
+	void ToggleAutoAcceptTrades()
+	{
+		var tm = TradeManager.Local;
+		if ( tm != null )
+		{
+			tm.AutoAcceptTrades = !tm.AutoAcceptTrades;
+			Log.Info( $"[VeggaPauseMenu] Auto-accept trades toggled to: {tm.AutoAcceptTrades}" );
+			StateHasChanged();
+		}
+	}
+
+	void ToggleAutoLoot()
+	{
+		var player = PlayerVeggaStats.Local;
+		if ( player == null ) return;
+
+		var collector = player.Components.GetInDescendantsOrSelf<VeggaAutoLootCollector>();
+		if ( collector != null )
+		{
+			collector.AutoLootEnabled = !collector.AutoLootEnabled;
+			Log.Info( $"[VeggaPauseMenu] Auto-loot toggled to: {collector.AutoLootEnabled}" );
+			StateHasChanged();
+		}
+	}
+
+	void LeaveGame()
+	{
+		if ( Networking.IsActive )
+		{
+			Log.Info( "[VeggaPauseMenu] LeaveGame clicked. Running 'disconnect'." );
+			ConsoleSystem.Run( "disconnect" );
+		}
+		else
+		{
+			Log.Info( "[Pause] Cannot run 'disconnect' – not in a live session (likely editor preview)." );
+			_isOpen = false;
+			Log.Info( "[VeggaPauseMenu] LeaveGame clicked in editor preview. Just closing menu." );
+			StateHasChanged();
+		}
+	}
+}
+
+

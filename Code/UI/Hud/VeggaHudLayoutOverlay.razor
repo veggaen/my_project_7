@@ -1,0 +1,217 @@
+@using Sandbox
+@using Sandbox.UI
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/ui/hud/veggahudlayoutoverlay.razor.scss" )]
+
+<root>
+	@if ( IsLayoutActive )
+	{
+		<div class="hud-layout-editor">
+			@* Header *@
+			<div class="layout-header">
+				<h2 class="layout-title">Layout Editor</h2>
+				<p class="layout-subtitle">Fine-tune element positions and scales</p>
+			</div>
+
+			@* Element Selector *@
+			<div class="element-selector">
+				<div class="element-title-row">
+					<h3 class="section-title">Select Element ・ ➤</h3>
+					@if ( SelectedElement != null )
+					{
+						<div class="editing-indicator">@GetElementName(SelectedElement)</div>
+					}
+				</div>
+				<div class="element-buttons">
+					@foreach ( var key in GetElementKeys() )
+					{
+						<button class="element-btn @(SelectedElement == key ? "selected" : "")" 
+								onclick="@(() => SelectElement(key))">
+							@GetElementName(key)
+						</button>
+					}
+				</div>
+			</div>
+
+			
+
+			@* Position Presets *@
+			@if ( SelectedElement != null )
+			{
+				<div class="position-presets">
+					<h3 class="section-title">Position Presets</h3>
+					
+					@* 3x3 Grid of position presets - using rows for s&box compatibility *@
+					<div class="preset-flex">
+						<div class="preset-row">
+							<button class="preset-btn @(GetCurrentPreset() == 0 ? "active" : "")" onclick="@(() => SetPreset(0))">Top Left</button>
+							<button class="preset-btn @(GetCurrentPreset() == 1 ? "active" : "")" onclick="@(() => SetPreset(1))">Top</button>
+							<button class="preset-btn @(GetCurrentPreset() == 2 ? "active" : "")" onclick="@(() => SetPreset(2))">Top Right</button>
+						</div>
+						<div class="preset-row">
+							<button class="preset-btn @(GetCurrentPreset() == 3 ? "active" : "")" onclick="@(() => SetPreset(3))">Left</button>
+							<button class="preset-btn @(GetCurrentPreset() == 4 ? "active" : "")" onclick="@(() => SetPreset(4))">Center</button>
+							<button class="preset-btn @(GetCurrentPreset() == 5 ? "active" : "")" onclick="@(() => SetPreset(5))">Right</button>
+						</div>
+						<div class="preset-row">
+							<button class="preset-btn @(GetCurrentPreset() == 6 ? "active" : "")" onclick="@(() => SetPreset(6))">Bottom Left</button>
+							<button class="preset-btn @(GetCurrentPreset() == 7 ? "active" : "")" onclick="@(() => SetPreset(7))">Bottom</button>
+							<button class="preset-btn @(GetCurrentPreset() == 8 ? "active" : "")" onclick="@(() => SetPreset(8))">Bottom Right</button>
+						</div>
+					</div>
+
+					<div class="fine-tune-controls">
+						@* Fine-tune nudge controls *@
+						<div class="nudge-controls">
+							<h4 class="nudge-title">Fine Tune (pixels)</h4>
+							<div class="nudge-flex">
+								<div class="nudge-row">
+									<div class="nudge-spacer"></div>
+									<button class="nudge-btn" onclick="@(() => Nudge(0, -10))">UP</button>
+									<div class="nudge-spacer"></div>
+								</div>
+								<div class="nudge-row">
+									<button class="nudge-btn" onclick="@(() => Nudge(-10, 0))">L</button>
+									<div class="nudge-info">10px</div>
+									<button class="nudge-btn" onclick="@(() => Nudge(10, 0))">R</button>
+								</div>
+								<div class="nudge-row">
+									<div class="nudge-spacer"></div>
+									<button class="nudge-btn" onclick="@(() => Nudge(0, 10))">DN</button>
+									<div class="nudge-spacer"></div>
+								</div>
+							</div>
+						</div>
+
+						@* Scale control *@
+						<div class="scale-controls">
+							<h4 class="scale-title">Scale: @(GetCurrentScale().ToString("P0"))</h4>
+							<div class="scale-buttons">
+								<button class="scale-btn" onclick="@(() => SetScale(0.75f))">75%</button>
+								<button class="scale-btn" onclick="@(() => SetScale(1.0f))">100%</button>
+								<button class="scale-btn" onclick="@(() => SetScale(1.25f))">125%</button>
+								<button class="scale-btn" onclick="@(() => SetScale(1.5f))">150%</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			}
+
+			@* Actions *@
+			<div class="layout-actions">
+				<button class="action-btn reset" onclick="@ResetLayout">Reset All</button>
+				<button class="action-btn done" onclick="@ExitLayout">Save</button>
+			</div>
+		</div>
+
+		@* Visual guides showing current positions *@
+		<div class="position-guides">
+			@foreach ( var key in GetElementKeys() )
+			{
+				var pos = GetElementPosition(key);
+				<div class="guide-marker @(SelectedElement == key ? "selected" : "")" 
+					 style="left: @(pos.x * 100)%; top: @(pos.y * 100)%;">
+					<span class="guide-label">@GetElementShortName(key)</span>
+				</div>
+			}
+		</div>
+	}
+</root>
+
+@code
+{
+	bool _lastActive;
+
+	// Instance wrappers
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+	string SelectedElement => VeggaHudLayoutState.SelectedElement;
+	void SetLayoutActive( bool active ) => VeggaHudLayoutState.SetActive( active );
+	void ResetAllPositions() => VeggaHudLayoutState.ResetAll();
+
+	System.Collections.Generic.List<string> GetElementKeys() => VeggaHudLayoutState.GetAllElementKeys();
+	string GetElementName( string key ) => VeggaHudLayoutState.GetElementName( key );
+
+	string GetElementShortName( string key )
+	{
+		return key switch
+		{
+			VeggaHudLayoutState.KeyPlayerHud => "HP",
+			VeggaHudLayoutState.KeyXpBar => "XP",
+			VeggaHudLayoutState.KeyChat => "Chat",
+			VeggaHudLayoutState.KeyMinimap => "Map",
+			VeggaHudLayoutState.KeyInventory => "Inv",
+			_ => key.Substring( 0, 2 ).ToUpper()
+		};
+	}
+
+	Vector2 GetElementPosition( string key )
+	{
+		return VeggaHudLayoutState.GetPosition( key, new Vector2( 0.5f, 0.5f ) );
+	}
+
+	int GetCurrentPreset()
+	{
+		if ( SelectedElement == null ) return -1;
+		return (int)VeggaHudLayoutState.GetPreset( SelectedElement );
+	}
+
+	float GetCurrentScale()
+	{
+		if ( SelectedElement == null ) return 1f;
+		return VeggaHudLayoutState.GetScale( SelectedElement, 1f );
+	}
+
+	protected override void OnUpdate()
+	{
+		bool active = IsLayoutActive;
+
+		if ( active )
+		{
+			Panel.Style.PointerEvents = PointerEvents.All;
+		}
+
+		if ( active != _lastActive )
+		{
+			_lastActive = active;
+			Log.Info( $"[VeggaHudLayoutOverlay] Active = {_lastActive}" );
+		}
+	}
+
+	void SelectElement( string key )
+	{
+		VeggaHudLayoutState.SelectedElement = key;
+		Log.Info( $"[HUD Layout] Selected: {key}" );
+	}
+
+	void SetPreset( int presetIndex )
+	{
+		if ( SelectedElement == null ) return;
+		VeggaHudLayoutState.SetPreset( SelectedElement, (VeggaHudLayoutState.ScreenPosition)presetIndex );
+	}
+
+	void Nudge( float x, float y )
+	{
+		if ( SelectedElement == null ) return;
+		VeggaHudLayoutState.NudgePosition( SelectedElement, new Vector2( x, y ) );
+	}
+
+	void SetScale( float scale )
+	{
+		if ( SelectedElement == null ) return;
+		VeggaHudLayoutState.SetScale( SelectedElement, scale );
+	}
+
+	void ResetLayout()
+	{
+		ResetAllPositions();
+		Log.Info( "[HUD Layout] Reset all positions to default" );
+	}
+
+	void ExitLayout()
+	{
+		SetLayoutActive( false );
+		Panel.Style.PointerEvents = PointerEvents.None;
+		Log.Info( "[HUD Layout] Exited layout mode" );
+	}
+}

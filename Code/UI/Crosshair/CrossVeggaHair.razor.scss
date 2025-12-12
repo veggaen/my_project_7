@@ -1,0 +1,44 @@
+CrossVeggaHair {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 1000;
+
+	.crosshair-container {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		width: 100px;
+		height: 100px;
+	}
+
+	.crosshair-line {
+		position: absolute;
+		pointer-events: none;
+	}
+
+	.crosshair-top,
+	.crosshair-bottom {
+		left: 50%;
+		transform: translateX(-50%);
+	}
+
+	.crosshair-left,
+	.crosshair-right {
+		top: 50%;
+		transform: translateY(-50%);
+	}
+
+	.crosshair-dot {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		pointer-events: none;
+	}
+}
+

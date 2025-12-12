@@ -1,0 +1,437 @@
+// Trade Window UI - OSRS-inspired design
+
+TradeWindow {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+	z-index: 2500;
+
+	// ============================================
+	// TRADE REQUEST POPUP
+	// ============================================
+	.trade-request-popup {
+		position: absolute;
+		top: 25%;
+		left: 50%;
+		transform: translateX(-50%);
+		min-width: 320px;
+		padding: 20px 28px;
+		border-radius: 8px;
+		background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+		border: 2px solid rgba(251, 191, 36, 0.6);
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(251, 191, 36, 0.2);
+		pointer-events: all;
+		animation: popup-in 0.3s ease-out;
+	}
+
+	.request-header {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-bottom: 16px;
+
+		.request-icon {
+			font-size: 24px;
+		}
+
+		.request-title {
+			font-size: 18px;
+			font-weight: 700;
+			color: #fbbf24;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+	}
+
+	.request-body {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		margin-bottom: 20px;
+
+		.requester-name {
+			font-size: 20px;
+			font-weight: 700;
+			color: #ffffff;
+		}
+
+		.request-text {
+			font-size: 14px;
+			color: rgba(255, 255, 255, 0.7);
+		}
+	}
+
+	.request-actions {
+		display: flex;
+		gap: 12px;
+	}
+
+	// ============================================
+	// TRADE WINDOW
+	// ============================================
+	.trade-window {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 700px;
+		border-radius: 8px;
+		background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+		border: 2px solid rgba(148, 163, 184, 0.3);
+		box-shadow: 0 16px 64px rgba(0, 0, 0, 0.9);
+		pointer-events: all;
+		animation: window-in 0.25s ease-out;
+	}
+
+	.trade-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 16px 20px;
+		border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 8px 8px 0 0;
+
+		.trade-title {
+			font-size: 18px;
+			font-weight: 700;
+			color: #ffffff;
+		}
+
+		.btn-close {
+			width: 28px;
+			height: 28px;
+			border-radius: 4px;
+			border: none;
+			background: rgba(239, 68, 68, 0.2);
+			color: #f87171;
+			font-size: 14px;
+			cursor: pointer;
+			transition: all 0.15s ease;
+
+			&:hover {
+				background: rgba(239, 68, 68, 0.4);
+				color: #ffffff;
+			}
+		}
+	}
+
+	.trade-body {
+		display: flex;
+		gap: 1px;
+		background: rgba(148, 163, 184, 0.1);
+	}
+
+	.trade-column {
+		flex: 1;
+		padding: 16px;
+		background: rgba(15, 23, 42, 0.5);
+
+		&.my-offer {
+			border-right: 1px solid rgba(148, 163, 184, 0.15);
+		}
+	}
+
+	.column-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 16px;
+		padding-bottom: 10px;
+		border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+
+		.column-title {
+			font-size: 14px;
+			font-weight: 700;
+			color: rgba(255, 255, 255, 0.9);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		.column-status {
+			font-size: 12px;
+			color: rgba(148, 163, 184, 0.7);
+			padding: 4px 8px;
+			border-radius: 4px;
+			background: rgba(0, 0, 0, 0.3);
+
+			&.confirmed {
+				color: #4ade80;
+				background: rgba(74, 222, 128, 0.15);
+			}
+		}
+	}
+
+	.offer-section {
+		margin-bottom: 16px;
+	}
+
+	.money-offer {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+
+		.money-label {
+			font-size: 12px;
+			color: rgba(255, 255, 255, 0.6);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		.money-input-group {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			padding: 10px 12px;
+			border-radius: 6px;
+			background: rgba(0, 0, 0, 0.4);
+			border: 1px solid rgba(148, 163, 184, 0.2);
+
+			.currency {
+				font-size: 18px;
+				font-weight: 700;
+				color: #4ade80;
+			}
+
+			.money-input {
+				flex: 1;
+				border: none;
+				background: transparent;
+				color: #ffffff;
+				font-size: 18px;
+				font-weight: 700;
+				outline: none;
+			}
+		}
+
+		.money-display {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			padding: 10px 12px;
+			border-radius: 6px;
+			background: rgba(0, 0, 0, 0.3);
+
+			.currency {
+				font-size: 18px;
+				font-weight: 700;
+				color: #4ade80;
+			}
+
+			.money-value {
+				font-size: 18px;
+				font-weight: 700;
+				color: #ffffff;
+			}
+		}
+
+		.money-available {
+			font-size: 11px;
+			color: rgba(148, 163, 184, 0.7);
+		}
+
+		&.readonly {
+			pointer-events: none;
+		}
+	}
+
+	.quick-amounts {
+		display: flex;
+		gap: 6px;
+		margin-top: 10px;
+
+		.quick-btn {
+			flex: 1;
+			padding: 6px 8px;
+			border-radius: 4px;
+			border: 1px solid rgba(148, 163, 184, 0.2);
+			background: rgba(51, 65, 85, 0.5);
+			color: rgba(255, 255, 255, 0.8);
+			font-size: 12px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.15s ease;
+
+			&:hover {
+				background: rgba(71, 85, 105, 0.7);
+				border-color: rgba(148, 163, 184, 0.4);
+			}
+		}
+	}
+
+	.item-slots {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 6px;
+		margin-top: 16px;
+
+		.slot {
+			aspect-ratio: 1;
+			border-radius: 4px;
+			background: rgba(0, 0, 0, 0.3);
+			border: 1px dashed rgba(148, 163, 184, 0.2);
+
+			&.empty {
+				opacity: 0.5;
+			}
+		}
+	}
+
+	.trade-footer {
+		padding: 16px 20px;
+		border-top: 1px solid rgba(148, 163, 184, 0.2);
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 0 0 8px 8px;
+	}
+
+	.trade-summary {
+		text-align: center;
+		margin-bottom: 16px;
+
+		.summary-text {
+			font-size: 14px;
+			color: rgba(255, 255, 255, 0.8);
+
+			.give {
+				color: #f87171;
+				font-weight: 700;
+			}
+
+			.receive {
+				color: #4ade80;
+				font-weight: 700;
+			}
+		}
+	}
+
+	.trade-actions {
+		display: flex;
+		justify-content: center;
+		gap: 12px;
+	}
+
+	// ============================================
+	// BUTTONS
+	// ============================================
+	.btn {
+		padding: 10px 24px;
+		border-radius: 6px;
+		border: none;
+		font-size: 14px;
+		font-weight: 700;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+
+		&.btn-accept {
+			background: linear-gradient(135deg, #22c55e, #16a34a);
+			color: #ffffff;
+			box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+
+			&:hover {
+				background: linear-gradient(135deg, #16a34a, #15803d);
+				transform: translateY(-1px);
+			}
+		}
+
+		&.btn-decline {
+			background: rgba(239, 68, 68, 0.2);
+			color: #f87171;
+			border: 1px solid rgba(239, 68, 68, 0.3);
+
+			&:hover {
+				background: rgba(239, 68, 68, 0.3);
+			}
+		}
+
+		&.btn-confirm {
+			background: linear-gradient(135deg, #3b82f6, #2563eb);
+			color: #ffffff;
+			box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+			min-width: 180px;
+
+			&:hover {
+				background: linear-gradient(135deg, #2563eb, #1d4ed8);
+				transform: translateY(-1px);
+			}
+		}
+
+		&.btn-cancel {
+			background: rgba(71, 85, 105, 0.5);
+			color: rgba(255, 255, 255, 0.8);
+			border: 1px solid rgba(148, 163, 184, 0.2);
+
+			&:hover {
+				background: rgba(71, 85, 105, 0.7);
+			}
+		}
+
+		&.btn-waiting {
+			background: rgba(148, 163, 184, 0.2);
+			color: rgba(255, 255, 255, 0.5);
+			min-width: 180px;
+			cursor: default;
+		}
+	}
+
+	// ============================================
+	// TRADE HINT
+	// ============================================
+	.trade-hint {
+		position: absolute;
+		top: 55%;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 16px;
+		border-radius: 6px;
+		background: rgba(0, 0, 0, 0.7);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+
+		.hint-key {
+			padding: 4px 8px;
+			border-radius: 4px;
+			background: rgba(251, 191, 36, 0.2);
+			color: #fbbf24;
+			font-size: 12px;
+			font-weight: 700;
+		}
+
+		.hint-text {
+			font-size: 14px;
+			color: rgba(255, 255, 255, 0.9);
+		}
+	}
+
+	// ============================================
+	// ANIMATIONS
+	// ============================================
+	@keyframes popup-in {
+		0% {
+			opacity: 0;
+			transform: translateX(-50%) translateY(-20px);
+		}
+		100% {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
+	}
+
+	@keyframes window-in {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(0.95);
+		}
+		100% {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1);
+		}
+	}
+}

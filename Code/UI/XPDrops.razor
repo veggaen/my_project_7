@@ -1,0 +1,117 @@
+@using Sandbox
+@using Sandbox.UI
+@using System.Collections.Generic
+@using System.Linq
+@namespace Sandbox.UI
+@inherits PanelComponent
+
+<root>
+	<div class="xp-drops-container">
+		@foreach ( var drop in _activeDrops )
+		{
+			<div class="xp-drop" style="opacity: @drop.Opacity; top: @(drop.YOffset)px;">
+				<span class="xp-icon">@GetSkillIcon(drop.Skill)</span>
+				<span class="xp-amount">+@drop.Amount</span>
+			</div>
+		}
+	</div>
+</root>
+
+@code
+{
+	class XPDrop
+	{
+		public SkillId Skill;
+		public int Amount;
+		public float TimeCreated;
+		public float Opacity = 1f;
+		public float YOffset = 0f;
+	}
+
+	List<XPDrop> _activeDrops = new();
+	const float DROP_LIFETIME = 2f;
+	const float DROP_RISE_SPEED = 30f;
+
+	protected override void OnStart()
+	{
+		Log.Info( "✅ XPDrops: Ready!" );
+	}
+
+	protected override void OnEnabled()
+	{
+		// Subscribe to XP gains when enabled
+		var player = PlayerVeggaStats.Local;
+		if ( player != null )
+		{
+			var skills = player.GameObject.Components.Get<PlayerVeggaSkills>();
+			if ( skills != null )
+			{
+				skills.OnXPGained += OnXPGained;
+				Log.Info( "✅ XPDrops: Subscribed to XP events!" );
+			}
+		}
+	}
+
+	void OnXPGained( SkillId skill, int amount )
+	{
+		AddXPDrop( skill, amount );
+	}
+
+	protected override void OnUpdate()
+	{
+		float now = Time.Now;
+
+		// Update existing drops
+		for ( int i = _activeDrops.Count - 1; i >= 0; i-- )
+		{
+			var drop = _activeDrops[i];
+			float age = now - drop.TimeCreated;
+
+			if ( age > DROP_LIFETIME )
+			{
+				_activeDrops.RemoveAt( i );
+				continue;
+			}
+
+			// Fade out
+			drop.Opacity = 1f - (age / DROP_LIFETIME);
+			
+			// Rise up
+			drop.YOffset = -(age * DROP_RISE_SPEED);
+		}
+
+		StateHasChanged();
+	}
+
+	public void AddXPDrop( SkillId skill, int amount )
+	{
+		_activeDrops.Add( new XPDrop
+		{
+			Skill = skill,
+			Amount = amount,
+			TimeCreated = Time.Now
+		} );
+	}
+
+	string GetSkillIcon( SkillId skill )
+	{
+		return skill switch
+		{
+			SkillId.Attack => "⚔️",
+			SkillId.Strength => "💪",
+			SkillId.Defence => "🛡️",
+			SkillId.Hitpoints => "❤️",
+			SkillId.Prayer => "🙏",
+			SkillId.Magic => "✨",
+			SkillId.Ranged => "🏹",
+			SkillId.Mining => "⛏️",
+			SkillId.Woodcutting => "🪓",
+			SkillId.Fishing => "🎣",
+			SkillId.Cooking => "🍳",
+			SkillId.Crafting => "🔨",
+			SkillId.Agility => "🏃",
+			_ => "📊"
+		};
+	}
+}
+

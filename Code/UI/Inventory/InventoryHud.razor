@@ -1,0 +1,115 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+@* Force recompile - Dec 11 2025 *@
+
+<root>
+	@if ( _isOpen )
+	{
+		<div class="inventory-container">
+			<div class="inventory-header">
+				<span class="inventory-title">BAG</span>
+				<span class="inventory-slots">@_usedSlots / @_totalSlots</span>
+			</div>
+
+			<div class="inventory-grid">
+				@for ( int i = 0; i < _totalSlots; i++ )
+				{
+					int slotIndex = i;
+					<div class="inventory-slot @(slotIndex < _usedSlots ? "has-item" : "")">
+						@if ( slotIndex < _usedSlots )
+						{
+							<div class="item-icon">🗡️</div>
+							<div class="item-count">@_itemCounts[slotIndex]</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	/// <summary>
+	/// Link to the player's stats. Can be set manually in inspector or by HUDManager.
+	/// </summary>
+	[Property] public PlayerVeggaStats PlayerStats { get; set; }
+
+	bool _isOpen = false;
+	int _columns = 12;
+	int _rows = 8;
+	int _totalSlots = 96;
+	int _usedSlots = 0;
+	List<int> _itemCounts = new();
+
+	VeggaInventory _inventory;
+
+	// Instance wrapper to avoid static method substitution errors
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+
+	protected override void OnStart()
+	{
+		// Silent start
+	}
+
+	protected override void OnUpdate()
+	{
+		// 🎯 MULTIPLAYER FIX: Only process input for local player's UI
+		if ( PlayerStats != null && PlayerStats.Network.IsProxy ) return;
+
+		// Toggle with 'B' key (for Bag)
+		if ( Input.Pressed( "bag" ) )
+		{
+			_isOpen = !_isOpen;
+
+			// Lock/unlock cursor based on bag state, but don't hide the mouse
+			// if global HUD layout mode is active.
+			if ( _isOpen )
+			{
+				Panel.Style.PointerEvents = PointerEvents.All;
+			}
+			else if ( !IsLayoutActive )
+			{
+				Panel.Style.PointerEvents = PointerEvents.None;
+			}
+
+			StateHasChanged();
+		}
+
+		// Get inventory data
+		if ( _inventory == null )
+		{
+			_inventory = VeggaInventory.Local;
+		}
+
+		if ( _inventory != null && _inventory.IsValid() )
+		{
+			_totalSlots = _inventory.TotalSlots;
+			_usedSlots = _inventory.UsedSlots;
+
+			// Get UI settings
+			var uiSettings = VeggaUiSettings.Local;
+			if ( uiSettings != null )
+			{
+				_columns = uiSettings.InventoryColumns;
+				_rows = uiSettings.InventoryRows;
+			}
+
+			// Build item counts list (temporary - will use real items later)
+			_itemCounts.Clear();
+			for ( int i = 0; i < _usedSlots; i++ )
+			{
+				_itemCounts.Add( i + 1 ); // Placeholder counts
+			}
+		}
+	}
+
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine( _isOpen, _usedSlots, _totalSlots );
+	}
+}
+

@@ -1,0 +1,246 @@
+VeggaScoreboard {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+
+	.scoreboard-overlay {
+		width: 100%;
+		height: 100%;
+		background: rgba(0, 0, 0, 0.7);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		pointer-events: all;
+	}
+
+	.scoreboard-container {
+		width: 1400px;
+		max-height: 85%;
+		background: linear-gradient(135deg, rgba(10, 10, 20, 0.98) 0%, rgba(20, 20, 35, 0.98) 100%);
+		border: 2px solid rgba(100, 150, 255, 0.4);
+		border-radius: 8px;
+		box-shadow: 0 12px 48px rgba(0, 0, 0, 0.95);
+		display: flex;
+		flex-direction: column;
+		font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+		color: #ffffff;
+	}
+
+	// Header
+	.scoreboard-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20px 28px;
+		background: linear-gradient(180deg, rgba(100, 150, 255, 0.15) 0%, rgba(100, 150, 255, 0.05) 100%);
+		border-bottom: 2px solid rgba(100, 150, 255, 0.3);
+		border-radius: 8px 8px 0 0;
+
+		.header-left {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+
+			.server-name {
+				font-size: 26px;
+				font-weight: 900;
+				text-transform: uppercase;
+				letter-spacing: 0.12em;
+				color: #ffffff;
+				text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+			}
+
+			.player-count {
+				font-size: 14px;
+				font-weight: 600;
+				color: #4ade80;
+				text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+			}
+		}
+
+		.header-right {
+			.server-time {
+				font-size: 18px;
+				font-weight: 700;
+				color: rgba(255, 255, 255, 0.7);
+			}
+		}
+	}
+
+	// Table Header
+	.table-header {
+		display: flex;
+		gap: 12px;
+		padding: 14px 28px;
+		background: rgba(255, 255, 255, 0.03);
+		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		font-size: 12px;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: rgba(255, 255, 255, 0.5);
+
+		.clickable {
+			cursor: pointer;
+			transition: all 0.15s ease;
+
+			&:hover {
+				color: rgba(100, 150, 255, 0.9);
+			}
+		}
+	}
+
+	// Table Body
+	.table-body {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 12px;
+		max-height: 600px;
+	}
+
+	.player-row {
+		display: flex;
+		gap: 12px;
+		padding: 14px 16px;
+		background: rgba(30, 30, 45, 0.4);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: 4px;
+		align-items: center;
+		transition: all 0.15s ease;
+
+		&:hover {
+			background: rgba(50, 60, 80, 0.5);
+			border-color: rgba(100, 150, 255, 0.3);
+			transform: translateX(4px);
+		}
+
+		&.local-player {
+			background: rgba(100, 150, 255, 0.15);
+			border-color: rgba(100, 150, 255, 0.4);
+			box-shadow: 0 0 12px rgba(100, 150, 255, 0.2);
+		}
+	}
+
+	// Column Widths
+	.col-avatar {
+		width: 40px;
+		flex-shrink: 0;
+
+		.avatar {
+			width: 36px;
+			height: 36px;
+			background: linear-gradient(135deg, rgba(100, 150, 255, 0.3), rgba(100, 150, 255, 0.1));
+			border: 2px solid rgba(100, 150, 255, 0.4);
+			border-radius: 50%;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			font-size: 20px;
+		}
+	}
+
+	.col-name {
+		width: 200px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+
+		.player-name {
+			font-weight: 700;
+			font-size: 14px;
+			color: #ffffff;
+		}
+
+		.you-badge {
+			padding: 2px 6px;
+			background: rgba(100, 150, 255, 0.3);
+			border: 1px solid rgba(100, 150, 255, 0.6);
+			border-radius: 3px;
+			font-size: 9px;
+			font-weight: 800;
+			color: #ffffff;
+		}
+
+		.stealth-badge {
+			font-size: 14px;
+		}
+	}
+
+	.col-rank {
+		width: 100px;
+		font-weight: 700;
+		font-size: 13px;
+	}
+
+	.col-job {
+		width: 120px;
+		font-weight: 700;
+		font-size: 13px;
+	}
+
+	.col-money {
+		width: 100px;
+		color: #4ade80;
+		font-weight: 700;
+		font-size: 14px;
+	}
+
+	.col-kd {
+		width: 80px;
+		color: #ef4444;
+		font-weight: 700;
+		font-size: 13px;
+	}
+
+	.col-qp {
+		width: 70px;
+		color: #a78bfa;
+		font-weight: 700;
+		font-size: 13px;
+	}
+
+	.col-props {
+		width: 80px;
+		color: #fbbf24;
+		font-weight: 700;
+		font-size: 13px;
+	}
+
+	.col-ping {
+		width: 80px;
+		color: #60a5fa;
+		font-weight: 700;
+		font-size: 13px;
+	}
+
+	.col-playtime {
+		width: 90px;
+		color: rgba(255, 255, 255, 0.7);
+		font-weight: 600;
+		font-size: 13px;
+	}
+
+	.admin-row {
+		border-left: 3px solid rgba(255, 100, 100, 0.6);
+	}
+
+	// Footer
+	.scoreboard-footer {
+		padding: 16px 28px;
+		background: rgba(0, 0, 0, 0.3);
+		border-top: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 0 0 8px 8px;
+		text-align: center;
+
+		.footer-text {
+			font-size: 13px;
+			font-weight: 600;
+			color: rgba(255, 255, 255, 0.5);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+	}
+}
+

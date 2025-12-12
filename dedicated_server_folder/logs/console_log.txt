@@ -1,0 +1,72 @@
+
+
+[2025-12-11 09:28:53] Client version: 1763795194
+[2025-12-11 09:28:53] Loading Steam API...
+[2025-12-11 09:28:53] OK
+[2025-12-11 09:28:53] 
+Connecting anonymously to Steam Public...
+[2025-12-11 09:28:56] OK
+[2025-12-11 09:28:56] Waiting for client config...
+[2025-12-11 09:28:57] OK
+[2025-12-11 09:28:57] Waiting for user info...
+[2025-12-11 09:29:00] OK
+[2025-12-11 09:29:01] ERROR! Failed to install app '1892930' (Missing configuration)
+[2025-12-11 09:29:01] Unloading Steam API...
+[2025-12-11 09:29:01] OK
+
+
+[2025-12-11 09:32:11] Client version: 1763795194
+[2025-12-11 09:32:11] Loading Steam API...
+[2025-12-11 09:32:11] OK
+[2025-12-11 09:32:12] 
+Connecting anonymously to Steam Public...
+[2025-12-11 09:32:13] OK
+[2025-12-11 09:32:13] Waiting for client config...
+[2025-12-11 09:32:14] OK
+[2025-12-11 09:32:14] Waiting for user info...
+[2025-12-11 09:32:14] OK
+[2025-12-11 09:32:17]  Update state (0x3) reconfiguring, progress: 0.00 (0 / 0)
+[2025-12-11 09:32:19]  Update state (0x61) downloading, progress: 0.36 (8388608 / 2355913156)
+[2025-12-11 09:32:21]  Update state (0x61) downloading, progress: 5.55 (130779117 / 2355913156)
+[2025-12-11 09:32:23]  Update state (0x61) downloading, progress: 9.97 (234998621 / 2355913156)
+[2025-12-11 09:32:25]  Update state (0x61) downloading, progress: 13.73 (323517370 / 2355913156)
+[2025-12-11 09:32:27]  Update state (0x61) downloading, progress: 17.54 (413309397 / 2355913156)
+[2025-12-11 09:32:29]  Update state (0x61) downloading, progress: 21.08 (496698608 / 2355913156)
+[2025-12-11 09:32:31]  Update state (0x61) downloading, progress: 24.71 (582184139 / 2355913156)
+[2025-12-11 09:32:33]  Update state (0x61) downloading, progress: 28.17 (663732303 / 2355913156)
+[2025-12-11 09:32:35]  Update state (0x61) downloading, progress: 31.31 (737718564 / 2355913156)
+[2025-12-11 09:32:37]  Update state (0x61) downloading, progress: 34.47 (812098889 / 2355913156)
+[2025-12-11 09:32:39]  Update state (0x61) downloading, progress: 37.50 (883576684 / 2355913156)
+[2025-12-11 09:32:41]  Update state (0x61) downloading, progress: 39.78 (937115940 / 2355913156)
+[2025-12-11 09:32:43]  Update state (0x61) downloading, progress: 44.74 (1054147374 / 2355913156)
+[2025-12-11 09:32:45]  Update state (0x61) downloading, progress: 48.37 (1139444805 / 2355913156)
+[2025-12-11 09:32:47]  Update state (0x61) downloading, progress: 52.03 (1225678189 / 2355913156)
+[2025-12-11 09:32:49]  Update state (0x61) downloading, progress: 55.54 (1308376693 / 2355913156)
+[2025-12-11 09:32:51]  Update state (0x61) downloading, progress: 58.71 (1383175980 / 2355913156)
+[2025-12-11 09:32:53]  Update state (0x61) downloading, progress: 62.58 (1474296609 / 2355913156)
+[2025-12-11 09:32:55]  Update state (0x61) downloading, progress: 66.68 (1570950520 / 2355913156)
+[2025-12-11 09:32:57]  Update state (0x61) downloading, progress: 70.57 (1662459981 / 2355913156)
+[2025-12-11 09:32:59]  Update state (0x61) downloading, progress: 74.28 (1749987651 / 2355913156)
+[2025-12-11 09:33:01]  Update state (0x61) downloading, progress: 78.31 (1845008748 / 2355913156)
+[2025-12-11 09:33:03]  Update state (0x61) downloading, progress: 81.93 (1930168699 / 2355913156)
+[2025-12-11 09:33:05]  Update state (0x61) downloading, progress: 86.19 (2030542250 / 2355913156)
+[2025-12-11 09:33:07]  Update state (0x61) downloading, progress: 89.48 (2108101894 / 2355913156)
+[2025-12-11 09:33:09]  Update state (0x61) downloading, progress: 89.48 (2108101894 / 2355913156)
+[2025-12-11 09:33:11]  Update state (0x61) downloading, progress: 89.48 (2108101894 / 2355913156)
+[2025-12-11 09:33:13]  Update state (0x61) downloading, progress: 89.48 (2108101894 / 2355913156)
+[2025-12-11 09:33:15]  Update state (0x61) downloading, progress: 89.48 (2108101894 / 2355913156)
+[2025-12-11 09:33:17]  Update state (0x61) downloading, progress: 89.48 (2108101894 / 2355913156)
+[2025-12-11 09:33:19]  Update state (0x61) downloading, progress: 89.48 (2108101894 / 2355913156)
+[2025-12-11 09:33:21]  Update state (0x61) downloading, progress: 89.48 (2108101894 / 2355913156)
+[2025-12-11 09:33:23]  Update state (0x61) downloading, progress: 89.48 (2108120370 / 2355913156)
+[2025-12-11 09:33:25]  Update state (0x61) downloading, progress: 89.48 (2108120370 / 2355913156)
+[2025-12-11 09:33:27]  Update state (0x61) downloading, progress: 94.66 (2230107140 / 2355913156)
+[2025-12-11 09:33:29]  Update state (0x81) verifying update, progress: 4.95 (116556474 / 2355913156)
+[2025-12-11 09:33:31]  Update state (0x81) verifying update, progress: 26.96 (635094081 / 2355913156)
+[2025-12-11 09:33:33]  Update state (0x81) verifying update, progress: 51.14 (1204854129 / 2355913156)
+[2025-12-11 09:33:35]  Update state (0x81) verifying update, progress: 73.42 (1729747517 / 2355913156)
+[2025-12-11 09:33:37]  Update state (0x101) committing, progress: 15.91 (374846467 / 2355913156)
+[2025-12-11 09:33:39]  Update state (0x101) committing, progress: 100.00 (2355913156 / 2355913156)
+[2025-12-11 09:33:40] Success! App '1892930' fully installed.
+[2025-12-11 09:33:40] Unloading Steam API...
+[2025-12-11 09:33:40] OK

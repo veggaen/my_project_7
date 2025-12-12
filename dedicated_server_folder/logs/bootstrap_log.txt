@@ -1,0 +1,65 @@
+
+
+[2025-12-11 09:28:41] Startup - updater built Dec  2 2013 18:43:44
+[2025-12-11 09:28:41] Checking for update on startup
+[2025-12-11 09:28:41] Checking for available update...
+[2025-12-11 09:28:41] Download failed: http error 0
+[2025-12-11 09:28:42] Package file steamcmd_public_all.zip.ea97f8fd711e4ae492274da96e83bf31eb804528 missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_bins_win32.zip.c47c8549b5cff72eea9214e49d74fb172a1df1f0 missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_steamservice_win32.zip.350964360e3a56018b90d5a4a00345219b253309 missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_steamerrorreporter_win32.zip.35a4096c9d1c3a9c616d9e7b660c786739df032b missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_siteserverui_win32.zip.fb007ee3017928982129538acc84dda02dadef57 missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_win32.zip.d8a78e503b64f5db98fdc5c13ca1ab9f54a33d5d missing or incorrect size
+[2025-12-11 09:28:42] Downloading update (0 of 63,817 KB)...
+[2025-12-11 09:28:42] Error: Download of package (steamcmd_win32) failed after 0 bytes (0).
+[2025-12-11 09:28:42] Error: Download of package (steamcmd_siteserverui_win32) failed after 0 bytes (0).
+[2025-12-11 09:28:42] Error: Download of package (steamcmd_steamerrorreporter_win32) failed after 0 bytes (0).
+[2025-12-11 09:28:42] Error: Download of package (steamcmd_steamservice_win32) failed after 0 bytes (0).
+[2025-12-11 09:28:42] Error: Download of package (steamcmd_bins_win32) failed after 0 bytes (0).
+[2025-12-11 09:28:42] Error: Download of package (steamcmd_public_all) failed after 0 bytes (0).
+[2025-12-11 09:28:42] Package file steamcmd_public_all.zip.ea97f8fd711e4ae492274da96e83bf31eb804528 missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_bins_win32.zip.c47c8549b5cff72eea9214e49d74fb172a1df1f0 missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_steamservice_win32.zip.350964360e3a56018b90d5a4a00345219b253309 missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_steamerrorreporter_win32.zip.35a4096c9d1c3a9c616d9e7b660c786739df032b missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_siteserverui_win32.zip.fb007ee3017928982129538acc84dda02dadef57 missing or incorrect size
+[2025-12-11 09:28:42] Package file steamcmd_win32.zip.d8a78e503b64f5db98fdc5c13ca1ab9f54a33d5d missing or incorrect size
+[2025-12-11 09:28:43] Downloading update (6,370 of 63,817 KB)...
+[2025-12-11 09:28:43] Downloading update (13,854 of 63,817 KB)...
+[2025-12-11 09:28:43] Downloading update (24,473 of 63,817 KB)...
+[2025-12-11 09:28:43] Downloading update (32,940 of 63,817 KB)...
+[2025-12-11 09:28:44] Downloading update (41,384 of 63,817 KB)...
+[2025-12-11 09:28:44] Downloading update (50,318 of 63,817 KB)...
+[2025-12-11 09:28:44] Downloading update (54,552 of 63,817 KB)...
+[2025-12-11 09:28:44] Downloading update (59,331 of 63,817 KB)...
+[2025-12-11 09:28:45] Downloading update (63,563 of 63,817 KB)...
+[2025-12-11 09:28:45] Downloading update (63,817 of 63,817 KB)...
+[2025-12-11 09:28:45] Download Complete.
+[2025-12-11 09:28:45] uninstalled manifest found in C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\package\steam_cmd_win32 (1).
+[2025-12-11 09:28:45] Found pending update
+[2025-12-11 09:28:45] Applying update...
+[2025-12-11 09:28:45] Extracting package...
+[2025-12-11 09:28:46] Installing update...
+[2025-12-11 09:28:47] Committing NTFS transaction (0 non-transactional backup files)
+[2025-12-11 09:28:47] Cleaning up...
+[2025-12-11 09:28:47] Update complete, launching...
+[2025-12-11 09:28:47] Shutdown
+
+
+[2025-12-11 09:32:11] Startup - updater built Nov 21 2025 22:52:01
+[2025-12-11 09:32:11] Startup - Steam Client launched with: "C:\Users\v3gga\Documents\s&box projects\my_project_7\dedicated_server_folder\steamcmd.exe" +force_install_dir C:\SboxServer  <+51 truncated>
+[2025-12-11 09:32:11] Windows 10.0.19045.0, 0, 2, 256, 1, 49 
+[2025-12-11 09:32:11] Failed to load cached hosts file (File 'update_hosts_cached.vdf' not found), using defaults
+[2025-12-11 09:32:11] Using the following download hosts for Public, Realm steamglobal
+[2025-12-11 09:32:11] 1. https://client-update.steamstatic.com, /, Realm 'steamglobal', weight was 1, source = 'baked in'
+[2025-12-11 09:32:11] Checking for update on startup
+[2025-12-11 09:32:11] Checking for available updates...
+[2025-12-11 09:32:11] Downloading manifest: https://client-update.steamstatic.com/steam_cmd_win64
+[2025-12-11 09:32:11] Manifest download: send request
+[2025-12-11 09:32:11] Manifest download: waiting for download to finish
+[2025-12-11 09:32:11] Manifest download: finished
+[2025-12-11 09:32:11] Download skipped: /steam_cmd_win64 version 1763795194, installed version 1763795194, existing pending version 0
+[2025-12-11 09:32:11] Nothing to do
+[2025-12-11 09:32:11] Verifying installation...
+[2025-12-11 09:32:11] Verifying all executable checksums
+[2025-12-11 09:32:11] Verification complete
+[2025-12-11 09:33:40] Shutdown

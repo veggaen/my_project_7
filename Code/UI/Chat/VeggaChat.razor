@@ -1,0 +1,236 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/code/ui/chat/veggachat.razor.scss" )]
+
+<root>
+	<div class="chat-container @(_isOpen ? "open" : "closed") @(_isFocused ? "focused" : "")">
+		@* Messages *@
+		<div class="messages-container" @ref="_messagesPanel">
+			@foreach ( var msg in GetVisibleMessages() )
+			{
+				<div class="message @GetMessageClass(msg)">
+					@if ( msg.Type == ChatMessageType.Normal || msg.Type == ChatMessageType.Private )
+					{
+						<span class="sender">@msg.SenderName:</span>
+					}
+					<span class="text">@msg.Text</span>
+					<span class="time">@msg.Time.ToString("HH:mm")</span>
+				</div>
+			}
+		</div>
+
+		@* Input *@
+		@if ( _isFocused )
+		{
+			<div class="input-container">
+				<span class="input-prefix">Say:</span>
+				<div class="input-field">@_inputText<span class="cursor">|</span></div>
+			</div>
+		}
+		else
+		{
+			<div class="chat-hint">Press T to chat, Y for team chat</div>
+		}
+	</div>
+</root>
+
+@code
+{
+	Panel _messagesPanel;
+	VeggaChatManager _chatManager;
+	List<ChatMessage> _messages = new();
+
+	bool _isOpen = true;
+	bool _isFocused = false;
+	string _inputText = "";
+	float _lastMessageTime = 0f;
+
+	// Layout integration
+	Vector2 _layoutPos = new Vector2( 0.02f, 0.80f );
+	string ChatKey => VeggaHudLayoutState.KeyChat;
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+
+	protected override void OnStart()
+	{
+		_chatManager = VeggaChatManager.Local;
+		if ( _chatManager != null )
+		{
+			_chatManager.OnMessageReceived += OnMessageReceived;
+		}
+
+		// Load saved layout position
+		_layoutPos = VeggaHudLayoutState.GetPosition( ChatKey, _layoutPos );
+	}
+
+	protected override void OnUpdate()
+	{
+		// Find chat manager if not yet found
+		if ( _chatManager == null )
+		{
+			_chatManager = VeggaChatManager.Local;
+			if ( _chatManager != null )
+			{
+				_chatManager.OnMessageReceived += OnMessageReceived;
+			}
+		}
+
+		// Handle input
+		if ( _isFocused )
+		{
+			HandleTextInput();
+
+			// Submit on Enter
+			if ( Input.Pressed( "chat" ) || Input.Pressed( "menu" ) )
+			{
+				SubmitMessage();
+			}
+
+			// Cancel on Escape
+			if ( Input.EscapePressed )
+			{
+				Input.EscapePressed = false;
+				CloseChatInput();
+			}
+		}
+		else
+		{
+			// Open chat on T
+			if ( Input.Pressed( "chat" ) )
+			{
+				OpenChatInput();
+			}
+		}
+
+		// Auto-hide old messages
+		if ( !_isFocused && Time.Now - _lastMessageTime > 8f )
+		{
+			_isOpen = false;
+		}
+
+		// Pull latest layout position so HUD editor presets apply live
+		var latest = VeggaHudLayoutState.GetPosition( ChatKey, _layoutPos );
+		if ( latest != _layoutPos )
+		{
+			_layoutPos = latest;
+		}
+
+		ApplyLayoutPosition();
+	}
+
+	void HandleTextInput()
+	{
+		// NOTE: Input.Typed no longer exists in the current s&box API.
+		// To keep the project compiling, this method is currently a no-op.
+		// Next step is to replace this with a TextEntry-based input field
+		// or another supported text input mechanism.
+	}
+
+	void OpenChatInput()
+	{
+		_isFocused = true;
+		_isOpen = true;
+		_inputText = "";
+		Panel.Style.PointerEvents = PointerEvents.All;
+	}
+
+	void CloseChatInput()
+	{
+		_isFocused = false;
+		_inputText = "";
+		Panel.Style.PointerEvents = PointerEvents.None;
+	}
+
+	void SubmitMessage()
+	{
+		if ( !string.IsNullOrWhiteSpace( _inputText ) )
+		{
+			_chatManager?.SendMessage( _inputText );
+		}
+
+		CloseChatInput();
+	}
+
+	void ApplyLayoutPosition()
+	{
+		if ( Panel == null ) return;
+
+		var screen = Screen.Size;
+		if ( screen.x <= 0 || screen.y <= 0 ) return;
+
+		float pxX = _layoutPos.x * screen.x;
+		float pxY = _layoutPos.y * screen.y;
+
+		Panel.Style.Position = PositionMode.Absolute;
+		Panel.Style.Left = Length.Pixels( pxX );
+		Panel.Style.Top = Length.Pixels( pxY );
+	}
+
+	void OnMessageReceived( ChatMessage msg )
+	{
+		_messages.Add( msg );
+		_isOpen = true;
+		_lastMessageTime = Time.Now;
+
+		// Trim old messages
+		while ( _messages.Count > 50 )
+		{
+			_messages.RemoveAt( 0 );
+		}
+
+		// Scroll to bottom
+		ScrollToBottom();
+	}
+
+	void ScrollToBottom()
+	{
+		// Scroll messages panel to bottom
+		if ( _messagesPanel != null )
+		{
+			_messagesPanel.ScrollOffset = new Vector2( 0, 99999 );
+		}
+	}
+
+	IEnumerable<ChatMessage> GetVisibleMessages()
+	{
+		if ( _chatManager == null ) return _messages.TakeLast( 20 );
+
+		// If focused, show all recent messages
+		if ( _isFocused )
+		{
+			return _chatManager.Messages.TakeLast( 30 );
+		}
+
+		// Otherwise only show messages from last 8 seconds
+		var cutoff = DateTime.Now.AddSeconds( -8 );
+		return _chatManager.Messages.Where( m => m.Time > cutoff ).TakeLast( 10 );
+	}
+
+	string GetMessageClass( ChatMessage msg )
+	{
+		return msg.Type switch
+		{
+			ChatMessageType.Normal => "normal",
+			ChatMessageType.System => "system",
+			ChatMessageType.Admin => "admin",
+			ChatMessageType.Private => "private",
+			ChatMessageType.Action => "action",
+			ChatMessageType.Error => "error",
+			_ => "normal"
+		};
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(
+			_isOpen,
+			_isFocused,
+			_inputText,
+			_chatManager?.Messages?.Count ?? 0
+		);
+	}
+}

@@ -1,0 +1,284 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/ui/trade/tradewindow.razor.scss" )]
+
+<root>
+	@* Trade Request Notification *@
+	@if ( _pendingRequest != null && !_autoAcceptEnabled )
+	{
+		<div class="trade-request-popup">
+			<div class="request-header">
+				<span class="request-icon">🤝</span>
+				<span class="request-title">Trade Request</span>
+			</div>
+			<div class="request-body">
+				<span class="requester-name">@_pendingRequest.RequesterName</span>
+				<span class="request-text">wants to trade with you</span>
+			</div>
+			<div class="request-actions">
+				<button class="btn btn-accept" onclick="@AcceptRequest">Accept</button>
+				<button class="btn btn-decline" onclick="@DeclineRequest">Decline</button>
+			</div>
+		</div>
+	}
+
+	@* Trade Window *@
+	@if ( _activeTrade != null )
+	{
+		<div class="trade-window">
+			<div class="trade-header">
+				<span class="trade-title">Trading with @_activeTrade.PartnerName</span>
+				<button class="btn-close" onclick="@CancelTrade">✕</button>
+			</div>
+
+			<div class="trade-body">
+				@* My Offer *@
+				<div class="trade-column my-offer">
+					<div class="column-header">
+						<span class="column-title">Your Offer</span>
+						<span class="column-status @(_activeTrade.MyConfirmed ? "confirmed" : "")">
+							@(_activeTrade.MyConfirmed ? "✓ Confirmed" : "Not Confirmed")
+						</span>
+					</div>
+
+					<div class="offer-section">
+						<div class="money-offer">
+							<span class="money-label">Money:</span>
+							<div class="money-input-group">
+								<span class="currency">$</span>
+								<label class="money-input">$@_myOfferMoney</label>
+							</div>
+							<span class="money-available">Available: $@FormatMoney(_myMoney)</span>
+						</div>
+
+						<div class="quick-amounts">
+							<button class="quick-btn" onclick="@(() => SetMyOffer(0))">Clear</button>
+							<button class="quick-btn" onclick="@(() => SetMyOffer(100))">$100</button>
+							<button class="quick-btn" onclick="@(() => SetMyOffer(500))">$500</button>
+							<button class="quick-btn" onclick="@(() => SetMyOffer(1000))">$1k</button>
+							<button class="quick-btn" onclick="@(() => SetMyOffer(5000))">$5k</button>
+							<button class="quick-btn all" onclick="@(() => SetMyOffer(_myMoney))">All</button>
+						</div>
+					</div>
+
+					@* Future: Item slots would go here *@
+					<div class="item-slots">
+						<div class="slot empty"></div>
+						<div class="slot empty"></div>
+						<div class="slot empty"></div>
+						<div class="slot empty"></div>
+					</div>
+				</div>
+
+				@* Their Offer *@
+				<div class="trade-column their-offer">
+					<div class="column-header">
+						<span class="column-title">@_activeTrade.PartnerName's Offer</span>
+						<span class="column-status @(_activeTrade.PartnerConfirmed ? "confirmed" : "")">
+							@(_activeTrade.PartnerConfirmed ? "✓ Confirmed" : "Waiting...")
+						</span>
+					</div>
+
+					<div class="offer-section">
+						<div class="money-offer readonly">
+							<span class="money-label">Money:</span>
+							<div class="money-display">
+								<span class="currency">$</span>
+								<span class="money-value">@FormatMoney(_activeTrade.TheirOffer?.Money ?? 0)</span>
+							</div>
+						</div>
+					</div>
+
+					@* Future: Item slots would go here *@
+					<div class="item-slots">
+						<div class="slot empty"></div>
+						<div class="slot empty"></div>
+						<div class="slot empty"></div>
+						<div class="slot empty"></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="trade-footer">
+				<div class="trade-summary">
+					<span class="summary-text">
+						You give: <span class="give">$@FormatMoney(_activeTrade.MyOffer?.Money ?? 0)</span>
+						&nbsp;→&nbsp;
+						You receive: <span class="receive">$@FormatMoney(_activeTrade.TheirOffer?.Money ?? 0)</span>
+					</span>
+				</div>
+				<div class="trade-actions">
+					<button class="btn btn-cancel" onclick="@CancelTrade">Cancel</button>
+					@if ( _activeTrade.MyConfirmed )
+					{
+						<button class="btn btn-waiting" disabled>Waiting for partner...</button>
+					}
+					else
+					{
+						<button class="btn btn-confirm" onclick="@ConfirmTrade">Confirm Trade</button>
+					}
+				</div>
+			</div>
+		</div>
+	}
+
+	@* Trade hint when aiming at player *@
+	@if ( _showTradeHint && _activeTrade == null )
+	{
+		<div class="trade-hint">
+			<span class="hint-key">[E]</span>
+			<span class="hint-text">Trade with @_targetPlayerName</span>
+		</div>
+	}
+</root>
+
+@code
+{
+	TradeManager _tradeManager;
+	TradeRequest _pendingRequest;
+	TradeSession _activeTrade;
+	bool _autoAcceptEnabled = true;
+	int _myMoney = 0;
+	int _myOfferMoney = 0;
+	bool _showTradeHint = false;
+	string _targetPlayerName = "";
+
+	protected override void OnStart()
+	{
+		// Will be linked when trade manager is ready
+	}
+
+	protected override void OnUpdate()
+	{
+		// Find local trade manager
+		if ( _tradeManager == null )
+		{
+			_tradeManager = TradeManager.Local;
+			if ( _tradeManager != null )
+			{
+				_tradeManager.OnTradeRequestReceived += OnTradeRequestReceived;
+				_tradeManager.OnTradeStarted += OnTradeStarted;
+				_tradeManager.OnTradeEnded += OnTradeEnded;
+			}
+		}
+
+		if ( _tradeManager == null ) return;
+
+		// Update state
+		_pendingRequest = _tradeManager.PendingRequest;
+		_activeTrade = _tradeManager.ActiveTrade;
+		_autoAcceptEnabled = _tradeManager.AutoAcceptTrades;
+
+		// Get current money
+		var stats = PlayerVeggaStats.Local;
+		_myMoney = stats?.Money ?? 0;
+
+		// Check if aiming at a player (for trade hint)
+		UpdateTradeHint();
+
+		// Show/hide cursor based on trade window
+		if ( _activeTrade != null || (_pendingRequest != null && !_autoAcceptEnabled) )
+		{
+			Panel.Style.PointerEvents = PointerEvents.All;
+		}
+	}
+
+	void UpdateTradeHint()
+	{
+		_showTradeHint = false;
+
+		if ( _activeTrade != null ) return;
+
+		var camera = Scene.Camera;
+		if ( camera == null ) return;
+
+		var ray = camera.ScreenNormalToRay( new Vector2( 0.5f, 0.5f ) );
+		var tr = Scene.Trace.Ray( ray, 200f )
+			.WithoutTags( "trigger" )
+			.Run();
+
+		if ( !tr.Hit ) return;
+
+		var targetStats = tr.GameObject?.Components.Get<PlayerVeggaStats>();
+		if ( targetStats == null ) return;
+
+		var localStats = PlayerVeggaStats.Local;
+		if ( targetStats == localStats ) return;
+		if ( targetStats.Network?.Owner == localStats?.Network?.Owner ) return;
+
+		_showTradeHint = true;
+		_targetPlayerName = targetStats.Network?.Owner?.DisplayName ?? "Player";
+	}
+
+	void OnTradeRequestReceived( TradeRequest request )
+	{
+		_pendingRequest = request;
+		StateHasChanged();
+	}
+
+	void OnTradeStarted( TradeSession session )
+	{
+		_activeTrade = session;
+		_myOfferMoney = 0;
+		StateHasChanged();
+	}
+
+	void OnTradeEnded()
+	{
+		_activeTrade = null;
+		_pendingRequest = null;
+		Panel.Style.PointerEvents = PointerEvents.None;
+		StateHasChanged();
+	}
+
+	void AcceptRequest()
+	{
+		_tradeManager?.AcceptTradeRequest();
+	}
+
+	void DeclineRequest()
+	{
+		_tradeManager?.DeclineTradeRequest();
+	}
+
+	void SetMyOffer( int amount )
+	{
+		amount = Math.Max( 0, Math.Min( amount, _myMoney ) );
+		_myOfferMoney = amount;
+		_tradeManager?.SetOfferMoney( amount );
+	}
+
+	void ConfirmTrade()
+	{
+		_tradeManager?.ConfirmTrade();
+	}
+
+	void CancelTrade()
+	{
+		_tradeManager?.CancelTrade();
+	}
+
+	string FormatMoney( int amount )
+	{
+		if ( amount >= 1_000_000 ) return $"{amount / 1_000_000f:0.#}M";
+		if ( amount >= 1_000 ) return $"{amount / 1_000f:0.#}k";
+		return amount.ToString( "N0" );
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(
+			_pendingRequest?.RequesterName,
+			_activeTrade?.PartnerName,
+			_activeTrade?.MyOffer?.Money,
+			_activeTrade?.TheirOffer?.Money,
+			_activeTrade?.MyConfirmed,
+			_activeTrade?.PartnerConfirmed,
+			_myMoney,
+			_showTradeHint
+		);
+	}
+}
