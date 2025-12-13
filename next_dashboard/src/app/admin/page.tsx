@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Reveal } from "../components/motion/Reveal";
+import { SplitText } from "../components/motion/SplitText";
+import { SiteNavbar } from "../components/SiteNavbar";
 
 type Player = {
   steamId: string;
@@ -27,6 +29,7 @@ export default function AdminPage() {
   const [editData, setEditData] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"players" | "activity" | "stats">("players");
+  const [nowMs, setNowMs] = useState(0);
 
   // Fetch players
   const fetchPlayers = async () => {
@@ -97,14 +100,32 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    Promise.all([fetchPlayers(), fetchActivity()]).finally(() => setLoading(false));
-    
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await Promise.all([fetchPlayers(), fetchActivity()]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
     // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
       fetchPlayers();
       fetchActivity();
     }, 30000);
-    
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateNow = () => setNowMs(Date.now());
+    updateNow();
+    const interval = setInterval(updateNow, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -118,37 +139,36 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0a0a0f]/80 backdrop-blur-lg border-b border-purple-500/20">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold gradient-text">
-            ← Back to Home
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-green-400 text-sm">Admin Panel</span>
-          </div>
-        </div>
-      </nav>
+      <SiteNavbar />
 
-      <div className="pt-24 pb-20 px-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="nav-spacer page-section">
+        <div className="page-container max-w-6xl">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold gradient-text">Admin Dashboard</h1>
-            <p className="text-gray-400">Manage players, view activity, and monitor server stats</p>
+            <Reveal>
+              <SplitText
+                as="h1"
+                text="Admin Dashboard"
+                className="text-4xl font-bold gradient-text"
+                mode="words"
+                stagger={0.08}
+              />
+            </Reveal>
+            <Reveal delay={0.08}>
+              <p className="text-gray-400">Manage players, view activity, and monitor server stats</p>
+            </Reveal>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-6">
+          <div className="flex gap-2 mb-6 flex-wrap">
             {["players", "activity", "stats"].map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t as typeof tab)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-5 py-2.5 rounded-xl font-semibold transition-colors whitespace-nowrap ${
                   tab === t
                     ? "bg-purple-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
               >
                 {t === "players" && "👥 Players"}
@@ -162,7 +182,7 @@ export default function AdminPage() {
           {tab === "players" && (
             <div className="grid lg:grid-cols-3 gap-6">
               {/* Player List */}
-              <div className="lg:col-span-1 card max-h-[600px] overflow-y-auto">
+              <div className="lg:col-span-1 card max-h-150 overflow-y-auto">
                 <h3 className="text-xl font-semibold mb-4">
                   Players ({players.length})
                 </h3>
@@ -198,16 +218,16 @@ export default function AdminPage() {
                   <>
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="text-xl font-semibold">Player Details</h3>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap justify-end">
                         <button
                           onClick={() => setEditMode(!editMode)}
-                          className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                          className="btn btn-info"
                         >
                           {editMode ? "Cancel" : "✏️ Edit"}
                         </button>
                         <button
                           onClick={() => deletePlayer(selectedPlayer.steamId)}
-                          className="px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                          className="btn btn-danger"
                         >
                           🗑️ Delete
                         </button>
@@ -291,7 +311,7 @@ export default function AdminPage() {
           {tab === "activity" && (
             <div className="card">
               <h3 className="text-xl font-semibold mb-4">Activity Log</h3>
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              <div className="space-y-2 max-h-150 overflow-y-auto">
                 {activities.map((activity, i) => (
                   <div
                     key={i}
@@ -335,11 +355,10 @@ export default function AdminPage() {
               </div>
               <div className="card text-center">
                 <div className="text-4xl font-bold text-amber-400">
-                  {players.filter(p => {
-                    if (!p.lastSeen) return false;
-                    const lastSeen = new Date(p.lastSeen);
-                    const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-                    return lastSeen > hourAgo;
+                  {players.filter((p) => {
+                    if (!p.lastSeen || nowMs === 0) return false;
+                    const lastSeenMs = new Date(p.lastSeen).getTime();
+                    return lastSeenMs > nowMs - 60 * 60 * 1000;
                   }).length}
                 </div>
                 <div className="text-gray-500">Online (last hour)</div>

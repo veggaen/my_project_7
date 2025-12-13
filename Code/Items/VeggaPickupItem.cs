@@ -180,7 +180,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		var distance = Vector3.DistanceBetween( currentPos, targetPos );
 
 		// Speed increases as we get closer
-		float speed = MathF.Max( 500f, 1500f - distance * 3f );
+		float speed = Math.Max( 500f, 1500f - distance * 3f );
 		var newPos = currentPos + direction * speed * Time.Delta;
 
 		WorldPosition = newPos;

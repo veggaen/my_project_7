@@ -244,6 +244,7 @@
 	}
 
 	bool _isOpen = false;
+	public static bool IsOpenGlobal { get; private set; }
 	MenuView _currentView = MenuView.Main;
 	bool _hasLoggedStart;
 
@@ -313,6 +314,8 @@
 				Log.Info( $"[VeggaPauseMenu] ESC: Toggled menu. Now isOpen={_isOpen}" );
 			}
 
+			IsOpenGlobal = _isOpen;
+
 			StateHasChanged();
 		}
 	}
@@ -334,6 +337,7 @@
 	void Resume()
 	{
 		_isOpen = false;
+		IsOpenGlobal = false;
 		_currentView = MenuView.Main;
 		Log.Info( "[VeggaPauseMenu] Resume clicked. Closing menu." );
 		StateHasChanged();
@@ -342,6 +346,7 @@
 	void EnterLayoutMode()
 	{
 		_isOpen = false;
+		IsOpenGlobal = false;
 		SetLayoutActive( true );
 		Log.Info( "[VeggaPauseMenu] Entered HUD layout mode." );
 		StateHasChanged();
@@ -396,6 +401,7 @@
 		{
 			Log.Info( "[Pause] Cannot run 'disconnect' – not in a live session (likely editor preview)." );
 			_isOpen = false;
+			IsOpenGlobal = false;
 			Log.Info( "[VeggaPauseMenu] LeaveGame clicked in editor preview. Just closing menu." );
 			StateHasChanged();
 		}

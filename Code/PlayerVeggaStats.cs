@@ -229,7 +229,7 @@ public sealed class PlayerVeggaStats : Component
 		// Apply armor damage (takes 90% if armor available)
 		if ( Armor > 0f )
 		{
-			float armorAbsorbed = MathF.Min( Armor, armorDamage );
+			float armorAbsorbed = Math.Min( Armor, armorDamage );
 			Armor -= armorAbsorbed;
 
 			// Overflow damage to HP if armor breaks
@@ -246,7 +246,7 @@ public sealed class PlayerVeggaStats : Component
 		}
 
 		// Clamp health to 0
-		Health = MathF.Max( 0f, Health );
+		Health = Math.Max( 0f, Health );
 
 		// Trigger health changed event if health changed
 		if ( Health != oldHealth )
@@ -262,7 +262,7 @@ public sealed class PlayerVeggaStats : Component
 		if ( Network.IsProxy || amount <= 0f ) return;
 
 		var oldHealth = Health;
-		Health = MathF.Min( MaxHealth, Health + amount );
+		Health = Math.Min( MaxHealth, Health + amount );
 
 		if ( Health != oldHealth )
 		{
@@ -406,8 +406,8 @@ public sealed class PlayerVeggaStats : Component
 	public void TestKill()
 	{
 		Log.Info( "[StatsTest] Kill Player test button pressed." );
-		Health = 0f;
-		Armor = 0f;
+		SetHealth( 0f );
+		SetArmor( 0f );
 		PlayerDataPersistence.SaveLocalNow();
 	}
 
@@ -498,7 +498,7 @@ public sealed class PlayerVeggaStats : Component
 		{
 			if ( aura != null && aura.IsValid() )
 			{
-				baseForgeMultiplier = MathF.Max( baseForgeMultiplier, aura.BaseForgeMultiplier );
+				baseForgeMultiplier = Math.Max( baseForgeMultiplier, aura.BaseForgeMultiplier );
 			}
 		}
 

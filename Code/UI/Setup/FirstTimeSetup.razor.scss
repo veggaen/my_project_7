@@ -65,7 +65,7 @@ FirstTimeSetup {
 		min-height: 70px;
 		padding: 20px 28px;
 		background-color: rgba(255, 255, 255, 0.274);
-		border: 2px solid rgba(139, 92, 246, 0.2);
+		border: 2px solid rgba(139, 139, 139, 0.2);
 		border-radius: 14px;
 		font-size: 24px;
 		font-weight: 700;
@@ -178,7 +178,7 @@ FirstTimeSetup {
 	}
 
 	.btn-link {
-		background: none;
+		background-color: transparent;
 		border: none;
 		color: rgba(255, 255, 255, 0.4);
 		font-size: 15px;

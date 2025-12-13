@@ -36,7 +36,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !kick <player> [reason]", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex kick <player> [reason]", ChatMessageType.Error );
 				return;
 			}
 
@@ -59,7 +59,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !freeze <player>", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex freeze <player>", ChatMessageType.Error );
 				return;
 			}
 
@@ -85,7 +85,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !unfreeze <player>", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex unfreeze <player>", ChatMessageType.Error );
 				return;
 			}
 
@@ -111,7 +111,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !heal <player> [amount]", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex heal <player> [amount]", ChatMessageType.Error );
 				return;
 			}
 
@@ -139,7 +139,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 2 )
 			{
-				ChatMsg( executor, "Usage: !damage <player> <amount> [armorpen%]", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex damage <player> <amount> [armorpen%]", ChatMessageType.Error );
 				return;
 			}
 
@@ -174,7 +174,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 2 )
 			{
-				ChatMsg( executor, "Usage: !givemoney <player> <amount>", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex givemoney <player> <amount>", ChatMessageType.Error );
 				return;
 			}
 
@@ -202,7 +202,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 2 )
 			{
-				ChatMsg( executor, "Usage: !setmoney <player> <amount>", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex setmoney <player> <amount>", ChatMessageType.Error );
 				return;
 			}
 
@@ -231,7 +231,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !slap <player> [force]", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex slap <player> [force]", ChatMessageType.Error );
 				return;
 			}
 
@@ -266,7 +266,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !tp <player>", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex tp <player>", ChatMessageType.Error );
 				return;
 			}
 
@@ -290,7 +290,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !bring <player>", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex bring <player>", ChatMessageType.Error );
 				return;
 			}
 
@@ -346,7 +346,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !respawn <player>", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex respawn <player>", ChatMessageType.Error );
 				return;
 			}
 
@@ -370,11 +370,13 @@ public static class VeggaAdminManager
 		// Help
 		Register( "help", "Show admin commands", "", ( executor, args ) =>
 		{
-			ChatMsg( executor, "=== Admin Commands ===", ChatMessageType.Admin );
+			ChatMsg( executor, "=== HEX Admin Commands ===", ChatMessageType.Admin );
 			foreach ( var cmd in _commands.Values.OrderBy( c => c.Name ) )
 			{
-				ChatMsg( executor, $"!{cmd.Name} {cmd.Usage} - {cmd.Description}", ChatMessageType.Admin );
+				var usage = string.IsNullOrWhiteSpace( cmd.Usage ) ? "" : $" {cmd.Usage}";
+				ChatMsg( executor, $"!hex {cmd.Name}{usage} - {cmd.Description}", ChatMessageType.Admin );
 			}
+			ChatMsg( executor, "Also works as: /hex <command> ...", ChatMessageType.Admin );
 		} );
 
 		// Give item command
@@ -382,8 +384,8 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 2 )
 			{
-				ChatMsg( executor, "Usage: !give <player|ent> <itemId> [amount]", ChatMessageType.Error );
-				ChatMsg( executor, "Examples: !give ent 100 (gold bar to self), !give v3gga 100 5 (5 gold bars to v3gga)", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex give <player|ent> <itemId> [amount]", ChatMessageType.Error );
+				ChatMsg( executor, "Examples: !hex give ent 100 (gold bar to self), !hex give v3gga 100 5 (5 gold bars to v3gga)", ChatMessageType.Error );
 				return;
 			}
 
@@ -463,7 +465,7 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !spawnitem <itemId> [amount]", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex spawnitem <itemId> [amount]", ChatMessageType.Error );
 				return;
 			}
 
@@ -523,8 +525,8 @@ public static class VeggaAdminManager
 		{
 			if ( args.Length < 1 )
 			{
-				ChatMsg( executor, "Usage: !smeltbar <player|ent> [bars]", ChatMessageType.Error );
-				ChatMsg( executor, "Example: !smeltbar ent 1 (smelt one bar for yourself)", ChatMessageType.Error );
+				ChatMsg( executor, "Usage: !hex smeltbar <player|ent> [bars]", ChatMessageType.Error );
+				ChatMsg( executor, "Example: !hex smeltbar ent 1 (smelt one bar for yourself)", ChatMessageType.Error );
 				return;
 			}
 
@@ -599,7 +601,7 @@ public static class VeggaAdminManager
 		// === HEX OWNER MANAGEMENT ===
 		Register( "setowner", "Set a player to Owner rank (HEX)", "<player>", ( executor, args ) =>
 		{
-			if ( args.Length < 1 ) { ChatMsg( executor, "Usage: !setowner <player>", ChatMessageType.Error ); return; }
+			if ( args.Length < 1 ) { ChatMsg( executor, "Usage: !hex setowner <player>", ChatMessageType.Error ); return; }
 			var target = FindPlayer( args[0] );
 			if ( target == null ) { ChatMsg( executor, "Player not found.", ChatMessageType.Error ); return; }
 			var steamId = target.Network?.Owner?.SteamId.ToString();
@@ -622,7 +624,7 @@ public static class VeggaAdminManager
 		Register( "ownerbypass", "Temporarily allow targeting owners (hours)", "<hours>", ( executor, args ) =>
 		{
 			if ( args.Length < 1 || !int.TryParse( args[0], out var hours ) )
-			{ ChatMsg( executor, "Usage: !ownerbypass <hours>", ChatMessageType.Error ); return; }
+			{ ChatMsg( executor, "Usage: !hex ownerbypass <hours>", ChatMessageType.Error ); return; }
 
 			// Only an owner can toggle this
 			var execSteamId = Connection.Local?.SteamId.ToString();
@@ -684,8 +686,13 @@ public static class VeggaAdminManager
 		}
 		else
 		{
-			ChatMsg( executor, $"Unknown admin command: !{name}. Type !help for available commands.", ChatMessageType.Error );
+			ChatMsg( executor, $"Unknown admin command: {name}. Type !hex help for available commands.", ChatMessageType.Error );
 		}
+	}
+
+	public static IReadOnlyCollection<AdminCommand> GetCommands()
+	{
+		return _commands.Values.ToList();
 	}
 
 	/// <summary>

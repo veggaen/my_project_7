@@ -1,0 +1,149 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/ui/player/playerveggamodularhud.razor.scss" )]
+
+<root>
+	<div class="vhud-card">
+		<div class="vhud-row vhud-top">
+			<div class="vhud-name">
+				<span class="vhud-label">NAME</span>
+				<span class="vhud-nameval">@_playerName</span>
+			</div>
+
+			<div class="vhud-money @(_moneyPulse ? "pulse" : "")">
+				<span class="vhud-moneyval">$@FormatStat( _money )</span>
+			</div>
+		</div>
+
+		<div class="vhud-row vhud-job">
+			<div class="vhud-jobleft">
+				<span class="vhud-label">JOB</span>
+				<span class="vhud-jobname">@_jobName</span>
+			</div>
+			@if ( _salary > 0 )
+			{
+				<span class="vhud-jobsalary @(_jobPulse ? "pulse" : "")">$@_salary</span>
+			}
+		</div>
+
+		<div class="vhud-row">
+			<div class="vhud-barlabel">
+				<span class="vhud-label strong">HP</span>
+				<span class="vhud-value">@_health / @_maxHealth</span>
+			</div>
+			<div class="vhud-barframe health @(_healthPulse ? "pulse" : "")">
+				<div @ref="_healthBarRef" class="vhud-barfill"></div>
+			</div>
+		</div>
+
+		<div class="vhud-row">
+			<div class="vhud-barlabel">
+				<span class="vhud-label strong">ARMOR</span>
+				<span class="vhud-value">@_armor / @_maxArmor</span>
+			</div>
+			<div class="vhud-barframe armor @(_armorPulse ? "pulse" : "")">
+				<div @ref="_armorBarRef" class="vhud-barfill"></div>
+			</div>
+		</div>
+	</div>
+</root>
+
+@code
+{
+	[Property] public PlayerVeggaStats PlayerStats { get; set; }
+
+	string _playerName = "Player";
+	int _health, _maxHealth, _armor, _maxArmor, _money;
+	string _jobName = "Citizen";
+	int _salary;
+
+	float _healthPct, _armorPct;
+	bool _moneyPulse, _jobPulse, _healthPulse, _armorPulse;
+	RealTimeSince _timeSinceMoneyChanged, _timeSinceJobChanged, _timeSinceHealthChanged, _timeSinceArmorChanged;
+
+	Panel _healthBarRef;
+	Panel _armorBarRef;
+	bool _registered;
+
+	protected override void OnUpdate()
+	{
+		if ( !_registered )
+		{
+			_registered = true;
+			VeggaHudLayoutState.RegisterElement(
+				VeggaHudLayoutState.KeyPlayerHud,
+				"Player Stats (Modular)",
+				VeggaHudLayoutState.GetDefaultPosition( VeggaHudLayoutState.KeyPlayerHud )
+			);
+		}
+
+		// Position + scale from layout state
+		VeggaHudLayoutApply.Apply( Panel, VeggaHudLayoutState.KeyPlayerHud, VeggaHudLayoutState.GetDefaultPosition( VeggaHudLayoutState.KeyPlayerHud ), 1f );
+
+		var stats = PlayerStats ?? PlayerVeggaStats.Local;
+		if ( stats is null || !stats.IsValid() )
+			return;
+
+		_playerName = stats.Network?.Owner?.DisplayName ?? "Player";
+
+		var newHealth = (int)Math.Round( stats.Health );
+		var newMaxHealth = (int)Math.Round( stats.MaxHealth );
+		var newArmor = (int)Math.Round( stats.Armor );
+		var newMaxArmor = (int)Math.Round( stats.MaxArmor );
+
+		if ( newHealth != _health || newMaxHealth != _maxHealth ) { _healthPulse = true; _timeSinceHealthChanged = 0; }
+		if ( newArmor != _armor || newMaxArmor != _maxArmor ) { _armorPulse = true; _timeSinceArmorChanged = 0; }
+
+		_health = newHealth;
+		_maxHealth = newMaxHealth;
+		_armor = newArmor;
+		_maxArmor = newMaxArmor;
+
+		if ( _money != stats.Money ) { _money = stats.Money; _moneyPulse = true; _timeSinceMoneyChanged = 0; }
+		if ( _jobName != stats.JobName ) { _jobName = stats.JobName; _jobPulse = true; _timeSinceJobChanged = 0; }
+
+		_salary = GetSalaryForJob( _jobName );
+
+		_healthPct = _maxHealth > 0 ? (stats.Health / stats.MaxHealth) * 100f : 0f;
+		_armorPct = _maxArmor > 0 ? (stats.Armor / stats.MaxArmor) * 100f : 0f;
+		_healthPct = _healthPct.Clamp( 0f, 100f );
+		_armorPct = _armorPct.Clamp( 0f, 100f );
+
+		_healthBarRef?.Style.Set( "width", $"{_healthPct}%" );
+		_armorBarRef?.Style.Set( "width", $"{_armorPct}%" );
+
+		if ( _moneyPulse && _timeSinceMoneyChanged > 0.6f ) _moneyPulse = false;
+		if ( _jobPulse && _timeSinceJobChanged > 0.6f ) _jobPulse = false;
+		if ( _healthPulse && _timeSinceHealthChanged > 0.4f ) _healthPulse = false;
+		if ( _armorPulse && _timeSinceArmorChanged > 0.4f ) _armorPulse = false;
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine( _playerName, _jobName, _money, _health, _maxHealth, _armor, _maxArmor, _salary );
+	}
+
+	string FormatStat( int v )
+	{
+		if ( v >= 1_000_000 ) return $"{v / 1_000_000f:0.#}M";
+		if ( v >= 1_000 ) return $"{v / 1_000f:0.#}k";
+		return v.ToString();
+	}
+
+	int GetSalaryForJob( string job )
+	{
+		if ( string.IsNullOrWhiteSpace( job ) ) return 0;
+		job = job.ToLowerInvariant();
+
+		return job switch
+		{
+			"citizen" => 50,
+			"police" or "guard" => 150,
+			"doctor" => 120,
+			_ => 30
+		};
+	}
+}

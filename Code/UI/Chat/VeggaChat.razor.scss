@@ -1,32 +1,37 @@
-VeggaChat {
+
+VeggaChat,
+root {
 	position: absolute;
-	left: 16px;
-	bottom: 120px;
-	width: 450px;
-	pointer-events: none;
+	width: 520px;
+	max-width: 48vw;
+	pointer-events: all;
 	z-index: 50;
+	height: 360px;
 }
 
 .chat-container {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+	width: 100%;
+	height: 100%;
 	transition: opacity 0.3s ease;
+	border-radius: 10px;
 
 	&.closed {
-		opacity: 0.3;
+		opacity: 0.65;
 	}
 
 	&.open {
-		opacity: 1;
+		opacity: 0.9;
 	}
 
 	&.focused {
 		opacity: 1;
 
 		.messages-container {
-			background: rgba(0, 0, 0, 0.85);
-			max-height: 300px;
+			background-color: rgba(15, 23, 42, 0.92);
+			pointer-events: all;
 		}
 	}
 }
@@ -34,112 +39,239 @@ VeggaChat {
 .messages-container {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
-	padding: 8px 12px;
+	gap: 8px;
+	padding: 12px 14px;
 	border-radius: 8px;
-	background: rgba(0, 0, 0, 0.5);
-	max-height: 150px;
-	overflow-y: auto;
-	overflow-x: hidden;
+	background-color: rgba(15, 23, 42, 0.82);
+	width: 100%;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: scroll;
 	backdrop-filter: blur(4px);
+	border: 1px solid rgba(99, 102, 241, 0.18);
+	pointer-events: all;
 }
 
 .message {
 	display: flex;
-	gap: 6px;
-	font-size: 13px;
-	line-height: 1.4;
+	flex-direction: column;
+	width: 100%;
+	color: #f9fafb;
+	font-size: 15px;
+	line-height: 20px;
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 	animation: message-in 0.2s ease-out;
+	align-items: stretch;
+	row-gap: 2px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
 
-	.sender {
-		font-weight: 600;
-		color: #60a5fa;
-		flex-shrink: 0;
+.message-header {
+	display: flex;
+	align-items: baseline;
+	column-gap: 6px;
+	min-width: 0;
+}
+
+.message-body {
+	padding-left: 2px;
+	min-width: 0;
+}
+
+.message-header .spacer {
+	flex: 1 1 auto;
+}
+
+.message .badge {
+	padding: 1px 4px;
+	border-radius: 4px;
+	font-size: 9px;
+	letter-spacing: 0.8px;
+	text-transform: uppercase;
+	color: rgba(226, 232, 240, 0.9);
+	background-color: rgba(79, 70, 229, 0.3);
+	border: 1px solid rgba(79, 70, 229, 0.4);
+	white-space: nowrap;
+}
+
+.message .sender {
+	font-weight: 600;
+	color: #60a5fa;
+	white-space: nowrap;
+}
+
+.message .text {
+	color: #f9fafb;
+	min-width: 0px;
+	white-space: normal;
+}
+
+.message .time {
+	font-size: 11px;
+	color: rgba(148, 163, 184, 0.6);
+	white-space: nowrap;
+}
+
+.reaction-btn.inline {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 1px 6px;
+	border-radius: 999px;
+	border: 1px solid rgba(191, 219, 254, 0.12);
+	background-color: rgba(30, 64, 175, 0.08);
+	color: rgba(226, 232, 240, 0.92);
+	font-size: 11px;
+	opacity: 0;
+	transition: opacity 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+	cursor: pointer;
+	pointer-events: none;
+
+	.icon {
+		font-size: 11px;
+		line-height: 11px;
 	}
 
+	.count {
+		min-width: 1.1em;
+		text-align: right;
+	}
+
+	&:hover {
+		background-color: rgba(59, 130, 246, 0.18);
+		border-color: rgba(191, 219, 254, 0.22);
+	}
+}
+
+.message:hover .reaction-btn.inline,
+.chat-container.focused .reaction-btn.inline {
+	opacity: 0.85;
+	pointer-events: auto;
+}
+
+// Message types
+.message.system {
 	.text {
-		color: #e2e8f0;
-		word-wrap: break-word;
-		flex: 1;
+		color: #fbbf24;
+		font-style: italic;
 	}
+}
 
+.message.admin {
+	.sender { color: #f87171; }
+	.text { color: #fca5a5; }
+}
+
+.message.private {
+	.sender { color: #a78bfa; }
+	.text { color: #c4b5fd; }
+}
+
+.message.action {
+	.text {
+		color: #34d399;
+		font-style: italic;
+	}
+}
+
+.message.error {
+	.text { color: #f87171; }
+}
+
+// Minimal mode: hide timestamps unless typing
+.chat-container:not(.focused) {
 	.time {
-		font-size: 10px;
-		color: rgba(148, 163, 184, 0.6);
-		flex-shrink: 0;
-		align-self: flex-end;
-	}
-
-	// Message types
-	&.normal {
-		.sender { color: #60a5fa; }
-	}
-
-	&.system {
-		.text {
-			color: #fbbf24;
-			font-style: italic;
-		}
-	}
-
-	&.admin {
-		.sender { color: #f87171; }
-		.text { color: #fca5a5; }
-	}
-
-	&.private {
-		.sender { color: #a78bfa; }
-		.text { color: #c4b5fd; }
-	}
-
-	&.action {
-		.text {
-			color: #34d399;
-			font-style: italic;
-		}
-	}
-
-	&.error {
-		.text {
-			color: #f87171;
-		}
+		display: none;
 	}
 }
 
 .input-container {
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	gap: 8px;
-	padding: 10px 14px;
+	padding: 12px 16px;
 	border-radius: 8px;
-	background: rgba(15, 23, 42, 0.95);
-	border: 2px solid rgba(99, 102, 241, 0.6);
+	background-color: rgba(15, 23, 42, 0.96);
+	border: 1px solid rgba(99, 102, 241, 0.45);
 	pointer-events: all;
 }
 
 .input-prefix {
-	font-size: 13px;
-	font-weight: 600;
-	color: rgba(148, 163, 184, 0.9);
-}
-
-.input-field {
-	flex: 1;
 	font-size: 14px;
-	color: #f1f5f9;
-	min-height: 18px;
+	font-weight: 600;
+	color: rgba(191, 219, 254, 0.9);
 }
 
-.cursor {
-	animation: blink 1s step-end infinite;
-	color: #60a5fa;
+textentry.input-entry {
+	flex-grow: 1;
+	min-width: 0px;
+	min-height: 20px;
+	max-height: 160px;
+	padding: 0px;
+	font-size: 16px;
+	line-height: 20px;
+	color: #f1f5f9;
+	background-color: transparent;
+	border: 0px;
+	overflow: scroll;
+	white-space: normal;
 }
 
 .chat-hint {
-	font-size: 11px;
-	color: rgba(148, 163, 184, 0.5);
+	font-size: 12px;
+	color: rgba(191, 219, 254, 0.55);
 	padding: 4px 8px;
+}
+
+.suggestions {
+	margin-top: -2px;
+	padding: 6px;
+	border-radius: 8px;
+	background-color: rgba(15, 23, 42, 0.96);
+	border: 1px solid rgba(99, 102, 241, 0.35);
+	backdrop-filter: blur(6px);
+	pointer-events: all;
+	max-height: 170px;
+	overflow: scroll;
+}
+
+.suggestion-item {
+	display: flex;
+	gap: 8px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	font-size: 13px;
+	color: rgba(226, 232, 240, 0.95);
+
+	&.selected {
+		background-color: rgba(99, 102, 241, 0.22);
+	}
+
+	.kind {
+		width: 56px;
+		flex-shrink: 0;
+		font-size: 10px;
+		letter-spacing: 1px;
+		text-transform: uppercase;
+		color: rgba(148, 163, 184, 0.85);
+	}
+
+	.main {
+		flex: 1;
+		min-width: 0px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.desc {
+		flex-shrink: 0;
+		color: rgba(148, 163, 184, 0.65);
+		font-size: 12px;
+		white-space: nowrap;
+	}
 }
 
 @keyframes message-in {
@@ -153,7 +285,4 @@ VeggaChat {
 	}
 }
 
-@keyframes blink {
-	0%, 50% { opacity: 1; }
-	51%, 100% { opacity: 0; }
-}
+

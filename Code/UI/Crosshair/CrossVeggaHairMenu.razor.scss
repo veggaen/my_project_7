@@ -15,7 +15,7 @@ CrossVeggaHairMenu {
 		transform: translate(-50%, -50%);
 		min-width: 320px;
 		padding: 20px 24px;
-		background: rgba(15, 23, 42, 0.96);
+		background-color: rgba(15, 23, 42, 0.96);
 		border-radius: 8px;
 		border: 1px solid rgba(148, 163, 184, 0.5);
 		pointer-events: all;
@@ -42,7 +42,7 @@ CrossVeggaHairMenu {
 			align-self: center;
 			margin-top: 8px;
 			padding: 6px 16px;
-			background: rgba(34, 197, 94, 0.15);
+			background-color: rgba(34, 197, 94, 0.15);
 			border-radius: 999px;
 			border: 1px solid rgba(34, 197, 94, 0.6);
 			color: #bbf7d0;
@@ -60,7 +60,7 @@ CrossVeggaHairMenu {
 		transform: translateY(-50%);
 		width: 400px;
 		max-height: 90vh;
-		background: rgba(10, 10, 15, 0.95);
+		background-color: rgba(10, 10, 15, 0.95);
 		border: 2px solid rgba(100, 50, 200, 0.6);
 		border-radius: 8px;
 		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
@@ -87,7 +87,7 @@ CrossVeggaHairMenu {
 		}
 
 		.close-btn {
-			background: rgba(255, 50, 50, 0.2);
+			background-color: rgba(255, 50, 50, 0.2);
 			border: 1px solid rgba(255, 50, 50, 0.4);
 			color: #fff;
 			font-size: 20px;
@@ -98,7 +98,7 @@ CrossVeggaHairMenu {
 			transition: all 0.2s;
 
 			&:hover {
-				background: rgba(255, 50, 50, 0.4);
+				background-color: rgba(255, 50, 50, 0.4);
 				transform: scale(1.1);
 			}
 		}
@@ -138,7 +138,7 @@ CrossVeggaHairMenu {
 			input[type="range"] {
 				width: 100%;
 				height: 6px;
-				background: rgba(255, 255, 255, 0.1);
+				background-color: rgba(255, 255, 255, 0.1);
 				border-radius: 3px;
 				cursor: pointer;
 			}
@@ -152,7 +152,7 @@ CrossVeggaHairMenu {
 
 			select {
 				padding: 8px 12px;
-				background: rgba(255, 255, 255, 0.05);
+				background-color: rgba(255, 255, 255, 0.05);
 				border: 1px solid rgba(255, 255, 255, 0.1);
 				border-radius: 4px;
 				color: #fff;
@@ -160,7 +160,7 @@ CrossVeggaHairMenu {
 				cursor: pointer;
 
 				&:hover {
-					background: rgba(255, 255, 255, 0.08);
+					background-color: rgba(255, 255, 255, 0.08);
 				}
 			}
 		}

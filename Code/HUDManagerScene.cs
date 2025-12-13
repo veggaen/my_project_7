@@ -16,6 +16,12 @@ public sealed class HUDManagerScene : Component
 	public PlayerHud HudPanel { get; set; }
 
 	/// <summary>
+	/// Link to the new modular player HUD component (preferred). Set this in the inspector or let it auto-find.
+	/// </summary>
+	[Property, Group( "Links" )]
+	public Sandbox.UI.PlayerVeggaModularHud ModularHudPanel { get; set; }
+
+	/// <summary>
 	/// Link to the InventoryHud component. Set this in the inspector!
 	/// </summary>
 	[Property, Group( "Links" )]
@@ -73,6 +79,11 @@ public sealed class HUDManagerScene : Component
 			HudPanel = Components.Get<PlayerHud>();
 		}
 
+		if ( ModularHudPanel == null )
+		{
+			ModularHudPanel = Components.Get<Sandbox.UI.PlayerVeggaModularHud>();
+		}
+
 		if ( InventoryPanel == null )
 		{
 			InventoryPanel = Components.Get<InventoryHud>();
@@ -105,7 +116,14 @@ public sealed class HUDManagerScene : Component
 
 		if ( PickupHintPanel == null )
 		{
-			PickupHintPanel = Components.Get<PickupHint>();
+			PickupHintPanel = Components.Get<PickupHint>() ?? Scene.GetAllComponents<PickupHint>().FirstOrDefault();
+			if ( PickupHintPanel == null )
+			{
+				// If the scene doesn't have one, create it so pickup hints always work.
+				var go = new GameObject( true, "UI_PickupHint" );
+				go.Components.Create<ScreenPanel>();
+				PickupHintPanel = go.Components.Create<PickupHint>();
+			}
 		}
 
 		if ( ChatPanel == null )
@@ -126,6 +144,11 @@ public sealed class HUDManagerScene : Component
 		if ( playerStats != null && playerStats != _currentPlayerStats )
 		{
 			_currentPlayerStats = playerStats;
+
+			if ( ModularHudPanel != null )
+			{
+				ModularHudPanel.PlayerStats = playerStats;
+			}
 
 			if ( HudPanel != null )
 			{

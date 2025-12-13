@@ -6,26 +6,79 @@
 @* Force recompile - Dec 11 2025 *@
 
 <root>
-	@if ( _isOpen )
+	@if ( _isOpen || IsLayoutActive )
 	{
-		<div class="inventory-container">
-			<div class="inventory-header">
-				<span class="inventory-title">BAG</span>
-				<span class="inventory-slots">@_usedSlots / @_totalSlots</span>
-			</div>
-
-			<div class="inventory-grid">
-				@for ( int i = 0; i < _totalSlots; i++ )
+		<div class="inventory-root">
+			<div class="inventory-container">
+				<div class="inventory-header">
+					<span class="inventory-title">BAG</span>
+					<span class="inventory-slots">@_usedSlots / @_totalSlots</span>
+				</div>
+				@if ( !string.IsNullOrWhiteSpace( GetSelectedItemName() ) )
 				{
-					int slotIndex = i;
-					<div class="inventory-slot @(slotIndex < _usedSlots ? "has-item" : "")">
-						@if ( slotIndex < _usedSlots )
+					<div class="inventory-selected">Selected: @GetSelectedItemName()</div>
+				}
+
+				<div class="inventory-body">
+					<div class="inventory-grid">
+						@for ( int i = 0; i < _totalSlots; i++ )
 						{
-							<div class="item-icon">🗡️</div>
-							<div class="item-count">@_itemCounts[slotIndex]</div>
+							int slotIndex = i;
+							int itemId = (slotIndex < _usedSlots) ? (_inventory?.GetSlotItemId( slotIndex ) ?? 0) : 0;
+							int itemCount = (slotIndex < _usedSlots) ? (_inventory?.GetSlotCount( slotIndex ) ?? 0) : 0;
+							var def = (slotIndex < _usedSlots) ? VeggaItemRegistry.Get( itemId ) : null;
+							string iconPath = def?.IconPath;
+							bool hasItem = slotIndex < _usedSlots;
+							bool isSelected = hasItem && slotIndex == _selectedSlotIndex;
+
+							<div class="inventory-slot @(hasItem ? "has-item" : "") @(isSelected ? "selected" : "")"
+								 onclick="@(() => SelectSlot(slotIndex))">
+								@if ( hasItem )
+								{
+									@if ( !string.IsNullOrWhiteSpace( iconPath ) )
+									{
+										<div class="item-icon" style="background-image: url('/@iconPath');"></div>
+									}
+									else
+									{
+										<div class="item-icon">?</div>
+									}
+
+									@if ( itemCount > 1 )
+									{
+										<div class="item-count">@itemCount</div>
+									}
+								}
+							</div>
 						}
 					</div>
-				}
+
+					@if ( _showItemDetails )
+					{
+						<div class="item-details">
+							<div class="item-details-header">
+								<div class="item-details-title">Item</div>
+								<button class="item-details-close" onclick="@CloseItemDetails">Close</button>
+							</div>
+							@if ( _selectedItemDef != null )
+							{
+								@if ( !string.IsNullOrWhiteSpace( _selectedItemDef.IconPath ) )
+								{
+									<div class="item-details-icon" style="background-image: url('/@_selectedItemDef.IconPath');"></div>
+								}
+								<div class="item-details-name">@_selectedItemDef.Name</div>
+								@if ( !string.IsNullOrWhiteSpace( _selectedItemDef.Description ) )
+								{
+									<div class="item-details-desc">@_selectedItemDef.Description</div>
+								}
+							}
+							else
+							{
+								<div class="item-details-desc">No item selected.</div>
+							}
+						</div>
+					}
+				</div>
 			</div>
 		</div>
 	}
@@ -39,20 +92,29 @@
 	[Property] public PlayerVeggaStats PlayerStats { get; set; }
 
 	bool _isOpen = false;
+	public static bool IsOpenGlobal { get; private set; }
+
 	int _columns = 12;
 	int _rows = 8;
 	int _totalSlots = 96;
 	int _usedSlots = 0;
-	List<int> _itemCounts = new();
-
 	VeggaInventory _inventory;
+	int _selectedSlotIndex = -1;
+	VeggaItemDef _selectedItemDef;
+	bool _showItemDetails = false;
+
+	Vector2 _layoutPos = new Vector2( 0.5f, 0.6f );
+	float _layoutScale = 1f;
+	string InventoryKey => VeggaHudLayoutState.KeyInventory;
+	string SelectedElement => VeggaHudLayoutState.SelectedElement;
 
 	// Instance wrapper to avoid static method substitution errors
 	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
 
 	protected override void OnStart()
 	{
-		// Silent start
+		_layoutPos = VeggaHudLayoutState.GetPosition( InventoryKey, _layoutPos );
+		_layoutScale = VeggaHudLayoutState.GetScale( InventoryKey, 1f );
 	}
 
 	protected override void OnUpdate()
@@ -61,23 +123,23 @@
 		if ( PlayerStats != null && PlayerStats.Network.IsProxy ) return;
 
 		// Toggle with 'B' key (for Bag)
-		if ( Input.Pressed( "bag" ) )
+		if ( !IsLayoutActive && Input.Pressed( "bag" ) )
 		{
 			_isOpen = !_isOpen;
+			IsOpenGlobal = _isOpen;
 
-			// Lock/unlock cursor based on bag state, but don't hide the mouse
-			// if global HUD layout mode is active.
-			if ( _isOpen )
-			{
-				Panel.Style.PointerEvents = PointerEvents.All;
-			}
-			else if ( !IsLayoutActive )
-			{
-				Panel.Style.PointerEvents = PointerEvents.None;
-			}
+			// Pointer-events are updated each frame below.
 
 			StateHasChanged();
 		}
+
+		// Apply layout to the component panel so absolute positioning is relative to the HUD root.
+		if ( Panel != null )
+		{
+			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_isOpen ? PointerEvents.All : PointerEvents.None);
+			Panel.Style.ZIndex = (IsLayoutActive && SelectedElement == InventoryKey) ? 2601 : 0;
+		}
+		ApplyLayoutPosition();
 
 		// Get inventory data
 		if ( _inventory == null )
@@ -90,6 +152,14 @@
 			_totalSlots = _inventory.TotalSlots;
 			_usedSlots = _inventory.UsedSlots;
 
+			// Keep selection safe if inventory shrinks.
+			if ( _selectedSlotIndex >= _usedSlots )
+			{
+				_selectedSlotIndex = -1;
+				_selectedItemDef = null;
+				_showItemDetails = false;
+			}
+
 			// Get UI settings
 			var uiSettings = VeggaUiSettings.Local;
 			if ( uiSettings != null )
@@ -98,18 +168,45 @@
 				_rows = uiSettings.InventoryRows;
 			}
 
-			// Build item counts list (temporary - will use real items later)
-			_itemCounts.Clear();
-			for ( int i = 0; i < _usedSlots; i++ )
-			{
-				_itemCounts.Add( i + 1 ); // Placeholder counts
-			}
 		}
+	}
+
+	void SelectSlot( int slotIndex )
+	{
+		if ( _inventory == null || !_inventory.IsValid() )
+			return;
+		if ( slotIndex < 0 || slotIndex >= _usedSlots )
+			return;
+
+		_selectedSlotIndex = slotIndex;
+		int itemId = _inventory.GetSlotItemId( slotIndex );
+		_selectedItemDef = VeggaItemRegistry.Get( itemId );
+		_showItemDetails = true;
+		StateHasChanged();
+	}
+
+	void CloseItemDetails()
+	{
+		_showItemDetails = false;
+		StateHasChanged();
+	}
+
+	string GetSelectedItemName()
+	{
+		if ( _selectedItemDef == null )
+			return string.Empty;
+		return _selectedItemDef.Name ?? string.Empty;
+	}
+
+	void ApplyLayoutPosition()
+	{
+		if ( Panel == null ) return;
+		VeggaHudLayoutApply.Apply( Panel, InventoryKey, VeggaHudLayoutState.GetDefaultPosition( InventoryKey ), 1f );
 	}
 
 	protected override int BuildHash()
 	{
-		return System.HashCode.Combine( _isOpen, _usedSlots, _totalSlots );
+		return System.HashCode.Combine( _isOpen, _usedSlots, _totalSlots, _inventory?.Revision ?? 0, _selectedSlotIndex, _showItemDetails );
 	}
 }
 

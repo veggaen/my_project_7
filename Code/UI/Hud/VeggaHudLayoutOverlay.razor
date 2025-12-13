@@ -1,5 +1,6 @@
 @using Sandbox
 @using Sandbox.UI
+@using System
 @namespace Sandbox.UI
 @inherits PanelComponent
 @attribute [StyleSheet( "/ui/hud/veggahudlayoutoverlay.razor.scss" )]
@@ -11,7 +12,20 @@
 			@* Header *@
 			<div class="layout-header">
 				<h2 class="layout-title">Layout Editor</h2>
-				<p class="layout-subtitle">Fine-tune element positions and scales</p>
+				<p class="layout-subtitle">Changes auto-save instantly ・ ESC exits</p>
+				@if ( _screenCalibStep == 1 )
+				{
+					<p class="layout-subtitle calibrating">Screen calibration: RIGHT-CLICK the TOP-LEFT corner of your usable area</p>
+				}
+				else if ( _screenCalibStep == 2 )
+				{
+					<p class="layout-subtitle calibrating">Screen calibration: RIGHT-CLICK the BOTTOM-RIGHT corner of your usable area</p>
+				}
+				else if ( VeggaHudLayoutState.HasSafeAreaForCurrentScreen() )
+				{
+					var (min, max) = VeggaHudLayoutState.GetSafeAreaNormalized();
+					<p class="layout-subtitle calibrated">Screen safe-area active ・ min=@min max=@max (use Clear Screen if wrong)</p>
+				}
 			</div>
 
 			@* Element Selector *@
@@ -65,20 +79,31 @@
 						@* Fine-tune nudge controls *@
 						<div class="nudge-controls">
 							<h4 class="nudge-title">Fine Tune (pixels)</h4>
+							<div class="nudge-presets">
+								@foreach ( var preset in _nudgePresetSteps )
+								{
+									<button class="nudge-preset-btn @((Math.Abs(_nudgePixels - preset) < 0.01f) ? "active" : "")"
+											onclick="@(() => SetNudgePixels(preset))">@FormatNudgeLabel(preset)</button>
+								}
+							</div>
+							<div class="nudge-custom-row">
+								<textentry class="nudge-entry" @ref="_nudgeEntry" onsubmit="@ApplyCustomNudge" />
+								<button class="nudge-apply-btn" onclick="@ApplyCustomNudge">Set</button>
+							</div>
 							<div class="nudge-flex">
 								<div class="nudge-row">
 									<div class="nudge-spacer"></div>
-									<button class="nudge-btn" onclick="@(() => Nudge(0, -10))">UP</button>
+									<button class="nudge-btn" onclick="@(() => Nudge(0, -_nudgePixels))">UP</button>
 									<div class="nudge-spacer"></div>
 								</div>
 								<div class="nudge-row">
-									<button class="nudge-btn" onclick="@(() => Nudge(-10, 0))">L</button>
-									<div class="nudge-info">10px</div>
-									<button class="nudge-btn" onclick="@(() => Nudge(10, 0))">R</button>
+									<button class="nudge-btn" onclick="@(() => Nudge(-_nudgePixels, 0))">L</button>
+									<div class="nudge-info">@FormatNudgeLabel(_nudgePixels)</div>
+									<button class="nudge-btn" onclick="@(() => Nudge(_nudgePixels, 0))">R</button>
 								</div>
 								<div class="nudge-row">
 									<div class="nudge-spacer"></div>
-									<button class="nudge-btn" onclick="@(() => Nudge(0, 10))">DN</button>
+									<button class="nudge-btn" onclick="@(() => Nudge(0, _nudgePixels))">DN</button>
 									<div class="nudge-spacer"></div>
 								</div>
 							</div>
@@ -101,19 +126,42 @@
 			@* Actions *@
 			<div class="layout-actions">
 				<button class="action-btn reset" onclick="@ResetLayout">Reset All</button>
-				<button class="action-btn done" onclick="@ExitLayout">Save</button>
+				<button class="action-btn calibrate" onclick="@CalibrateSelected" disabled="@(SelectedElement == null)">Calibrate</button>
+				<button class="action-btn calibrate" onclick="@StartScreenCalibrate">@(_screenCalibStep == 0 ? "Screen Calibrate" : "Cancel Calibrate")</button>
+				<button class="action-btn reset-selected" onclick="@ClearScreenCalibrate" disabled="@(!VeggaHudLayoutState.HasSafeAreaForCurrentScreen())">Clear Screen</button>
+				<button class="action-btn reset-selected" onclick="@ToggleDebug">Debug: @(_debug ? "On" : "Off")</button>
+				<button class="action-btn reset-selected" onclick="@ResetSelected" disabled="@(SelectedElement == null)">Reset Selected</button>
+				<button class="action-btn done" onclick="@ExitLayout">Save &amp; Exit</button>
 			</div>
 		</div>
 
 		@* Visual guides showing current positions *@
 		<div class="position-guides">
+			@if ( _screenCalibStep != 0 || VeggaHudLayoutState.HasSafeAreaForCurrentScreen() )
+			{
+				var (safeMin, safeMax) = VeggaHudLayoutState.GetSafeAreaNormalized();
+				var left = safeMin.x * 100;
+				var top = safeMin.y * 100;
+				var width = (safeMax.x - safeMin.x) * 100;
+				var height = (safeMax.y - safeMin.y) * 100;
+				<div class="safe-area-rect" style="left: @left%; top: @top%; width: @width%; height: @height%;"></div>
+			}
 			@foreach ( var key in GetElementKeys() )
 			{
-				var pos = GetElementPosition(key);
+				var pos = GetGuidePosition(key);
 				<div class="guide-marker @(SelectedElement == key ? "selected" : "")" 
 					 style="left: @(pos.x * 100)%; top: @(pos.y * 100)%;">
 					<span class="guide-label">@GetElementShortName(key)</span>
 				</div>
+			}
+
+			@if ( _debug && SelectedElement != null )
+			{
+				if ( TryGetSelectedDebugRect( out var left, out var top, out var width, out var height, out var label ) )
+				{
+					<div class="debug-rect" style="left: @left%; top: @top%; width: @width%; height: @height%;"></div>
+					<div class="debug-text" style="left: @left%; top: @top%;">@label</div>
+				}
 			}
 		</div>
 	}
@@ -131,6 +179,43 @@
 
 	System.Collections.Generic.List<string> GetElementKeys() => VeggaHudLayoutState.GetAllElementKeys();
 	string GetElementName( string key ) => VeggaHudLayoutState.GetElementName( key );
+
+	readonly float[] _nudgePresetSteps = new[] { 0.5f, 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
+	float _nudgePixels { get; set; } = 4f;
+	TextEntry _nudgeEntry;
+
+	int _screenCalibStep;
+	Vector2 _screenCalibTopLeft;
+	bool _debug;
+
+	string FormatNudgeLabel( float px )
+	{
+		// Keep it compact (eg. 0.5px, 12px)
+		return $"{px:0.##}px";
+	}
+
+	void SetNudgePixels( float px )
+	{
+		_nudgePixels = Math.Max( 0.5f, Math.Min( 500f, px ) );
+		if ( _nudgeEntry != null )		// reflect current value
+		{
+			_nudgeEntry.Text = _nudgePixels.ToString( "0.##" );
+		}
+	}
+
+	void ApplyCustomNudge()
+	{
+		if ( _nudgeEntry == null ) return;
+		var raw = (_nudgeEntry.Text ?? string.Empty).Trim();
+		if ( string.IsNullOrWhiteSpace( raw ) ) return;
+
+		// Allow entering "12", "12px", "0.5" etc.
+		raw = raw.Replace( "px", "", System.StringComparison.OrdinalIgnoreCase ).Trim();
+		if ( float.TryParse( raw, out var value ) )
+		{
+			SetNudgePixels( value );
+		}
+	}
 
 	string GetElementShortName( string key )
 	{
@@ -150,6 +235,66 @@
 		return VeggaHudLayoutState.GetPosition( key, new Vector2( 0.5f, 0.5f ) );
 	}
 
+	Vector2 GetGuidePosition( string key )
+	{
+		if ( VeggaHudLayoutApply.TryGetLastApplied( key, out var info ) )
+			return info.PositionN;
+		return GetElementPosition( key );
+	}
+
+	void ToggleDebug()
+	{
+		_debug = !_debug;
+		StateHasChanged();
+	}
+
+	static Vector2 AnchorOffsetPx( VeggaHudLayoutState.HudAnchor anchor, Vector2 sizePx )
+	{
+		return anchor switch
+		{
+			VeggaHudLayoutState.HudAnchor.TopLeft => new Vector2( 0, 0 ),
+			VeggaHudLayoutState.HudAnchor.TopCenter => new Vector2( -sizePx.x * 0.5f, 0 ),
+			VeggaHudLayoutState.HudAnchor.TopRight => new Vector2( -sizePx.x, 0 ),
+			VeggaHudLayoutState.HudAnchor.MiddleLeft => new Vector2( 0, -sizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.MiddleCenter => new Vector2( -sizePx.x * 0.5f, -sizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.MiddleRight => new Vector2( -sizePx.x, -sizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.BottomLeft => new Vector2( 0, -sizePx.y ),
+			VeggaHudLayoutState.HudAnchor.BottomCenter => new Vector2( -sizePx.x * 0.5f, -sizePx.y ),
+			VeggaHudLayoutState.HudAnchor.BottomRight => new Vector2( -sizePx.x, -sizePx.y ),
+			_ => new Vector2( -sizePx.x * 0.5f, -sizePx.y * 0.5f )
+		};
+	}
+
+	bool TryGetSelectedDebugRect( out float leftPct, out float topPct, out float wPct, out float hPct, out string label )
+	{
+		leftPct = topPct = wPct = hPct = 0f;
+		label = string.Empty;
+
+		var key = SelectedElement;
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return false;
+
+		if ( !VeggaHudLayoutApply.TryGetLastApplied( key, out var info ) )
+			return false;
+		if ( !info.HasValidSize )
+			return false;
+
+		var screen = info.ScreenPx;
+		if ( screen.x <= 1f || screen.y <= 1f )
+			return false;
+
+		var anchorPx = new Vector2( info.PositionN.x * screen.x, info.PositionN.y * screen.y );
+		var topLeftPx = anchorPx + AnchorOffsetPx( info.Anchor, info.SizePxScaled );
+
+		leftPct = (topLeftPx.x / screen.x) * 100f;
+		topPct = (topLeftPx.y / screen.y) * 100f;
+		wPct = (info.SizePxScaled.x / screen.x) * 100f;
+		hPct = (info.SizePxScaled.y / screen.y) * 100f;
+
+		label = $"{key}  anchor={info.Anchor}  pos={info.PositionN:0.###}  sizePx={info.SizePxScaled:0}  safe={info.SafeMinN:0.##}-{info.SafeMaxN:0.##}";
+		return true;
+	}
+
 	int GetCurrentPreset()
 	{
 		if ( SelectedElement == null ) return -1;
@@ -164,11 +309,44 @@
 
 	protected override void OnUpdate()
 	{
-		bool active = IsLayoutActive;
-
-		if ( active )
+		if ( _nudgeEntry != null )
 		{
-			Panel.Style.PointerEvents = PointerEvents.All;
+			_nudgeEntry.Placeholder = "px (max 500)";
+		}
+
+		bool active = IsLayoutActive;
+		Panel.Style.PointerEvents = active ? PointerEvents.All : PointerEvents.None;
+
+		if ( active && Input.EscapePressed )
+		{
+			Input.EscapePressed = false;
+			// Cancel calibration if mid-flow, but always allow exiting layout.
+			_screenCalibStep = 0;
+			ExitLayout();
+			return;
+		}
+
+		// Screen safe-area calibration uses RIGHT-CLICK to avoid button-click conflicts.
+		if ( active && _screenCalibStep != 0 && Input.Pressed( "attack2" ) )
+		{
+			var screen = Screen.Size;
+			if ( screen.x > 0 && screen.y > 0 )
+			{
+				var mp = Mouse.Position;
+				var norm = new Vector2( mp.x / screen.x, mp.y / screen.y );
+				if ( _screenCalibStep == 1 )
+				{
+					_screenCalibTopLeft = norm;
+					_screenCalibStep = 2;
+					Log.Info( $"[HUD SafeArea] Step 1 (top-left) = {_screenCalibTopLeft}" );
+				}
+				else
+				{
+					VeggaHudLayoutState.SetSafeAreaNormalized( _screenCalibTopLeft, norm );
+					_screenCalibStep = 0;
+					Log.Info( $"[HUD SafeArea] Step 2 (bottom-right) = {norm}" );
+				}
+			}
 		}
 
 		if ( active != _lastActive )
@@ -208,10 +386,61 @@
 		Log.Info( "[HUD Layout] Reset all positions to default" );
 	}
 
+	void StartScreenCalibrate()
+	{
+		if ( _screenCalibStep == 0 )
+		{
+			_screenCalibStep = 1;
+			Log.Info( "[HUD SafeArea] Started calibration (right-click points)" );
+		}
+		else
+		{
+			_screenCalibStep = 0;
+			Log.Info( "[HUD SafeArea] Canceled calibration" );
+		}
+	}
+
+	void ClearScreenCalibrate()
+	{
+		VeggaHudLayoutState.ClearSafeAreaForCurrentScreen();
+		_screenCalibStep = 0;
+	}
+
+	void CalibrateSelected()
+	{
+		if ( SelectedElement == null ) return;
+
+		var current = VeggaHudLayoutState.GetPosition( SelectedElement, VeggaHudLayoutState.GetDefaultPosition( SelectedElement ) );
+		VeggaHudLayoutState.ScreenPosition best = VeggaHudLayoutState.ScreenPosition.MiddleCenter;
+		float bestDist = float.MaxValue;
+
+		foreach ( var kv in VeggaHudLayoutState.PresetPositions )
+		{
+			var d = kv.Value - current;
+			float dist = (d.x * d.x) + (d.y * d.y);
+			if ( dist < bestDist )
+			{
+				bestDist = dist;
+				best = kv.Key;
+			}
+		}
+
+		VeggaHudLayoutState.SetPreset( SelectedElement, best );
+		Log.Info( $"[HUD Layout] Calibrated {SelectedElement} -> {best}" );
+	}
+
+	void ResetSelected()
+	{
+		if ( SelectedElement == null ) return;
+		var pos = VeggaHudLayoutState.GetDefaultPosition( SelectedElement );
+		VeggaHudLayoutState.SetPosition( SelectedElement, pos );
+		VeggaHudLayoutState.SetScale( SelectedElement, 1f );
+		Log.Info( $"[HUD Layout] Reset selected {SelectedElement} -> default" );
+	}
+
 	void ExitLayout()
 	{
 		SetLayoutActive( false );
-		Panel.Style.PointerEvents = PointerEvents.None;
 		Log.Info( "[HUD Layout] Exited layout mode" );
 	}
 }

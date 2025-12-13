@@ -117,7 +117,7 @@ VeggaPauseMenu {
 		padding: 14px 6px 6px 6px;
 
 		/* This is what prevents “too long top-to-bottom” */
-		overflow-y: auto;
+		overflow-y: scroll;
 		min-height: 0;
 	}
 
@@ -232,7 +232,7 @@ VeggaPauseMenu {
 
 		padding: 14px 6px 6px 6px;
 
-		overflow-y: auto;
+		overflow-y: scroll;
 		min-height: 0;
 	}
 

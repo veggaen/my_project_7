@@ -14,12 +14,32 @@
 			@foreach ( var msg in GetVisibleMessages() )
 			{
 				<div class="message @GetMessageClass(msg)">
-					@if ( msg.Type == ChatMessageType.Normal || msg.Type == ChatMessageType.Private )
-					{
-						<span class="sender">@msg.SenderName:</span>
-					}
-					<span class="text">@msg.Text</span>
-					<span class="time">@msg.Time.ToString("HH:mm")</span>
+					<div class="message-header">
+						@if ( ShouldShowBadge( msg, out var badgeText ) )
+						{
+							<span class="badge">@badgeText</span>
+						}
+						@if ( msg.Type == ChatMessageType.Normal || msg.Type == ChatMessageType.Private )
+						{
+							<span class="sender">@msg.SenderName</span>
+						}
+						<span class="spacer"></span>
+						@if ( msg.Type == ChatMessageType.Normal )
+						{
+							var likeCount = GetReactionCount( msg, "like" );
+							<button class="reaction-btn inline" @onclick=@(() => SendReaction( msg, "like" ))>
+								<span class="icon">♥</span>
+								@if ( likeCount > 0 )
+								{
+									<span class="count">@likeCount</span>
+								}
+							</button>
+						}
+						<span class="time">@msg.Time.ToString("HH:mm")</span>
+					</div>
+					<div class="message-body">
+						<span class="text">@msg.Text</span>
+					</div>
 				</div>
 			}
 		</div>
@@ -29,12 +49,29 @@
 		{
 			<div class="input-container">
 				<span class="input-prefix">Say:</span>
-				<div class="input-field">@_inputText<span class="cursor">|</span></div>
+				<textentry class="input-entry" @ref="_textEntry" />
 			</div>
+
+			@if ( _suggestions.Count > 0 )
+			{
+				<div class="suggestions">
+					@for ( int i = 0; i < _suggestions.Count; i++ )
+					{
+						var s = _suggestions[i];
+						<div class="suggestion-item @(i == _selectedSuggestionIndex ? "selected" : "")"
+							 @onclick=@(() => AcceptSuggestion( i ))
+							 @onmouseover=@(() => _selectedSuggestionIndex = i)>
+							<span class="kind">@s.Kind</span>
+							<span class="main">@s.Main</span>
+							<span class="desc">@s.Desc</span>
+						</div>
+					}
+				</div>
+			}
 		}
 		else
 		{
-			<div class="chat-hint">Press T to chat, Y for team chat</div>
+			<div class="chat-hint">Press Enter to chat</div>
 		}
 	</div>
 </root>
@@ -42,16 +79,28 @@
 @code
 {
 	Panel _messagesPanel;
+	TextEntry _textEntry;
 	VeggaChatManager _chatManager;
 	List<ChatMessage> _messages = new();
 
 	bool _isOpen = true;
 	bool _isFocused = false;
+	public static bool IsChatInputOpenGlobal { get; private set; }
 	string _inputText = "";
+	bool _wantFocusEntry = false;
 	float _lastMessageTime = 0f;
+	bool _pendingScrollToBottom = false;
+	bool _capturingBottomScroll = false;
+	float _bottomScrollY = 0f;
+	bool _lockToHistoryScroll = false;
+
+	readonly List<ChatSuggestion> _suggestions = new();
+	int _selectedSuggestionIndex = 0;
+	int _messagesVersion = 0;
 
 	// Layout integration
 	Vector2 _layoutPos = new Vector2( 0.02f, 0.80f );
+	float _layoutScale = 1f;
 	string ChatKey => VeggaHudLayoutState.KeyChat;
 	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
 
@@ -61,10 +110,15 @@
 		if ( _chatManager != null )
 		{
 			_chatManager.OnMessageReceived += OnMessageReceived;
+			_chatManager.OnMessagesChanged += OnMessagesChanged;
 		}
+
+		// Ensure we render existing history immediately and land at the bottom.
+		_pendingScrollToBottom = true;
 
 		// Load saved layout position
 		_layoutPos = VeggaHudLayoutState.GetPosition( ChatKey, _layoutPos );
+		_layoutScale = VeggaHudLayoutState.GetScale( ChatKey, 1f );
 	}
 
 	protected override void OnUpdate()
@@ -79,15 +133,55 @@
 			}
 		}
 
+		static bool ChatPressed()
+		{
+			// ProjectSettings/Input.config defines "Chat" (capital C)
+			// Keep a lowercase fallback in case another system uses it.
+			return Input.Pressed( "Chat" ) || Input.Pressed( "chat" );
+		}
+
 		// Handle input
 		if ( _isFocused )
 		{
-			HandleTextInput();
-
-			// Submit on Enter
-			if ( Input.Pressed( "chat" ) || Input.Pressed( "menu" ) )
+			// Keep our backing string in sync (BuildHash uses it).
+			if ( _textEntry != null )
 			{
-				SubmitMessage();
+				try
+				{
+					_inputText = _textEntry.Text ?? "";
+				}
+				catch ( Exception )
+				{
+					// If the TextEntry got destroyed during a re-render, drop the ref and keep going.
+					_textEntry = null;
+				}
+				if ( _wantFocusEntry )
+				{
+					try
+					{
+						_textEntry.Focus();
+					}
+					catch ( Exception )
+					{
+						// Can happen if the text entry reference is stale during a re-render.
+					}
+					_wantFocusEntry = false;
+				}
+			}
+
+			UpdateSuggestions();
+
+			// Submit on Enter (or accept suggestion)
+			if ( ChatPressed() )
+			{
+				if ( _suggestions.Count > 0 )
+				{
+					AcceptSuggestion( _selectedSuggestionIndex );
+				}
+				else
+				{
+					SubmitMessage();
+				}
 			}
 
 			// Cancel on Escape
@@ -100,56 +194,108 @@
 		else
 		{
 			// Open chat on T
-			if ( Input.Pressed( "chat" ) )
+			if ( ChatPressed() )
 			{
 				OpenChatInput();
 			}
 		}
 
-		// Auto-hide old messages
-		if ( !_isFocused && Time.Now - _lastMessageTime > 8f )
-		{
-			_isOpen = false;
-		}
+		// Keep chat visible even when not focused so players can always read it.
+		_isOpen = true;
 
-		// Pull latest layout position so HUD editor presets apply live
-		var latest = VeggaHudLayoutState.GetPosition( ChatKey, _layoutPos );
-		if ( latest != _layoutPos )
-		{
-			_layoutPos = latest;
-		}
+		// Pull latest layout position/scale so HUD editor presets apply live
+		var latestPos = VeggaHudLayoutState.GetPosition( ChatKey, _layoutPos );
+		var latestScale = VeggaHudLayoutState.GetScale( ChatKey, _layoutScale );
+		if ( latestPos != _layoutPos )
+			_layoutPos = latestPos;
+		if ( Math.Abs( latestScale - _layoutScale ) > 0.0001f )
+			_layoutScale = latestScale;
 
 		ApplyLayoutPosition();
-	}
 
-	void HandleTextInput()
-	{
-		// NOTE: Input.Typed no longer exists in the current s&box API.
-		// To keep the project compiling, this method is currently a no-op.
-		// Next step is to replace this with a TextEntry-based input field
-		// or another supported text input mechanism.
+		// Allow mouse interactions (eg. reactions) without forcing chat focus.
+		if ( Panel != null )
+		{
+			Panel.Style.PointerEvents = PointerEvents.All;
+		}
+
+		// Capture a stable "bottom" scroll position so manual scroll-up doesn't get yanked back.
+		if ( _messagesPanel != null )
+		{
+			try
+			{
+				if ( _pendingScrollToBottom )
+				{
+					ScrollToBottom();
+					_pendingScrollToBottom = false;
+					_capturingBottomScroll = true;
+					_lockToHistoryScroll = false;
+				}
+				else if ( _capturingBottomScroll )
+				{
+					_bottomScrollY = _messagesPanel.ScrollOffset.y;
+					_capturingBottomScroll = false;
+				}
+				else if ( _isFocused )
+				{
+					var y = _messagesPanel.ScrollOffset.y;
+					// If the user scrolls up from the last known bottom, lock auto-scroll until they return.
+					if ( !_lockToHistoryScroll && y < _bottomScrollY - 10f )
+						_lockToHistoryScroll = true;
+					if ( _lockToHistoryScroll && y >= _bottomScrollY - 10f )
+						_lockToHistoryScroll = false;
+				}
+			}
+			catch ( Exception )
+			{
+				// Panel refs can go stale during hot reload / re-render.
+				_messagesPanel = null;
+				_pendingScrollToBottom = false;
+				_capturingBottomScroll = false;
+				_lockToHistoryScroll = false;
+			}
+		}
 	}
 
 	void OpenChatInput()
 	{
 		_isFocused = true;
 		_isOpen = true;
+		IsChatInputOpenGlobal = true;
 		_inputText = "";
-		Panel.Style.PointerEvents = PointerEvents.All;
+		_wantFocusEntry = true;
+		_suggestions.Clear();
+		_selectedSuggestionIndex = 0;
+		_pendingScrollToBottom = true;
+		_capturingBottomScroll = false;
+		_lockToHistoryScroll = false;
 	}
 
 	void CloseChatInput()
 	{
 		_isFocused = false;
+		IsChatInputOpenGlobal = false;
 		_inputText = "";
-		Panel.Style.PointerEvents = PointerEvents.None;
+		_wantFocusEntry = false;
+		_suggestions.Clear();
+		_selectedSuggestionIndex = 0;
+		_textEntry = null;
 	}
 
 	void SubmitMessage()
 	{
-		if ( !string.IsNullOrWhiteSpace( _inputText ) )
+		var text = _inputText;
+		if ( !string.IsNullOrWhiteSpace( text ) )
 		{
-			_chatManager?.SendMessage( _inputText );
+			try
+			{
+				_chatManager?.SendMessage( text );
+			}
+			catch ( Exception ex )
+			{
+				_chatManager?.AddLocalMessage( $"Failed to send chat: {ex.Message}", ChatMessageType.Error );
+				Log.Warning( ex, "[VeggaChat] SendMessage failed" );
+			}
 		}
 
 		CloseChatInput();
@@ -158,17 +304,164 @@
 	void ApplyLayoutPosition()
 	{
 		if ( Panel == null ) return;
-
-		var screen = Screen.Size;
-		if ( screen.x <= 0 || screen.y <= 0 ) return;
-
-		float pxX = _layoutPos.x * screen.x;
-		float pxY = _layoutPos.y * screen.y;
-
-		Panel.Style.Position = PositionMode.Absolute;
-		Panel.Style.Left = Length.Pixels( pxX );
-		Panel.Style.Top = Length.Pixels( pxY );
+		VeggaHudLayoutApply.Apply( Panel, ChatKey, VeggaHudLayoutState.GetDefaultPosition( ChatKey ), 1f );
 	}
+
+	bool ShouldShowBadge( ChatMessage msg, out string badgeText )
+	{
+		badgeText = null;
+		if ( msg == null ) return false;
+
+		if ( msg.Type == ChatMessageType.System ) { badgeText = "SYS"; return true; }
+		if ( msg.Type == ChatMessageType.Admin ) { badgeText = "ADM"; return true; }
+		if ( msg.Type == ChatMessageType.Private || msg.IsPrivate ) { badgeText = "PM"; return true; }
+		if ( msg.Type == ChatMessageType.Error ) { badgeText = "ERR"; return true; }
+
+		return false;
+	}
+
+	void UpdateSuggestions()
+	{
+		_suggestions.Clear();
+		_selectedSuggestionIndex = 0;
+
+		var text = _inputText ?? string.Empty;
+		text = text.TrimStart();
+		if ( text.Length == 0 ) return;
+
+		// Commands only
+		if ( text.StartsWith( "/" ) )
+		{
+			BuildSlashSuggestions( text );
+			return;
+		}
+		if ( text.StartsWith( "!" ) )
+		{
+			BuildBangSuggestions( text );
+			return;
+		}
+	}
+
+	void BuildSlashSuggestions( string text )
+	{
+		// /<cmd> ...
+		var after = text.Substring( 1 );
+		var hasSpace = after.Contains( ' ' );
+		var parts = after.Split( ' ', StringSplitOptions.RemoveEmptyEntries );
+		var cmdPart = parts.Length > 0 ? parts[0] : "";
+
+		// If we're still typing the command name
+		if ( !hasSpace )
+		{
+			foreach ( var cmd in VeggaChatManager.GetRegisteredCommands().OrderBy( c => c.Name ) )
+			{
+				if ( string.IsNullOrEmpty( cmdPart ) || cmd.Name.StartsWith( cmdPart, System.StringComparison.OrdinalIgnoreCase ) )
+				{
+					_suggestions.Add( new ChatSuggestion( "cmd", $"/{cmd.Name}", cmd.Description, $"/{cmd.Name} " ) );
+				}
+			}
+			if ( "hex".StartsWith( cmdPart, System.StringComparison.OrdinalIgnoreCase ) )
+			{
+				_suggestions.Add( new ChatSuggestion( "admin", "/hex", "Admin commands", "/hex " ) );
+			}
+			return;
+		}
+
+		// /hex <admincmd> ...
+		if ( parts.Length > 0 && string.Equals( parts[0], "hex", System.StringComparison.OrdinalIgnoreCase ) )
+		{
+			BuildAdminSuggestions( prefix: "/hex", restParts: parts.Skip( 1 ).ToArray(), rawText: text );
+			return;
+		}
+	}
+
+	void BuildBangSuggestions( string text )
+	{
+		// We require !hex
+		if ( text == "!" || "!hex".StartsWith( text, System.StringComparison.OrdinalIgnoreCase ) )
+		{
+			_suggestions.Add( new ChatSuggestion( "admin", "!hex", "Admin commands", "!hex " ) );
+			return;
+		}
+
+		if ( text.StartsWith( "!hex", System.StringComparison.OrdinalIgnoreCase ) )
+		{
+			var after = text.Substring( 4 ).TrimStart();
+			var parts = after.Split( ' ', StringSplitOptions.RemoveEmptyEntries );
+			BuildAdminSuggestions( prefix: "!hex", restParts: parts, rawText: text );
+		}
+	}
+
+	void BuildAdminSuggestions( string prefix, string[] restParts, string rawText )
+	{
+		// restParts = [adminCmd, arg1, arg2...]
+		var needsCmd = restParts.Length == 0 && !rawText.EndsWith( " " );
+		var cmdTyped = restParts.Length > 0 ? restParts[0] : "";
+		var hasCmdSpace = rawText.TrimEnd().Contains( ' ' ) && rawText.TrimEnd().Length > prefix.Length;
+
+		if ( restParts.Length == 0 || (restParts.Length == 1 && !rawText.EndsWith( " " )) )
+		{
+			foreach ( var cmd in VeggaAdminManager.GetCommands().OrderBy( c => c.Name ) )
+			{
+				if ( string.IsNullOrEmpty( cmdTyped ) || cmd.Name.StartsWith( cmdTyped, System.StringComparison.OrdinalIgnoreCase ) )
+				{
+					_suggestions.Add( new ChatSuggestion( "hex", cmd.Name, cmd.Description, $"{prefix} {cmd.Name} " ) );
+				}
+			}
+			return;
+		}
+
+		// args suggestions (players then common amounts)
+		var args = restParts.Skip( 1 ).ToArray();
+		if ( args.Length <= 1 )
+		{
+			var typed = args.Length == 1 ? args[0] : "";
+			foreach ( var p in GetPlayerNames() )
+			{
+				if ( string.IsNullOrEmpty( typed ) || p.StartsWith( typed, System.StringComparison.OrdinalIgnoreCase ) || p.Contains( typed, System.StringComparison.OrdinalIgnoreCase ) )
+				{
+					_suggestions.Add( new ChatSuggestion( "player", p, "", $"{prefix} {restParts[0]} {p} " ) );
+				}
+			}
+			return;
+		}
+
+		// amount suggestions
+		if ( args.Length >= 2 )
+		{
+			foreach ( var amt in new[] { "100", "500", "1000", "2500", "5000", "10000" } )
+			{
+				_suggestions.Add( new ChatSuggestion( "amt", amt, "", $"{prefix} {restParts[0]} {args[0]} {amt}" ) );
+			}
+		}
+	}
+
+	IEnumerable<string> GetPlayerNames()
+	{
+		var scene = Game.ActiveScene;
+		if ( scene is null ) return Array.Empty<string>();
+		return scene.GetAllComponents<PlayerVeggaStats>()
+			.Select( s => s?.Network?.Owner?.DisplayName )
+			.Where( n => !string.IsNullOrWhiteSpace( n ) )
+			.Distinct()
+			.OrderBy( n => n )
+			.ToList();
+	}
+
+	void AcceptSuggestion( int index )
+	{
+		if ( index < 0 || index >= _suggestions.Count ) return;
+		var s = _suggestions[index];
+		if ( _textEntry == null ) return;
+
+		_textEntry.Text = s.Insert;
+		_inputText = s.Insert;
+		_suggestions.Clear();
+		_selectedSuggestionIndex = 0;
+		_wantFocusEntry = true;
+	}
+
+	record ChatSuggestion( string Kind, string Main, string Desc, string Insert );
 
 	void OnMessageReceived( ChatMessage msg )
 	{
@@ -182,8 +475,16 @@
 			_messages.RemoveAt( 0 );
 		}
 
-		// Scroll to bottom
-		ScrollToBottom();
+		// Scroll to bottom unless the user is reading history (scrolled up while focused)
+		if ( !_isFocused || !_lockToHistoryScroll )
+		{
+			_pendingScrollToBottom = true;
+		}
+	}
+
+	void OnMessagesChanged( ChatMessage msg )
+	{
+		_messagesVersion++;
 	}
 
 	void ScrollToBottom()
@@ -191,7 +492,14 @@
 		// Scroll messages panel to bottom
 		if ( _messagesPanel != null )
 		{
-			_messagesPanel.ScrollOffset = new Vector2( 0, 99999 );
+			try
+			{
+				_messagesPanel.ScrollOffset = new Vector2( 0, 99999 );
+			}
+			catch ( Exception )
+			{
+				_messagesPanel = null;
+			}
 		}
 	}
 
@@ -199,15 +507,18 @@
 	{
 		if ( _chatManager == null ) return _messages.TakeLast( 20 );
 
-		// If focused, show all recent messages
+		// If focused, show a lot more so scroll-back works
 		if ( _isFocused )
 		{
-			return _chatManager.Messages.TakeLast( 30 );
+			var take = _chatManager.MaxMessages > 0 ? _chatManager.MaxMessages : 100;
+			return _chatManager.Messages.TakeLast( take );
 		}
 
-		// Otherwise only show messages from last 8 seconds
+		// Otherwise show recent messages, but always keep at least a few lines visible.
+		var minAlways = _chatManager.Messages.TakeLast( 3 ).ToList();
 		var cutoff = DateTime.Now.AddSeconds( -8 );
-		return _chatManager.Messages.Where( m => m.Time > cutoff ).TakeLast( 10 );
+		var recent = _chatManager.Messages.Where( m => m.Time > cutoff ).TakeLast( 10 ).ToList();
+		return recent.Count >= 3 ? recent : minAlways;
 	}
 
 	string GetMessageClass( ChatMessage msg )
@@ -230,7 +541,29 @@
 			_isOpen,
 			_isFocused,
 			_inputText,
-			_chatManager?.Messages?.Count ?? 0
+			_chatManager?.Messages?.Count ?? 0,
+			_lockToHistoryScroll,
+			_messagesVersion
 		);
+	}
+
+	int GetReactionCount( ChatMessage msg, string reactionKey )
+	{
+		if ( msg?.Reactions == null ) return 0;
+		return msg.Reactions.TryGetValue( reactionKey, out var count ) ? count : 0;
+	}
+
+	void SendReaction( ChatMessage msg, string reactionKey )
+	{
+		if ( msg == null ) return;
+		try
+		{
+			_chatManager?.AddReaction( msg.MessageId, reactionKey );
+		}
+		catch ( Exception ex )
+		{
+			_chatManager?.AddLocalMessage( $"Failed to react: {ex.Message}", ChatMessageType.Error );
+			Log.Warning( ex, "[VeggaChat] AddReaction failed" );
+		}
 	}
 }

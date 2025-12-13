@@ -1,5 +1,6 @@
 @using Sandbox
 @using Sandbox.UI
+@using System
 @using System.Linq
 @namespace Sandbox.UI
 @inherits PanelComponent
@@ -21,11 +22,37 @@
 			</div>
 		}
 		<div class="xp-bar-container">
-			<div class="xp-skill-name">Combat @_combatLevel (@_combatType)</div>
-			<div class="xp-bar-bg">
+			<div class="xp-skill-name">Cb.@_combatLevel</div>
+			<div class="xp-bar-bg" onmouseover="@(() => _isHovered = true)" onmouseout="@(() => _isHovered = false)">
 				<div @ref="_xpBarRef" class="xp-bar-fill"></div>
 				<div class="xp-bar-text">@_xpText</div>
 			</div>
+			@if ( !_isLayoutMode && _isHovered )
+			{
+				<div class="xp-tooltip">
+					<div class="xp-tooltip-title">Calculator</div>
+					<div class="xp-tooltip-row"><span class="k">Player</span><span class="v">@_playerName</span></div>
+					<div class="xp-tooltip-split"></div>
+					<div class="xp-tooltip-row"><span class="k">Attack</span><span class="v">@_att</span></div>
+					<div class="xp-tooltip-row"><span class="k">Strength</span><span class="v">@_str</span></div>
+					<div class="xp-tooltip-row"><span class="k">Ranged</span><span class="v">@_rng</span></div>
+					<div class="xp-tooltip-row"><span class="k">Magic</span><span class="v">@_mag</span></div>
+					<div class="xp-tooltip-row"><span class="k">Defence</span><span class="v">@_def</span></div>
+					<div class="xp-tooltip-row"><span class="k">Hitpoints</span><span class="v">@_hp</span></div>
+					<div class="xp-tooltip-row"><span class="k">Prayer</span><span class="v">@_pray</span></div>
+					<div class="xp-tooltip-split"></div>
+					<div class="xp-tooltip-row"><span class="k">Combat</span><span class="v">@_combatSummary</span></div>
+					@if ( _nextReqLines != null && _nextReqLines.Count > 0 )
+					{
+						<div class="xp-tooltip-split"></div>
+						<div class="xp-tooltip-title">For level @_nextCombatTarget</div>
+						@foreach ( var line in _nextReqLines )
+						{
+							<div class="xp-tooltip-line">@line</div>
+						}
+					}
+				</div>
+			}
 			@if ( !_isLayoutMode && !string.IsNullOrEmpty( _nextCombatHint ) )
 			{
 				<div class="xp-hint">@_nextCombatHint</div>
@@ -43,6 +70,12 @@
 	string _combatType = "Warrior";
 	string _nextCombatHint = "";
 	bool _isLayoutMode;
+	bool _isHovered;
+	string _playerName = "";
+	int _att, _str, _def, _rng, _mag, _hp, _pray;
+	string _combatSummary = "";
+	int _nextCombatTarget;
+	System.Collections.Generic.List<string> _nextReqLines = new();
 
 	// Drag state
 	bool _isDragging;
@@ -51,22 +84,30 @@
 
 	// Layout position (normalized 0–1)
 	Vector2 _layoutPos = new Vector2( 0.5f, 0.92f ); // Default: bottom center
+	float _layoutScale = 1f;
 
 	// Instance wrappers to avoid static method substitution errors
 	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
 	Vector2 GetLayoutPosition( string key, Vector2 def ) => VeggaHudLayoutState.GetPosition( key, def );
+	float GetLayoutScale( string key, float def ) => VeggaHudLayoutState.GetScale( key, def );
 	void SaveLayoutPosition( string key, Vector2 pos ) => VeggaHudLayoutState.SetPosition( key, pos );
 	string XpBarKey => VeggaHudLayoutState.KeyXpBar;
+	string SelectedElement => VeggaHudLayoutState.SelectedElement;
 
 	protected override void OnStart()
 	{
 		// Load saved position
 		_layoutPos = GetLayoutPosition( XpBarKey, _layoutPos );
+		_layoutScale = GetLayoutScale( XpBarKey, 1f );
 	}
 
 	protected override void OnUpdate()
 	{
 		_isLayoutMode = IsLayoutActive;
+		if ( !_isLayoutMode && _isDragging )
+		{
+			StopDrag();
+		}
 
 		// Handle dragging
 		if ( _isDragging )
@@ -77,7 +118,13 @@
 		// Update combat stats
 		UpdateCombatStats();
 
-		// Apply position to panel
+		// Keep selected HUD visible above the editor without stealing clicks.
+		if ( Panel != null )
+		{
+			bool isSelected = _isLayoutMode && SelectedElement == XpBarKey;
+			Panel.Style.ZIndex = isSelected ? 2601 : 0;
+			Panel.Style.PointerEvents = isSelected ? PointerEvents.None : PointerEvents.None;
+		}
 		ApplyPosition();
 	}
 
@@ -89,10 +136,21 @@
 		var skills = player.GameObject.Components.Get<PlayerVeggaSkills>();
 		if ( skills == null ) return;
 
+		_playerName = player.GameObject?.Name ?? "Player";
+		_att = skills.AttackLevel;
+		_str = skills.StrengthLevel;
+		_def = skills.DefenceLevel;
+		_rng = skills.RangedLevel;
+		_mag = skills.MagicLevel;
+		_hp = skills.HitpointsLevel;
+		_pray = skills.PrayerLevel;
+
 		_combatLevel = skills.CombatLevel;
 		_combatPrecise = skills.CombatLevelPrecise;
 		_combatType = skills.CombatType;
 		_nextCombatHint = skills.NextCombatHint;
+		_combatSummary = BuildCombatSummary( skills );
+		BuildNextCombatRequirements( skills );
 
 		// Fractional progress towards next combat level
 		float frac = _combatPrecise - _combatLevel;
@@ -107,21 +165,101 @@
 		}
 	}
 
+	string BuildCombatSummary( PlayerVeggaSkills skills )
+	{
+		// Compute a slightly nicer description than the raw combat type.
+		double melee = 0.325 * (skills.AttackLevel + skills.StrengthLevel);
+		double range = 0.325 * Math.Floor( skills.RangedLevel * 1.5 );
+		double mage = 0.325 * Math.Floor( skills.MagicLevel * 1.5 );
+		double max = Math.Max( melee, Math.Max( range, mage ) );
+		double second = melee + range + mage - max - Math.Min( melee, Math.Min( range, mage ) );
+		bool balanced = Math.Abs( max - second ) < 0.25;
+		return balanced ? $"{skills.CombatLevel} (balanced)" : $"{skills.CombatLevel} ({skills.CombatType})";
+	}
+
+	void BuildNextCombatRequirements( PlayerVeggaSkills skills )
+	{
+		_nextReqLines ??= new();
+		_nextReqLines.Clear();
+
+		int target = skills.CombatLevel + 1;
+		_nextCombatTarget = target;
+
+		int? dAtt = DeltaToNext( skills, SkillId.Attack );
+		int? dStr = DeltaToNext( skills, SkillId.Strength );
+		int? dHp = DeltaToNext( skills, SkillId.Hitpoints );
+		int? dDef = DeltaToNext( skills, SkillId.Defence );
+		int? dRng = DeltaToNext( skills, SkillId.Ranged );
+		int? dMag = DeltaToNext( skills, SkillId.Magic );
+		int? dPray = DeltaToNext( skills, SkillId.Prayer );
+
+		AddMerged( dAtt, dStr, "Attack", "Strength" );
+		AddMerged( dHp, dDef, "Hitpoints", "Defence" );
+		AddSingle( dRng, "Ranged" );
+		AddSingle( dMag, "Magic" );
+		AddSingle( dPray, "Prayer" );
+	}
+
+	void AddSingle( int? delta, string label )
+	{
+		if ( delta == null ) return;
+		_nextReqLines.Add( $"{delta} {label} level{(delta == 1 ? "" : "s")}" );
+	}
+
+	void AddMerged( int? a, int? b, string la, string lb )
+	{
+		if ( a == null && b == null ) return;
+		if ( a != null && b != null && a.Value == b.Value )
+		{
+			_nextReqLines.Add( $"{a} {la} or {lb} level{(a == 1 ? "" : "s")}" );
+			return;
+		}
+		AddSingle( a, la );
+		AddSingle( b, lb );
+	}
+
+	int? DeltaToNext( PlayerVeggaSkills skills, SkillId skill )
+	{
+		int att = skills.AttackLevel;
+		int str = skills.StrengthLevel;
+		int def = skills.DefenceLevel;
+		int hp = skills.HitpointsLevel;
+		int pray = skills.PrayerLevel;
+		int rng = skills.RangedLevel;
+		int mag = skills.MagicLevel;
+
+		double Calc( int a, int s, int d, int h, int p, int r, int m )
+		{
+			double basePart = 0.25 * (d + h + Math.Floor( p / 2.0 ));
+			double melee = 0.325 * (a + s);
+			double range = 0.325 * Math.Floor( r * 1.5 );
+			double mage = 0.325 * Math.Floor( m * 1.5 );
+			double style = Math.Max( melee, Math.Max( range, mage ) );
+			return basePart + style;
+		}
+
+		int currentFloor = skills.CombatLevel;
+		for ( int i = 1; i <= 20; i++ )
+		{
+			switch ( skill )
+			{
+				case SkillId.Attack: if ( Math.Floor( Calc( att + i, str, def, hp, pray, rng, mag ) ) > currentFloor ) return i; break;
+				case SkillId.Strength: if ( Math.Floor( Calc( att, str + i, def, hp, pray, rng, mag ) ) > currentFloor ) return i; break;
+				case SkillId.Defence: if ( Math.Floor( Calc( att, str, def + i, hp, pray, rng, mag ) ) > currentFloor ) return i; break;
+				case SkillId.Hitpoints: if ( Math.Floor( Calc( att, str, def, hp + i, pray, rng, mag ) ) > currentFloor ) return i; break;
+				case SkillId.Prayer: if ( Math.Floor( Calc( att, str, def, hp, pray + i, rng, mag ) ) > currentFloor ) return i; break;
+				case SkillId.Ranged: if ( Math.Floor( Calc( att, str, def, hp, pray, rng + i, mag ) ) > currentFloor ) return i; break;
+				case SkillId.Magic: if ( Math.Floor( Calc( att, str, def, hp, pray, rng, mag + i ) ) > currentFloor ) return i; break;
+			}
+		}
+
+		return null;
+	}
+
 	void ApplyPosition()
 	{
 		if ( Panel == null ) return;
-
-		var screenSize = Screen.Size;
-		if ( screenSize.x <= 0 || screenSize.y <= 0 ) return;
-
-		// Convert normalized position to pixels
-		// Offset by half the element size to center it on the position
-		float pxX = _layoutPos.x * screenSize.x;
-		float pxY = _layoutPos.y * screenSize.y;
-
-		Panel.Style.Position = PositionMode.Absolute;
-		Panel.Style.Left = Length.Pixels( pxX - 150 ); // Center horizontally (bar is ~300px wide)
-		Panel.Style.Top = Length.Pixels( pxY );
+		VeggaHudLayoutApply.Apply( Panel, XpBarKey, VeggaHudLayoutState.GetDefaultPosition( XpBarKey ), 1f );
 	}
 
 	void OnDragStart()
@@ -158,9 +296,12 @@
 		// Apply delta to starting position
 		_layoutPos = _dragStartPos + deltaNorm;
 
-		// Clamp to screen bounds
-		_layoutPos.x = _layoutPos.x.Clamp( 0.1f, 0.9f );
-		_layoutPos.y = _layoutPos.y.Clamp( 0.05f, 0.95f );
+		// Clamp to near-screen bounds (tiny off-screen allowed)
+		const float marginPx = 48f;
+		float mx = marginPx / screenSize.x;
+		float my = marginPx / screenSize.y;
+		_layoutPos.x = _layoutPos.x.Clamp( -mx, 1f + mx );
+		_layoutPos.y = _layoutPos.y.Clamp( -my, 1f + my );
 	}
 
 	void StopDrag()
@@ -176,8 +317,8 @@
 
 	void Nudge( float dx, float dy )
 	{
-		_layoutPos.x = (_layoutPos.x + dx).Clamp( 0.1f, 0.9f );
-		_layoutPos.y = (_layoutPos.y + dy).Clamp( 0.05f, 0.95f );
+		_layoutPos.x = _layoutPos.x + dx;
+		_layoutPos.y = _layoutPos.y + dy;
 
 		// Save immediately
 		SaveLayoutPosition( XpBarKey, _layoutPos );

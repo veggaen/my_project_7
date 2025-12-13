@@ -58,7 +58,7 @@
 		if ( _deathComponent != null && _deathComponent.IsDead )
 		{
 			_isDead = true;
-			_respawnTime = (int)MathF.Ceiling( _deathComponent.RespawnDelay - _deathComponent.TimeSinceDeath );
+			_respawnTime = (int)Math.Ceiling( _deathComponent.RespawnDelay - _deathComponent.TimeSinceDeath );
 			_respawnTime = Math.Max( 0, _respawnTime );
 
 			// Allow instant respawn with spacebar

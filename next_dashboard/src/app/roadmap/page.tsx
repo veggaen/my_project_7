@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { Reveal } from "../components/motion/Reveal";
+import { SplitText } from "../components/motion/SplitText";
+import { SiteNavbar } from "../components/SiteNavbar";
 
 type Phase = {
   id: string;
@@ -22,8 +24,8 @@ const phases: Phase[] = [
     items: [
       { name: "Player Movement", status: "done", description: "WASD, crouch, sprint, jump with networked animations" },
       { name: "Stats System", status: "done", description: "HP, Armor, Money, Job with [Sync] networking" },
-      { name: "Skills System", status: "done", description: "23 OSRS-style skills with XP tracking" },
-      { name: "Combat Level", status: "done", description: "Auto-calculated using OSRS formula" },
+      { name: "Skills System", status: "done", description: "23-skill progression system with XP tracking" },
+      { name: "Combat Level", status: "done", description: "Auto-calculated using a consistent leveling formula" },
       { name: "Basic HUD", status: "done", description: "Health, armor, prayer, stamina bars" },
       { name: "XP Bar & Drops", status: "done", description: "Visual XP feedback system" },
       { name: "Data Persistence", status: "done", description: "JSON save/load with backups" },
@@ -62,7 +64,7 @@ const phases: Phase[] = [
     title: "Phase 4: UI/UX",
     status: "planned",
     items: [
-      { name: "ElvUI Customization", status: "todo", description: "Drag & drop panels, grid mode" },
+      { name: "HUD Customization", status: "todo", description: "Drag & drop panels, grid mode" },
       { name: "Action Bars", status: "todo", description: "6 bars, 72 slots, keybinds" },
       { name: "Minimap", status: "todo", description: "Player position, markers" },
       { name: "Quest Tracker", status: "todo", description: "Active quests, objectives" },
@@ -139,31 +141,24 @@ export default function RoadmapPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0a0a0f]/80 backdrop-blur-lg border-b border-purple-500/20">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold gradient-text">
-            ← Back to Home
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/whitepaper" className="text-gray-400 hover:text-white transition-colors">
-              Whitepaper
-            </Link>
-            <Link href="/stats" className="text-gray-400 hover:text-white transition-colors">
-              Stats
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNavbar />
 
-      <div className="pt-24 pb-20 px-6">
-        <div className="max-w-4xl mx-auto">
+      <div className="nav-spacer page-section">
+        <div className="page-container max-w-6xl">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold mb-4">
-              <span className="gradient-text">Development Roadmap</span>
-            </h1>
-            <p className="text-gray-400 text-xl">Track the progress of Vegga Roleplay</p>
+            <Reveal>
+              <SplitText
+                as="h1"
+                text="Development Roadmap"
+                className="text-5xl font-bold mb-4 gradient-text"
+                mode="words"
+                stagger={0.08}
+              />
+            </Reveal>
+            <Reveal delay={0.08}>
+              <p className="text-gray-400 text-xl">Track the progress of Vegga Roleplay</p>
+            </Reveal>
           </div>
 
           {/* Overall Progress */}
@@ -174,7 +169,7 @@ export default function RoadmapPage() {
             </div>
             <div className="h-4 bg-gray-800 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-purple-600 to-pink-600 rounded-full transition-all duration-500"
+                className="h-full bg-linear-to-r from-purple-600 to-pink-600 rounded-full transition-all duration-500"
                 style={{ width: `${progress}%` }}
               />
             </div>

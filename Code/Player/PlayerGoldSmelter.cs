@@ -70,8 +70,16 @@ public sealed class PlayerGoldSmelter : Component
 		}
 
 		const int GoldBarItemId = 100;
-		int slot = Inventory.FindFirstSlot( GoldBarItemId );
-		if ( slot < 0 )
+		var def = VeggaItemRegistry.Get( GoldBarItemId );
+		int maxGrams = def?.MaxGrams ?? 0;
+		if ( maxGrams <= 0 )
+		{
+			Log.Warning( "[GoldSmelter] Gold bar definition missing MaxGrams." );
+			return;
+		}
+
+		// Ensure we have an actual single-bar durable slot to work with.
+		if ( !Inventory.TryExtractOneDurable( GoldBarItemId, maxGrams, out int slot ) )
 		{
 			Log.Warning( "[GoldSmelter] No gold bar found in inventory." );
 			return;
@@ -152,9 +160,9 @@ public sealed class PlayerGoldSmelter : Component
 			int newDur = currentDur - coinsThisFrame;
 			if ( newDur <= 0 )
 			{
-				// Remove the bar when fully consumed
+				// Remove the specific bar slot when fully consumed
 				Inventory.SetSlotDurability( _activeSlot, 0 );
-				Inventory.RemoveItem( 100, 1 );
+				Inventory.RemoveFromSlot( _activeSlot, 1 );
 				_activeSlot = -1;
 				_gramsRemainingInJob = 0;
 				IsSmelting = false;

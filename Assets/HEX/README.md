@@ -17,7 +17,7 @@ Built to last 10 years. Built to be remembered.
 ## 🔥 CORE PILLARS:
 
 ### 1. **Admin Commands**
-- 100% of ULX command list + custom VEGGA commands
+- 100% of HEX command list + custom VEGGA commands
 - Prefix: `!hex` (e.g., `!hex kick`, `!hex ban`, `!hex god`)
 - Shortcuts: `!kick`, `!ban`, etc. still work
 - Full command: `!hex help` or `!menu`

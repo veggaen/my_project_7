@@ -396,7 +396,7 @@ public sealed class PlayerVeggaMovement : Component
 			t = (yawDiff - BodyFreeHeadAngle) / range;
 		}
 
-		t = MathF.Max( 0f, MathF.Min( 1f, t ) );
+		t = Math.Max( 0f, Math.Min( 1f, t ) );
 
 		float turnSpeed = baseTurnSpeed + (BodyMaxTurnSpeed - baseTurnSpeed) * t;
 

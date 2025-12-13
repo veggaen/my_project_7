@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { Reveal } from "../components/motion/Reveal";
+import { SplitText } from "../components/motion/SplitText";
+import { SiteNavbar } from "../components/SiteNavbar";
 
 // Mock data - in real app, this would come from an API
 const mockPlayerData = {
@@ -111,31 +113,24 @@ export default function StatsPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0a0a0f]/80 backdrop-blur-lg border-b border-purple-500/20">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold gradient-text">
-            ← Back to Home
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/whitepaper" className="text-gray-400 hover:text-white transition-colors">
-              Whitepaper
-            </Link>
-            <Link href="/roadmap" className="text-gray-400 hover:text-white transition-colors">
-              Roadmap
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNavbar />
 
-      <div className="pt-24 pb-20 px-6">
-        <div className="max-w-6xl mx-auto">
+      <div className="nav-spacer page-section">
+        <div className="page-container max-w-6xl">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold mb-4">
-              <span className="gradient-text">Player Stats</span>
-            </h1>
-            <p className="text-gray-400 text-xl">View detailed player statistics and progression</p>
+            <Reveal>
+              <SplitText
+                as="h1"
+                text="Player Stats"
+                className="text-5xl font-bold mb-4 gradient-text"
+                mode="words"
+                stagger={0.08}
+              />
+            </Reveal>
+            <Reveal delay={0.08}>
+              <p className="text-gray-400 text-xl">View detailed player statistics and progression</p>
+            </Reveal>
           </div>
 
           {/* Search */}
@@ -148,19 +143,17 @@ export default function StatsPage() {
                 onChange={(e) => setSearchId(e.target.value)}
                 className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
               />
-              <button className="px-6 py-3 bg-purple-600 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+              <button className="btn btn-primary">
                 Search
               </button>
             </div>
-            <p className="text-gray-500 text-sm mt-2">
-              Currently showing demo data. Connect to s&box server for real stats.
-            </p>
+                <p className="text-gray-500 text-sm mt-2">Enter a Steam ID to fetch player stats.</p>
           </div>
 
           {/* Player Header */}
           <div className="card mb-8">
             <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center text-4xl">
+              <div className="w-24 h-24 rounded-full bg-linear-to-r from-purple-600 to-pink-600 flex items-center justify-center text-4xl">
                 👤
               </div>
               <div className="flex-1">
@@ -285,7 +278,7 @@ export default function StatsPage() {
                 <div className="text-sm">First Seen</div>
                 <div className="text-white">{formatDate(player.firstSeen)}</div>
               </div>
-              <div className="flex-1 mx-8 h-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded" />
+              <div className="flex-1 mx-8 h-0.5 bg-linear-to-r from-purple-500 to-pink-500 rounded" />
               <div className="text-right">
                 <div className="text-sm">Last Seen</div>
                 <div className="text-white">{formatDate(player.lastSeen)}</div>

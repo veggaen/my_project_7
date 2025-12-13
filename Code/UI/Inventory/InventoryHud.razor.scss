@@ -1,8 +1,16 @@
 // Inventory HUD - Matching PlayerHud style
-InventoryHud {
+// IMPORTANT: target both the component panel and its Razor <root> so the panel
+// sizes to its content (otherwise anchoring/clamping can treat it as full-screen).
+InventoryHud,
+root {
 	position: absolute;
-	right: 20px;
-	top: 20px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: flex-start;
+	width: auto;
+	height: auto;
+	overflow: visible;
 	font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
 	color: #ffffff;
 	pointer-events: none; // Don't block mouse when closed!
@@ -17,7 +25,25 @@ InventoryHud {
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
+		overflow: visible;
 		pointer-events: all; // Enable mouse interaction when bag is open
+	}
+
+	.inventory-root {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		justify-content: flex-start;
+		width: auto;
+		height: auto;
+		overflow: visible;
+	}
+
+	.inventory-body {
+		display: flex;
+		flex-direction: row;
+		gap: 14px;
+		align-items: flex-start;
 	}
 
 	.inventory-header {
@@ -44,6 +70,14 @@ InventoryHud {
 		}
 	}
 
+	.inventory-selected {
+		font-size: 12px;
+		font-weight: 650;
+		color: rgba(226, 232, 240, 0.92);
+		opacity: 0.95;
+		margin-top: -4px;
+	}
+
 	.inventory-grid {
 		display: flex;
 		flex-wrap: wrap;
@@ -53,10 +87,69 @@ InventoryHud {
 		width: 520px;
 	}
 
+	.item-details {
+		width: 240px;
+		padding: 10px 10px;
+		border-radius: 8px;
+		background-color: rgba(15, 23, 42, 0.85);
+		border: 1px solid rgba(99, 102, 241, 0.25);
+	}
+
+	.item-details-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		margin-bottom: 8px;
+	}
+
+	.item-details-title {
+		font-size: 14px;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: rgba(226, 232, 240, 0.95);
+	}
+
+	.item-details-close {
+		padding: 4px 8px;
+		border-radius: 6px;
+		background-color: rgba(99, 102, 241, 0.18);
+		border: 1px solid rgba(99, 102, 241, 0.28);
+		color: rgba(226, 232, 240, 0.95);
+		font-size: 12px;
+		cursor: pointer;
+	}
+
+	.item-details-icon {
+		width: 64px;
+		height: 64px;
+		border-radius: 10px;
+		background-color: rgba(2, 6, 23, 0.35);
+		border: 1px solid rgba(148, 163, 184, 0.18);
+		background-size: contain;
+		background-repeat: no-repeat;
+		background-position: center;
+		margin-bottom: 10px;
+	}
+
+	.item-details-name {
+		font-size: 16px;
+		font-weight: 800;
+		color: rgba(226, 232, 240, 0.98);
+		margin-bottom: 6px;
+	}
+
+	.item-details-desc {
+		font-size: 13px;
+		line-height: 18px;
+		color: rgba(203, 213, 225, 0.92);
+	}
+
 	.inventory-slot {
 		width: 40px;
 		height: 40px;
-		background: rgba(20, 20, 30, 0.7);
+		background-color: rgba(20, 20, 30, 0.7);
 		border: 1px solid rgba(255, 255, 255, 0.15);
 		border-radius: 3px;
 		position: relative;
@@ -64,13 +157,18 @@ InventoryHud {
 		transition: all 0.1s ease;
 
 		&:hover {
-			background: rgba(60, 80, 120, 0.5);
+			background-color: rgba(60, 80, 120, 0.5);
 			border-color: rgba(100, 150, 255, 0.6);
 			transform: scale(1.05);
 		}
 
+		&.selected {
+			border-color: rgba(99, 102, 241, 0.75);
+			box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.20);
+		}
+
 		&.has-item {
-			background: rgba(50, 60, 80, 0.8);
+			background-color: rgba(50, 60, 80, 0.8);
 			border-color: rgba(100, 150, 200, 0.4);
 		}
 
@@ -79,7 +177,12 @@ InventoryHud {
 			top: 50%;
 			left: 50%;
 			transform: translate(-50%, -50%);
-			font-size: 24px;
+			width: 28px;
+			height: 28px;
+			background-size: contain;
+			background-repeat: no-repeat;
+			background-position: center;
+			font-size: 18px;
 			pointer-events: none;
 		}
 

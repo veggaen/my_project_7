@@ -81,7 +81,7 @@ public static class VeggaItemRegistry
 			IconPath = "ui/items/gold_coin.png",
 			ModelPath = "models/items/gold_coin.vmdl",
 			Value = 1,
-			MaxStack = 999999,
+			MaxStack = int.MaxValue,
 			Category = ItemCategory.Currency,
 			Rarity = ItemRarity.Common
 		} );
@@ -92,11 +92,11 @@ public static class VeggaItemRegistry
 			Id = 100,
 			Name = "200g Gold Bar",
 			Description = "A solid gold bar weighing 200 grams. Can be slowly shaved by hand or rapidly smelted at a furnace.",
-			IconPath = "ui/items/gold_bar.png",
+			IconPath = "ui/items/gold_bar.svg",
 			ModelPath = "goldbar/gold_bar.vmdl",
 			// New design: 1 gram = $1. A 200g bar is worth $200.
 			Value = 200,
-			MaxStack = 1, // Non-stackable so each bar can track its own grams
+			MaxStack = int.MaxValue,
 			Category = ItemCategory.Material,
 			Rarity = ItemRarity.Rare,
 			MaxGrams = 200,
@@ -117,12 +117,13 @@ public static class VeggaItemRegistry
 			Id = 101,
 			Name = "500g Gold Bar",
 			Description = "A hefty gold bar weighing 500 grams. Worth about $500 in coins.",
-			IconPath = "ui/items/gold_bar_large.png",
+			IconPath = "ui/items/gold_bar_large.svg",
 			ModelPath = "goldbar/gold_bar_large.vmdl",
 			Value = 500,
-			MaxStack = 50,
+			MaxStack = int.MaxValue,
 			Category = ItemCategory.Material,
 			Rarity = ItemRarity.Epic,
+			MaxGrams = 500,
 			CraftInto = new List<CraftRecipe>
 			{
 				new CraftRecipe

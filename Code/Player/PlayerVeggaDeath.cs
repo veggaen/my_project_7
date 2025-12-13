@@ -21,6 +21,7 @@ public sealed class PlayerVeggaDeath : Component
 	SkinnedModelRenderer ModelRenderer { get; set; }
 	ModelPhysics RagdollPhysics { get; set; }
 	CameraComponent Camera { get; set; }
+	bool _subscribedToStats;
 
 	// Death state
 	[Sync] public bool IsDead { get; private set; }
@@ -47,6 +48,25 @@ public sealed class PlayerVeggaDeath : Component
 
 	protected override void OnStart()
 	{
+		EnsureStatsHooked();
+	}
+
+	protected override void OnUpdate()
+	{
+		EnsureStatsHooked();
+
+		if ( IsDead )
+		{
+			TimeSinceDeath += Time.Delta;
+			UpdateDeathCamera();
+		}
+	}
+
+	void EnsureStatsHooked()
+	{
+		if ( _subscribedToStats && Stats.IsValid() )
+			return;
+
 		// If Stats wasn't found on this GameObject, try to locate the correct
 		// PlayerVeggaStats in the scene owned by the same connection.
 		if ( Stats == null )
@@ -58,25 +78,22 @@ public sealed class PlayerVeggaDeath : Component
 					.GetAllComponents<PlayerVeggaStats>()
 					.FirstOrDefault( s => s.Network.Owner == owner );
 			}
-
-			if ( Stats == null )
-			{
-				Log.Warning( "PlayerVeggaDeath: No PlayerVeggaStats found!" );
-				return;
-			}
 		}
 
-		// Subscribe to stats changes
-		Stats.OnHealthChanged += CheckDeath;
-	}
-
-	protected override void OnUpdate()
-	{
-		if ( IsDead )
+		if ( Stats == null || !Stats.IsValid() )
 		{
-			TimeSinceDeath += Time.Delta;
-			UpdateDeathCamera();
+			if ( !_subscribedToStats )
+				Log.Warning( "PlayerVeggaDeath: No PlayerVeggaStats found yet (will retry)." );
+			return;
 		}
+
+		// Subscribe to stats changes once.
+		Stats.OnHealthChanged -= CheckDeath;
+		Stats.OnHealthChanged += CheckDeath;
+		_subscribedToStats = true;
+
+		// If we started late and the player is already at 0 HP, trigger immediately.
+		CheckDeath();
 	}
 
 	void CheckDeath()
@@ -291,19 +308,29 @@ public sealed class PlayerVeggaDeath : Component
 			.Where( x => x.Enabled )
 			.ToList();
 
-		if ( spawnPoints.Count == 0 )
+		if ( spawnPoints.Count > 0 )
 		{
-			Log.Warning( "No spawn points found! Player will respawn at origin." );
-			WorldPosition = Vector3.Zero;
+			// Pick random Vegga spawn point
+			var spawnPoint = Random.Shared.FromList( spawnPoints );
+			WorldPosition = spawnPoint.WorldPosition;
+			WorldRotation = spawnPoint.WorldRotation;
+			Log.Info( $"📍 Respawned at VeggaSpawnPoint: {WorldPosition}" );
 			return;
 		}
 
-		// Pick random spawn point
-		var spawnPoint = Random.Shared.FromList( spawnPoints );
-		WorldPosition = spawnPoint.WorldPosition;
-		WorldRotation = spawnPoint.WorldRotation;
+		// Fallback: use built-in map SpawnPoint components if the map has them.
+		var mapSpawnPoints = Scene.GetAllComponents<SpawnPoint>().ToList();
+		if ( mapSpawnPoints.Count > 0 )
+		{
+			var mapSpawn = Random.Shared.FromList( mapSpawnPoints );
+			WorldPosition = mapSpawn.WorldPosition;
+			WorldRotation = mapSpawn.WorldRotation;
+			Log.Info( $"📍 Respawned at map SpawnPoint: {WorldPosition}" );
+			return;
+		}
 
-		Log.Info( $"📍 Respawned at: {WorldPosition}" );
+		Log.Warning( "No spawn points found (VeggaSpawnPoint or SpawnPoint). Respawning at origin." );
+		WorldPosition = Vector3.Zero;
 	}
 
 	/// <summary>

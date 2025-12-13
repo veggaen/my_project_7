@@ -357,26 +357,26 @@
             "OwnerTransfer": 1,
             "Components": [],
             "Children": []
+          },
+          {
+            "__guid": "97b5b698-ed5c-4cef-af55-03d7e80d179a",
+            "__version": 1,
+            "Flags": 0,
+            "Name": "LowerBack",
+            "Position": "-6.272505,0,33.49739",
+            "Rotation": "0,0,0,1",
+            "Scale": "1,1,1",
+            "Tags": "",
+            "Enabled": true,
+            "NetworkMode": 2,
+            "NetworkInterpolation": true,
+            "NetworkOrphaned": 0,
+            "NetworkTransmit": true,
+            "OwnerTransfer": 1,
+            "Components": [],
+            "Children": []
           }
         ]
-      },
-      {
-        "__guid": "97b5b698-ed5c-4cef-af55-03d7e80d179a",
-        "__version": 1,
-        "Flags": 0,
-        "Name": "LowerBack",
-        "Position": "-6.272505,0,33.49739",
-        "Rotation": "0,0,0,1",
-        "Scale": "1,1,1",
-        "Tags": "",
-        "Enabled": true,
-        "NetworkMode": 2,
-        "NetworkInterpolation": true,
-        "NetworkOrphaned": 0,
-        "NetworkTransmit": true,
-        "OwnerTransfer": 1,
-        "Components": [],
-        "Children": []
       }
     ],
     "__properties": {

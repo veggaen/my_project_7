@@ -1,6 +1,7 @@
 ﻿using Sandbox;
 using System;
 using System.Linq;
+using Sandbox.UI;
 
 public sealed class CameraVeggaMovement : Component
 {
@@ -97,25 +98,26 @@ public sealed class CameraVeggaMovement : Component
 		if ( _camera is null || Head is null )
 			return;
 
-		// If HUD layout mode is active, stop camera input so the user can use the mouse
-		// for UI instead of aiming. Mouse visibility is handled from the overlay panel.
-		if ( Sandbox.UI.VeggaHudLayoutState.IsActive )
-		{
-			return;
-		}
+		// Keep mouse mode consistent across all UI flows.
+		VeggaUiMouse.Apply();
 
-		HandleInput();
-
-		// Mouse look: instant & snappy – pure FPS feeling
 		var eyeAngles = Head.Transform.Rotation.Angles();
-		eyeAngles.pitch -= Input.MouseDelta.y * -0.009f;
-		eyeAngles.yaw -= Input.MouseDelta.x * 0.009f;
-		eyeAngles.roll = 0f;
-		eyeAngles.pitch = eyeAngles.pitch.Clamp( -89.9f, 89.9f );
-		Head.Transform.Rotation = eyeAngles.ToRotation();
 
-		// 🎯 MULTIPLAYER: Sync head rotation to PlayerVeggaMovement (only for owner!)
-		Player.TargetHeadAngle = eyeAngles;
+		// If any UI needs the cursor, suppress camera look input (but keep camera tracking).
+		if ( !VeggaUiMouse.WantsUiMouse )
+		{
+			HandleInput();
+
+			// Mouse look: instant & snappy – pure FPS feeling
+			eyeAngles.pitch -= Input.MouseDelta.y * -0.009f;
+			eyeAngles.yaw -= Input.MouseDelta.x * 0.009f;
+			eyeAngles.roll = 0f;
+			eyeAngles.pitch = eyeAngles.pitch.Clamp( -89.9f, 89.9f );
+			Head.Transform.Rotation = eyeAngles.ToRotation();
+
+			// 🎯 MULTIPLAYER: Sync head rotation to PlayerVeggaMovement (only for owner!)
+			Player.TargetHeadAngle = eyeAngles;
+		}
 
 		// Smooth FP <-> TP distance
 		_currentDistance = _currentDistance + (_targetDistance - _currentDistance) * DistanceLerpSpeed * Time.Delta;
@@ -180,7 +182,7 @@ public sealed class CameraVeggaMovement : Component
 			// --- Third person: over-the-shoulder ---
 
 			// Extra zoom when shoulder blend is near 0 (mid swap / high movement)
-			float shoulderMidT = 1f - MathF.Min( 1f, MathF.Abs( _shoulderBlend ) ); // 1 at centre, 0 at edges
+			float shoulderMidT = 1f - Math.Min( 1f, Math.Abs( _shoulderBlend ) ); // 1 at centre, 0 at edges
 			float distanceMul = 1f + ShoulderMidZoomFactor * shoulderMidT;
 
 			float effectiveDistance = _currentDistance * distanceMul;
