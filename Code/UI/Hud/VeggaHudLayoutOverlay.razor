@@ -13,19 +13,6 @@
 			<div class="layout-header">
 				<h2 class="layout-title">Layout Editor</h2>
 				<p class="layout-subtitle">Changes auto-save instantly ・ ESC exits</p>
-				@if ( _screenCalibStep == 1 )
-				{
-					<p class="layout-subtitle calibrating">Screen calibration: RIGHT-CLICK the TOP-LEFT corner of your usable area</p>
-				}
-				else if ( _screenCalibStep == 2 )
-				{
-					<p class="layout-subtitle calibrating">Screen calibration: RIGHT-CLICK the BOTTOM-RIGHT corner of your usable area</p>
-				}
-				else if ( VeggaHudLayoutState.HasSafeAreaForCurrentScreen() )
-				{
-					var (min, max) = VeggaHudLayoutState.GetSafeAreaNormalized();
-					<p class="layout-subtitle calibrated">Screen safe-area active ・ min=@min max=@max (use Clear Screen if wrong)</p>
-				}
 			</div>
 
 			@* Element Selector *@
@@ -126,26 +113,14 @@
 			@* Actions *@
 			<div class="layout-actions">
 				<button class="action-btn reset" onclick="@ResetLayout">Reset All</button>
-				<button class="action-btn calibrate" onclick="@CalibrateSelected" disabled="@(SelectedElement == null)">Calibrate</button>
-				<button class="action-btn calibrate" onclick="@StartScreenCalibrate">@(_screenCalibStep == 0 ? "Screen Calibrate" : "Cancel Calibrate")</button>
-				<button class="action-btn reset-selected" onclick="@ClearScreenCalibrate" disabled="@(!VeggaHudLayoutState.HasSafeAreaForCurrentScreen())">Clear Screen</button>
-				<button class="action-btn reset-selected" onclick="@ToggleDebug">Debug: @(_debug ? "On" : "Off")</button>
 				<button class="action-btn reset-selected" onclick="@ResetSelected" disabled="@(SelectedElement == null)">Reset Selected</button>
+				<button class="action-btn reset-selected" onclick="@ToggleDebug">Debug: @(_debug ? "On" : "Off")</button>
 				<button class="action-btn done" onclick="@ExitLayout">Save &amp; Exit</button>
 			</div>
 		</div>
 
 		@* Visual guides showing current positions *@
 		<div class="position-guides">
-			@if ( _screenCalibStep != 0 || VeggaHudLayoutState.HasSafeAreaForCurrentScreen() )
-			{
-				var (safeMin, safeMax) = VeggaHudLayoutState.GetSafeAreaNormalized();
-				var left = safeMin.x * 100;
-				var top = safeMin.y * 100;
-				var width = (safeMax.x - safeMin.x) * 100;
-				var height = (safeMax.y - safeMin.y) * 100;
-				<div class="safe-area-rect" style="left: @left%; top: @top%; width: @width%; height: @height%;"></div>
-			}
 			@foreach ( var key in GetElementKeys() )
 			{
 				var pos = GetGuidePosition(key);
@@ -184,8 +159,6 @@
 	float _nudgePixels { get; set; } = 4f;
 	TextEntry _nudgeEntry;
 
-	int _screenCalibStep;
-	Vector2 _screenCalibTopLeft;
 	bool _debug;
 
 	string FormatNudgeLabel( float px )
@@ -320,33 +293,8 @@
 		if ( active && Input.EscapePressed )
 		{
 			Input.EscapePressed = false;
-			// Cancel calibration if mid-flow, but always allow exiting layout.
-			_screenCalibStep = 0;
 			ExitLayout();
 			return;
-		}
-
-		// Screen safe-area calibration uses RIGHT-CLICK to avoid button-click conflicts.
-		if ( active && _screenCalibStep != 0 && Input.Pressed( "attack2" ) )
-		{
-			var screen = Screen.Size;
-			if ( screen.x > 0 && screen.y > 0 )
-			{
-				var mp = Mouse.Position;
-				var norm = new Vector2( mp.x / screen.x, mp.y / screen.y );
-				if ( _screenCalibStep == 1 )
-				{
-					_screenCalibTopLeft = norm;
-					_screenCalibStep = 2;
-					Log.Info( $"[HUD SafeArea] Step 1 (top-left) = {_screenCalibTopLeft}" );
-				}
-				else
-				{
-					VeggaHudLayoutState.SetSafeAreaNormalized( _screenCalibTopLeft, norm );
-					_screenCalibStep = 0;
-					Log.Info( $"[HUD SafeArea] Step 2 (bottom-right) = {norm}" );
-				}
-			}
 		}
 
 		if ( active != _lastActive )
@@ -382,51 +330,10 @@
 
 	void ResetLayout()
 	{
-		ResetAllPositions();
-		Log.Info( "[HUD Layout] Reset all positions to default" );
-	}
-
-	void StartScreenCalibrate()
-	{
-		if ( _screenCalibStep == 0 )
-		{
-			_screenCalibStep = 1;
-			Log.Info( "[HUD SafeArea] Started calibration (right-click points)" );
-		}
-		else
-		{
-			_screenCalibStep = 0;
-			Log.Info( "[HUD SafeArea] Canceled calibration" );
-		}
-	}
-
-	void ClearScreenCalibrate()
-	{
-		VeggaHudLayoutState.ClearSafeAreaForCurrentScreen();
-		_screenCalibStep = 0;
-	}
-
-	void CalibrateSelected()
-	{
-		if ( SelectedElement == null ) return;
-
-		var current = VeggaHudLayoutState.GetPosition( SelectedElement, VeggaHudLayoutState.GetDefaultPosition( SelectedElement ) );
-		VeggaHudLayoutState.ScreenPosition best = VeggaHudLayoutState.ScreenPosition.MiddleCenter;
-		float bestDist = float.MaxValue;
-
-		foreach ( var kv in VeggaHudLayoutState.PresetPositions )
-		{
-			var d = kv.Value - current;
-			float dist = (d.x * d.x) + (d.y * d.y);
-			if ( dist < bestDist )
-			{
-				bestDist = dist;
-				best = kv.Key;
-			}
-		}
-
-		VeggaHudLayoutState.SetPreset( SelectedElement, best );
-		Log.Info( $"[HUD Layout] Calibrated {SelectedElement} -> {best}" );
+		// "Reset All" should fully clean saved state (including any historical calibration data)
+		// and revert to defaults.
+		VeggaHudLayoutState.WipeAllSavedLayoutData();
+		Log.Info( "[HUD Layout] Reset all (wiped saved layout)" );
 	}
 
 	void ResetSelected()

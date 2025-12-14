@@ -1,6 +1,7 @@
 @using Sandbox
 @using Sandbox.UI
 @using System
+@using Sandbox.Money
 @namespace Sandbox.UI
 @inherits PanelComponent
 @* Force recompile - Dec 11 2025 *@
@@ -24,32 +25,11 @@
 						@for ( int i = 0; i < _totalSlots; i++ )
 						{
 							int slotIndex = i;
-							int itemId = (slotIndex < _usedSlots) ? (_inventory?.GetSlotItemId( slotIndex ) ?? 0) : 0;
-							int itemCount = (slotIndex < _usedSlots) ? (_inventory?.GetSlotCount( slotIndex ) ?? 0) : 0;
-							var def = (slotIndex < _usedSlots) ? VeggaItemRegistry.Get( itemId ) : null;
-							string iconPath = def?.IconPath;
-							bool hasItem = slotIndex < _usedSlots;
-							bool isSelected = hasItem && slotIndex == _selectedSlotIndex;
-
-							<div class="inventory-slot @(hasItem ? "has-item" : "") @(isSelected ? "selected" : "")"
-								 onclick="@(() => SelectSlot(slotIndex))">
-								@if ( hasItem )
-								{
-									@if ( !string.IsNullOrWhiteSpace( iconPath ) )
-									{
-										<div class="item-icon" style="background-image: url('/@iconPath');"></div>
-									}
-									else
-									{
-										<div class="item-icon">?</div>
-									}
-
-									@if ( itemCount > 1 )
-									{
-										<div class="item-count">@itemCount</div>
-									}
-								}
-							</div>
+							bool isSelected = slotIndex == _selectedSlotIndex && _inventory != null && _inventory.IsValid() && _inventory.GetSlotItemId( slotIndex ) > 0;
+							<InventoryHudSlot Inventory="@_inventory"
+											 SlotIndex="@slotIndex"
+											 IsSelected="@isSelected"
+											 OnSelected="@SelectSlot" />
 						}
 					</div>
 
@@ -62,11 +42,18 @@
 							</div>
 							@if ( _selectedItemDef != null )
 							{
-								@if ( !string.IsNullOrWhiteSpace( _selectedItemDef.IconPath ) )
+								var selUrl = InventoryHudSlot.ResolveCssUrl( _selectedItemDef.IconPath );
+								bool selIsCash = _selectedItemId == VeggaCurrency.CashItemId;
+								@if ( !string.IsNullOrWhiteSpace( selUrl ) )
 								{
-									<div class="item-details-icon" style="background-image: url('/@_selectedItemDef.IconPath');"></div>
+									<div class="item-details-icon" style="background-image: url('@selUrl');"></div>
+								}
+								else if ( selIsCash )
+								{
+									<div class="item-details-icon currency">$</div>
 								}
 								<div class="item-details-name">@_selectedItemDef.Name</div>
+								<div class="item-details-qty">Quantity: @(selIsCash ? VeggaCurrency.FormatCompact( _selectedItemCount ) : _selectedItemCount.ToString())</div>
 								@if ( !string.IsNullOrWhiteSpace( _selectedItemDef.Description ) )
 								{
 									<div class="item-details-desc">@_selectedItemDef.Description</div>
@@ -93,6 +80,7 @@
 
 	bool _isOpen = false;
 	public static bool IsOpenGlobal { get; private set; }
+	static InventoryHud _instance;
 
 	int _columns = 12;
 	int _rows = 8;
@@ -100,6 +88,8 @@
 	int _usedSlots = 0;
 	VeggaInventory _inventory;
 	int _selectedSlotIndex = -1;
+	int _selectedItemId = 0;
+	int _selectedItemCount = 0;
 	VeggaItemDef _selectedItemDef;
 	bool _showItemDetails = false;
 
@@ -113,8 +103,18 @@
 
 	protected override void OnStart()
 	{
+		_instance = this;
 		_layoutPos = VeggaHudLayoutState.GetPosition( InventoryKey, _layoutPos );
 		_layoutScale = VeggaHudLayoutState.GetScale( InventoryKey, 1f );
+	}
+
+	public static void ForceClose()
+	{
+		IsOpenGlobal = false;
+		if ( _instance == null ) return;
+		_instance._isOpen = false;
+		_instance._showItemDetails = false;
+		_instance.StateHasChanged();
 	}
 
 	protected override void OnUpdate()
@@ -152,8 +152,10 @@
 			_totalSlots = _inventory.TotalSlots;
 			_usedSlots = _inventory.UsedSlots;
 
-			// Keep selection safe if inventory shrinks.
-			if ( _selectedSlotIndex >= _usedSlots )
+			// Keep selection safe if slot becomes empty or inventory shrinks.
+			if ( _selectedSlotIndex < 0
+				|| _selectedSlotIndex >= _totalSlots
+				|| _inventory.GetSlotItemId( _selectedSlotIndex ) <= 0 )
 			{
 				_selectedSlotIndex = -1;
 				_selectedItemDef = null;
@@ -175,15 +177,21 @@
 	{
 		if ( _inventory == null || !_inventory.IsValid() )
 			return;
-		if ( slotIndex < 0 || slotIndex >= _usedSlots )
+		if ( slotIndex < 0 || slotIndex >= _totalSlots )
+			return;
+		int itemId = _inventory.GetSlotItemId( slotIndex );
+		if ( itemId <= 0 )
 			return;
 
 		_selectedSlotIndex = slotIndex;
-		int itemId = _inventory.GetSlotItemId( slotIndex );
-		_selectedItemDef = VeggaItemRegistry.Get( itemId );
+		_selectedItemId = itemId;
+		_selectedItemCount = _inventory.GetSlotCount( slotIndex );
+		_selectedItemDef = VeggaItemRegistry.Get( _selectedItemId );
 		_showItemDetails = true;
 		StateHasChanged();
 	}
+
+
 
 	void CloseItemDetails()
 	{

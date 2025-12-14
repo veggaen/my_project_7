@@ -191,7 +191,18 @@ public static class SkillDebugCommands
 					var data = FileSystem.Data.ReadJson<PlayerDataManager.PlayerData>( filePath );
 					if ( data != null )
 					{
-						Log.Info( $"[Money] Saved money in file: ${data.Money}" );
+						int savedCash = 0;
+						if ( data.ItemIds != null && data.ItemCounts != null )
+						{
+							for ( int i = 0; i < data.ItemIds.Count && i < data.ItemCounts.Count; i++ )
+							{
+								if ( data.ItemIds[i] == 1 )
+									savedCash += data.ItemCounts[i];
+							}
+						}
+
+						Log.Info( $"[Money] Saved legacy Money field: ${data.Money} (should be 0)" );
+						Log.Info( $"[Money] Saved cash (ItemId=1): ${savedCash}" );
 						Log.Info( $"[Money] Saved name: {data.PreferredUsername}" );
 						Log.Info( $"[Money] Last seen: {data.LastSeen}" );
 					}

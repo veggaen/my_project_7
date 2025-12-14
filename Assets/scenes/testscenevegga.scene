@@ -148,68 +148,7 @@
       "__version": 1,
       "__Prefab": "goldbar_200g.prefab",
       "__PrefabInstancePatch": {
-        "AddedObjects": [
-          {
-            "Id": {
-              "Type": "Component",
-              "IdValue": "6a372b1f-b117-4541-a300-fdb4af481867"
-            },
-            "Parent": {
-              "Type": "GameObject",
-              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
-            },
-            "PreviousElement": {
-              "Type": "Component",
-              "IdValue": "e30268ea-c554-4261-b147-a69f0cd9b3b1"
-            },
-            "ContainerProperty": "Components",
-            "IsContainerArray": true,
-            "Data": {
-              "__type": "Sandbox.UI.PickupHint",
-              "__guid": "6a372b1f-b117-4541-a300-fdb4af481867",
-              "__enabled": true,
-              "OnComponentDestroy": null,
-              "OnComponentDisabled": null,
-              "OnComponentEnabled": null,
-              "OnComponentFixedUpdate": null,
-              "OnComponentStart": null,
-              "OnComponentUpdate": null
-            }
-          },
-          {
-            "Id": {
-              "Type": "Component",
-              "IdValue": "f9ce4cfc-4b49-4bf0-9a61-88262bbadcc5"
-            },
-            "Parent": {
-              "Type": "GameObject",
-              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
-            },
-            "PreviousElement": {
-              "Type": "Component",
-              "IdValue": "6a372b1f-b117-4541-a300-fdb4af481867"
-            },
-            "ContainerProperty": "Components",
-            "IsContainerArray": true,
-            "Data": {
-              "__type": "Sandbox.VeggaPickupItem",
-              "__guid": "f9ce4cfc-4b49-4bf0-9a61-88262bbadcc5",
-              "__enabled": true,
-              "AutoLootRange": 150,
-              "InteractRange": 100,
-              "ItemId": 100,
-              "OnComponentDestroy": null,
-              "OnComponentDisabled": null,
-              "OnComponentEnabled": null,
-              "OnComponentFixedUpdate": null,
-              "OnComponentStart": null,
-              "OnComponentUpdate": null,
-              "PickupDelay": 0,
-              "Quantity": 1,
-              "ShowFloatingName": true
-            }
-          }
-        ],
+        "AddedObjects": [],
         "RemovedObjects": [],
         "PropertyOverrides": [
           {
@@ -218,7 +157,15 @@
               "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
             },
             "Property": "Position",
-            "Value": "-102.3864,-135.6754,75.66397"
+            "Value": "-102.3864,-192,75.66397"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Rotation",
+            "Value": "0,0,-0.1305262,0.9914449"
           }
         ],
         "MovedObjects": []
@@ -227,7 +174,172 @@
         "a60897c4-4e3f-4bd9-9550-71bcef729351": "3543763c-fff4-4000-a4bd-7f051ae682e9",
         "1206e36a-e07c-457a-b453-b8b601996954": "1d5b6c67-e36b-4e07-a358-6afcd4064e86",
         "0c88af7c-799b-4da0-999f-948fb9042199": "b9754f9c-e681-4121-bc2a-6768c0bc6158",
-        "e30268ea-c554-4261-b147-a69f0cd9b3b1": "0f34d27b-e7a4-4102-81e0-fa99cf890f0d"
+        "e30268ea-c554-4261-b147-a69f0cd9b3b1": "0f34d27b-e7a4-4102-81e0-fa99cf890f0d",
+        "d1be29c1-ffac-4b05-aff2-b81885c7a7d6": "0e572c35-d5bd-4c3b-9f3a-c9ead19fe705"
+      }
+    },
+    {
+      "__guid": "4aaf76d1-db14-4a78-a058-714fbf74ce75",
+      "__version": 1,
+      "__Prefab": "goldbar_200g.prefab",
+      "__PrefabInstancePatch": {
+        "AddedObjects": [],
+        "RemovedObjects": [],
+        "PropertyOverrides": [
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Name",
+            "Value": "goldbar_200g (1)"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Position",
+            "Value": "-85.68253,-192,86.02557"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Rotation",
+            "Value": "0,0,0.1305262,0.9914449"
+          }
+        ],
+        "MovedObjects": []
+      },
+      "__PrefabIdToInstanceId": {
+        "a60897c4-4e3f-4bd9-9550-71bcef729351": "4aaf76d1-db14-4a78-a058-714fbf74ce75",
+        "1206e36a-e07c-457a-b453-b8b601996954": "1fea29f4-ffec-44d2-a4b3-7e145e7d34de",
+        "0c88af7c-799b-4da0-999f-948fb9042199": "51958d76-4d10-4249-a548-bf99fd248cc2",
+        "e30268ea-c554-4261-b147-a69f0cd9b3b1": "b3bcf18d-ee05-4e60-9172-9595f32fea8e",
+        "d1be29c1-ffac-4b05-aff2-b81885c7a7d6": "0d6e5c7c-90bb-4b63-93db-645ece14e9a8"
+      }
+    },
+    {
+      "__guid": "a2570f8f-f409-417b-add8-7c10b1c4e45e",
+      "__version": 1,
+      "__Prefab": "goldbar_200g.prefab",
+      "__PrefabInstancePatch": {
+        "AddedObjects": [],
+        "RemovedObjects": [],
+        "PropertyOverrides": [
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Name",
+            "Value": "goldbar_200g (2)"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Position",
+            "Value": "-85.68253,-179.2561,86.02557"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Rotation",
+            "Value": "0,0,-0.1305262,0.9914449"
+          }
+        ],
+        "MovedObjects": []
+      },
+      "__PrefabIdToInstanceId": {
+        "a60897c4-4e3f-4bd9-9550-71bcef729351": "a2570f8f-f409-417b-add8-7c10b1c4e45e",
+        "1206e36a-e07c-457a-b453-b8b601996954": "19e6b877-bc45-4955-89d4-2e3d4084fbd7",
+        "0c88af7c-799b-4da0-999f-948fb9042199": "9a11a74d-88a9-4590-9770-be41232ac46a",
+        "e30268ea-c554-4261-b147-a69f0cd9b3b1": "c1473dab-ba47-40e0-88d0-24545077ffff",
+        "d1be29c1-ffac-4b05-aff2-b81885c7a7d6": "e2dc2e4f-1c3a-404b-bb71-103db0a97c45"
+      }
+    },
+    {
+      "__guid": "aad238ad-17d9-4530-aed1-34ec6148444d",
+      "__version": 1,
+      "__Prefab": "goldbar_200g.prefab",
+      "__PrefabInstancePatch": {
+        "AddedObjects": [],
+        "RemovedObjects": [],
+        "PropertyOverrides": [
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Name",
+            "Value": "goldbar_200g (3)"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Position",
+            "Value": "-85.68253,-182.9517,94.94917"
+          }
+        ],
+        "MovedObjects": []
+      },
+      "__PrefabIdToInstanceId": {
+        "a60897c4-4e3f-4bd9-9550-71bcef729351": "aad238ad-17d9-4530-aed1-34ec6148444d",
+        "1206e36a-e07c-457a-b453-b8b601996954": "a7a31827-e2e8-49fe-a17c-ece8f3770e2f",
+        "0c88af7c-799b-4da0-999f-948fb9042199": "c42308eb-b8dc-466a-b7c3-9f038dfa7b60",
+        "e30268ea-c554-4261-b147-a69f0cd9b3b1": "b50748d7-0a9e-4c6a-ba11-8fac2f2386b2",
+        "d1be29c1-ffac-4b05-aff2-b81885c7a7d6": "b684f052-bbe9-4bdf-a41f-f84176a5dc51"
+      }
+    },
+    {
+      "__guid": "f43ab9f7-3197-480e-8f5d-ccda57b30a96",
+      "__version": 1,
+      "__Prefab": "goldbar_200g.prefab",
+      "__PrefabInstancePatch": {
+        "AddedObjects": [],
+        "RemovedObjects": [],
+        "PropertyOverrides": [
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Name",
+            "Value": "goldbar_200g (4)"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Position",
+            "Value": "-85.68253,-187.9568,99.5078"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "a60897c4-4e3f-4bd9-9550-71bcef729351"
+            },
+            "Property": "Rotation",
+            "Value": "0,0,-0.1305262,0.9914449"
+          }
+        ],
+        "MovedObjects": []
+      },
+      "__PrefabIdToInstanceId": {
+        "a60897c4-4e3f-4bd9-9550-71bcef729351": "f43ab9f7-3197-480e-8f5d-ccda57b30a96",
+        "1206e36a-e07c-457a-b453-b8b601996954": "ca1528f1-14b3-4265-895f-fce81e5a7de7",
+        "0c88af7c-799b-4da0-999f-948fb9042199": "9b27a2f3-13d8-44c7-956d-8626896d1397",
+        "e30268ea-c554-4261-b147-a69f0cd9b3b1": "92c3ddb4-911e-4c11-b193-aa67f21b5596",
+        "d1be29c1-ffac-4b05-aff2-b81885c7a7d6": "f4ba560c-529a-4127-abbe-710ce3398c44"
       }
     },
     {
@@ -698,54 +810,41 @@
     {
       "__guid": "a2ae06d3-5c3c-4290-9c9f-015eeac803d8",
       "__version": 1,
-      "Flags": 0,
-      "Name": "single_clean_bended",
-      "Position": "19.06461,-213.3596,0.1500901",
-      "Rotation": "0,0,0,1",
-      "Scale": "1,1,1",
-      "Tags": "",
-      "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
-      "NetworkOrphaned": 0,
-      "NetworkTransmit": true,
-      "OwnerTransfer": 1,
-      "Components": [
-        {
-          "__type": "Sandbox.ModelRenderer",
-          "__guid": "5a0be063-c603-4bc1-8e21-d6706b5f0a99",
-          "__enabled": true,
-          "BodyGroups": 18446744073709551615,
-          "CreateAttachments": false,
-          "LodOverride": null,
-          "MaterialGroup": null,
-          "MaterialOverride": null,
-          "Materials": null,
-          "Model": "models/money/single_clean_bended.vmdl",
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "RenderOptions": {
-            "GameLayer": true,
-            "OverlayLayer": false,
-            "BloomLayer": false,
-            "AfterUILayer": false
+      "__Prefab": "moneyveggasystem.prefab",
+      "__PrefabInstancePatch": {
+        "AddedObjects": [],
+        "RemovedObjects": [],
+        "PropertyOverrides": [
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "5eba00bd-4f29-4896-854e-f554f5273131"
+            },
+            "Property": "Name",
+            "Value": "MoneyVeggaSystem"
           },
-          "RenderType": "On",
-          "Tint": "1,1,1,1"
-        }
-      ],
-      "Children": []
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "5eba00bd-4f29-4896-854e-f554f5273131"
+            },
+            "Property": "Position",
+            "Value": "19.06461,-213.3596,0.1500901"
+          }
+        ],
+        "MovedObjects": []
+      },
+      "__PrefabIdToInstanceId": {
+        "5eba00bd-4f29-4896-854e-f554f5273131": "a2ae06d3-5c3c-4290-9c9f-015eeac803d8",
+        "46ddf0d6-8353-4f97-8d89-386aabc15d9d": "5a0be063-c603-4bc1-8e21-d6706b5f0a99"
+      }
     },
     {
       "__guid": "1001bb31-8fe7-4fdc-a3b3-9ef764b5afcb",
       "__version": 1,
       "Flags": 0,
       "Name": "single_clean",
-      "Position": "-14.35359,-237.9092,-0.000007539988",
+      "Position": "-14.35359,-237.9092,1.049555",
       "Rotation": "0,0,0,1",
       "Scale": "1,1,1",
       "Tags": "",
@@ -1164,6 +1263,14 @@
               "Type": "GameObject",
               "IdValue": "3175ce30-2eb8-4bff-b816-107e57e3636a"
             },
+            "Property": "Name",
+            "Value": "logs"
+          },
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "3175ce30-2eb8-4bff-b816-107e57e3636a"
+            },
             "Property": "Position",
             "Value": "-112.3256,-211.5747,3.937"
           }
@@ -1518,123 +1625,30 @@
     {
       "__guid": "d49ffc47-e5e0-4c3d-a604-e3a9744ee8a0",
       "__version": 1,
-      "Flags": 0,
-      "Name": "bowl",
-      "Position": "25.78847,-9.498795,16.0001",
-      "Rotation": "-0.00004458427,-0.000005213544,0.9983041,-0.05821355",
-      "Scale": "1,1,1",
-      "Tags": "",
-      "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
-      "NetworkOrphaned": 0,
-      "NetworkTransmit": true,
-      "OwnerTransfer": 1,
-      "Components": [
-        {
-          "__type": "Sandbox.Prop",
-          "__guid": "cefc52e6-8d8d-4c7c-8e61-d63b987d1af4",
-          "__enabled": true,
-          "BodyGroups": 18446744073709551615,
-          "Health": 0,
-          "IsStatic": false,
-          "MaterialGroup": null,
-          "Model": "models/items/knick_knacks/bowl.vmdl",
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "OnPropBreak": null,
-          "OnPropTakeDamage": null,
-          "StartAsleep": false,
-          "Tint": "1,1,1,1"
-        },
-        {
-          "__type": "Sandbox.ModelRenderer",
-          "__guid": "29282f41-a754-4740-a1f0-55eca68f5509",
-          "__enabled": true,
-          "BodyGroups": 18446744073709551615,
-          "CreateAttachments": false,
-          "LodOverride": null,
-          "MaterialGroup": null,
-          "MaterialOverride": null,
-          "Materials": null,
-          "Model": "models/items/knick_knacks/bowl.vmdl",
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "RenderOptions": {
-            "GameLayer": true,
-            "OverlayLayer": false,
-            "BloomLayer": false,
-            "AfterUILayer": false
-          },
-          "RenderType": "On",
-          "Tint": "1,1,1,1"
-        },
-        {
-          "__type": "Sandbox.ModelCollider",
-          "__guid": "83ca2d03-a30d-4353-adbf-8cf991b77e47",
-          "__enabled": true,
-          "ColliderFlags": 0,
-          "Elasticity": null,
-          "Friction": null,
-          "IsTrigger": false,
-          "Model": "models/items/knick_knacks/bowl.vmdl",
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "OnObjectTriggerEnter": null,
-          "OnObjectTriggerExit": null,
-          "OnTriggerEnter": null,
-          "OnTriggerExit": null,
-          "RollingResistance": null,
-          "Static": false,
-          "Surface": null,
-          "SurfaceVelocity": "0,0,0"
-        },
-        {
-          "__type": "Sandbox.Rigidbody",
-          "__guid": "b37216aa-0cc3-4261-a8e6-a3fa0fe5fe8c",
-          "__enabled": true,
-          "AngularDamping": 0,
-          "EnableImpactDamage": true,
-          "Gravity": true,
-          "GravityScale": 1,
-          "ImpactDamage": 0,
-          "LinearDamping": 0,
-          "Locking": {
-            "X": false,
-            "Y": false,
-            "Z": false,
-            "Pitch": false,
-            "Yaw": false,
-            "Roll": false
-          },
-          "MassCenterOverride": "0,0,0",
-          "MassOverride": 0,
-          "MinImpactDamageSpeed": 500,
-          "MotionEnabled": true,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "OverrideMassCenter": false,
-          "RigidbodyFlags": 0,
-          "StartAsleep": false
-        }
-      ],
-      "Children": []
+      "__Prefab": "crucible.prefab",
+      "__PrefabInstancePatch": {
+        "AddedObjects": [],
+        "RemovedObjects": [],
+        "PropertyOverrides": [
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "2e96fa3f-bd4b-4276-8aa0-d41a534ca6a6"
+            },
+            "Property": "Position",
+            "Value": "25.78847,-9.498795,16.0001"
+          }
+        ],
+        "MovedObjects": []
+      },
+      "__PrefabIdToInstanceId": {
+        "2e96fa3f-bd4b-4276-8aa0-d41a534ca6a6": "d49ffc47-e5e0-4c3d-a604-e3a9744ee8a0",
+        "d426570e-69f9-4332-af8c-55eeb25cdd88": "cefc52e6-8d8d-4c7c-8e61-d63b987d1af4",
+        "52319608-97b5-4af3-8581-5b55ab67a7b2": "29282f41-a754-4740-a1f0-55eca68f5509",
+        "a34207ca-2eeb-42a6-8470-1c02ecd6caf7": "83ca2d03-a30d-4353-adbf-8cf991b77e47",
+        "f2af0d78-2b57-45ae-9734-a95dd52efd56": "b37216aa-0cc3-4261-a8e6-a3fa0fe5fe8c",
+        "eb34670f-f8e8-4b87-89d4-d1e805bf6b21": "c54855f3-2f76-4ca5-98e2-20961b2cc736"
+      }
     },
     {
       "__guid": "e4899dc6-e930-4e48-893f-e701f75d64cf",
@@ -2146,6 +2160,61 @@
         "05e2ba04-bf74-4339-a2ca-33699d39adba": "d0042557-988e-465f-9e0e-8e663f335cf5",
         "70f8c34a-d52b-4a73-8508-b3103c3cdf72": "4e251d18-b1a4-493d-a81c-6e709df8dbd9"
       }
+    },
+    {
+      "__guid": "22d2d7ac-0de0-4cb0-a25d-db5113d0fb54",
+      "__version": 1,
+      "__Prefab": "goldcoin.prefab",
+      "__PrefabInstancePatch": {
+        "AddedObjects": [],
+        "RemovedObjects": [],
+        "PropertyOverrides": [
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "4bc25524-8217-44bb-8265-18b188314d3f"
+            },
+            "Property": "Position",
+            "Value": "-202.8178,-209.6041,0.0000006488134"
+          }
+        ],
+        "MovedObjects": []
+      },
+      "__PrefabIdToInstanceId": {
+        "4bc25524-8217-44bb-8265-18b188314d3f": "22d2d7ac-0de0-4cb0-a25d-db5113d0fb54",
+        "b9adc13d-5856-422b-b272-1b3b806717a2": "7ed6b6f0-b237-403e-8e84-da73a66d45b9",
+        "1e46a574-fc72-4134-ae34-c8932647e422": "d1ec7d45-1e4a-445f-a554-36c7a28c5b05",
+        "61b8d959-4dc5-41b9-bb00-f612701aaa50": "14adc0a1-759c-4907-8ffe-1ffa80ee7db6",
+        "69fb7756-3dfb-45e9-a269-58614c674970": "213e70af-cece-423e-82a3-2a0de275e898",
+        "70f1034c-15c4-4922-8a08-249363f79ac2": "9b5f19de-8b76-46ce-91e1-452a219c2c8f"
+      }
+    },
+    {
+      "__guid": "ed89696a-eccb-48f4-82c4-41bdcabc7b25",
+      "__version": 1,
+      "__Prefab": "bank_box.prefab",
+      "__PrefabInstancePatch": {
+        "AddedObjects": [],
+        "RemovedObjects": [],
+        "PropertyOverrides": [
+          {
+            "Target": {
+              "Type": "GameObject",
+              "IdValue": "5b5b94e7-9bc7-4b0a-ac00-33c49a25697e"
+            },
+            "Property": "Position",
+            "Value": "-63.55295,-316.7802,0.1000299"
+          }
+        ],
+        "MovedObjects": []
+      },
+      "__PrefabIdToInstanceId": {
+        "5b5b94e7-9bc7-4b0a-ac00-33c49a25697e": "ed89696a-eccb-48f4-82c4-41bdcabc7b25",
+        "7b3a167d-99e8-4a2f-bc06-268295120cca": "a0e74d67-42a3-4095-ad15-394ac0ef9615",
+        "248a1092-db25-4a30-9e5f-6f42943b5470": "05569fdd-fd1d-4bef-ae39-4088b4ddd938",
+        "a647031a-73b3-42b9-8d13-63d709a23c30": "85d63574-7c6f-48e5-b8dc-3fd6c033e88e",
+        "24609746-a0d9-42c8-bb20-ebf4352a7231": "9b9cea31-23ef-4684-be34-baab47c8b1db"
+      }
     }
   ],
   "SceneProperties": {
@@ -2180,11 +2249,9 @@
     "kenneynl.hexagonstonehill#80935",
     "kenneynl.hexagonstonemountain#80921",
     "kenneynl.hexagonstonerocks#80922",
-    "luke.bowl#22911",
     "opengameartcco.money_stack_box#95924",
     "opengameartcco.moneybatchclean#95928",
     "opengameartcco.moneysingleclean#95930",
-    "opengameartcco.moneysingleused#95929",
     "pukes.ghibli_backpack#28506"
   ],
   "__version": 3

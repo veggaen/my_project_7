@@ -2,6 +2,7 @@ using Sandbox;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.Money;
 
 namespace Sandbox;
 
@@ -163,6 +164,81 @@ public sealed class VeggaChatManager : Component
 				AddLocalMessage( $"/{cmd.Name} {cmd.Usage} - {cmd.Description}", ChatMessageType.System );
 			}
 		} );
+
+		// Drop money
+		RegisterCommand( "dropmoney", "Drop cash from your inventory", "<amount>", ( args ) =>
+		{
+			if ( args.Length < 1 || !int.TryParse( args[0], out var amount ) )
+			{
+				AddLocalMessage( "Usage: /dropmoney <amount>", ChatMessageType.Error );
+				return;
+			}
+
+			amount = Math.Max( 1, amount );
+			RpcRequestDropMoney( Connection.Local?.Id ?? Guid.Empty, amount );
+		} );
+	}
+
+	[Rpc.Broadcast]
+	void RpcRequestDropMoney( Guid requesterId, int amount )
+	{
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) return;
+		if ( amount <= 0 ) return;
+
+		var stats = FindPlayerStatsByConnectionId( requesterId );
+		if ( stats == null || !stats.IsValid() ) return;
+
+		var inv = stats.GameObject?.Components.Get<VeggaInventory>();
+		if ( inv == null ) return;
+
+		int available = stats.Money;
+		if ( available <= 0 )
+		{
+			ChatMsg( requesterId, "You have no cash to drop.", ChatMessageType.Error );
+			return;
+		}
+
+		amount = Math.Min( amount, available );
+		if ( !VeggaCurrency.TryRemoveCash( stats.GameObject, amount ) )
+		{
+			ChatMsg( requesterId, "Could not remove cash from inventory.", ChatMessageType.Error );
+			return;
+		}
+
+		var spawnPos = stats.WorldPosition + stats.WorldRotation.Forward * 40f + Vector3.Up * 20f;
+		CashWorldDrop.Spawn( Scene, spawnPos, stats.WorldRotation, amount, stats.Network?.Owner?.SteamId.ToString() );
+
+		PlayerDataPersistence.MarkPlayerDataChanged( stats.Network?.Owner?.SteamId.ToString() ?? string.Empty );
+		ChatMsg( requesterId, $"Dropped ${amount}.", ChatMessageType.System );
+	}
+
+	PlayerVeggaStats FindPlayerStatsByConnectionId( Guid connectionId )
+	{
+		var scene = Scene ?? Game.ActiveScene;
+		if ( scene == null ) return null;
+		foreach ( var stats in scene.GetAllComponents<PlayerVeggaStats>() )
+		{
+			if ( !stats.IsValid() ) continue;
+			if ( stats.Network?.Owner?.Id == connectionId )
+				return stats;
+		}
+		return null;
+	}
+
+	void ChatMsg( Guid connectionId, string message, ChatMessageType type )
+	{
+		// Host sends a system message to the requester only.
+		RpcSendSystemMessage( connectionId, message, type );
+	}
+
+	[Rpc.Broadcast]
+	void RpcSendSystemMessage( Guid targetConnectionId, string message, ChatMessageType type )
+	{
+		if ( Connection.Local?.Id != targetConnectionId )
+			return;
+
+		AddLocalMessage( message, type );
 	}
 
 	/// <summary>

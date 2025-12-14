@@ -96,11 +96,8 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			return;
 		}
 
-		// Check for manual E press pickup
-		if ( !Network.IsProxy )
-		{
-			CheckManualPickup();
-		}
+		// Check for manual E press pickup (clients request; host validates)
+		CheckManualPickup();
 	}
 
 	void CheckManualPickup()
@@ -118,8 +115,43 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		// Player pressed E
 		if ( Input.Pressed( "use" ) )
 		{
-			TryPickup( localPlayer.GameObject );
+			if ( Networking.IsHost && !Network.IsProxy )
+			{
+				TryPickupOnHost( localPlayer.GameObject );
+			}
+			else
+			{
+				RpcRequestPickup( localPlayer.Network?.Owner?.Id ?? Guid.Empty );
+			}
 		}
+	}
+
+	[Rpc.Broadcast]
+	void RpcRequestPickup( Guid requesterId )
+	{
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) return;
+
+		// Validate requester is near the item.
+		var scene = Scene ?? Game.ActiveScene;
+		if ( scene == null ) return;
+
+		PlayerVeggaStats requester = null;
+		foreach ( var stats in scene.GetAllComponents<PlayerVeggaStats>() )
+		{
+			if ( stats.IsValid() && stats.Network?.Owner?.Id == requesterId )
+			{
+				requester = stats;
+				break;
+			}
+		}
+
+		if ( requester == null ) return;
+
+		float dist = Vector3.DistanceBetween( requester.WorldPosition, WorldPosition );
+		if ( dist > InteractRange ) return;
+
+		TryPickupOnHost( requester.GameObject );
 	}
 
 	/// <summary>
@@ -188,11 +220,11 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		// Close enough? Pickup!
 		if ( distance < 30f )
 		{
-			TryPickup( _vacuumTarget );
+			TryPickupOnHost( _vacuumTarget );
 		}
 	}
 
-	void TryPickup( GameObject player )
+	void TryPickupOnHost( GameObject player )
 	{
 		if ( Network.IsProxy ) return;
 

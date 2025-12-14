@@ -1,5 +1,6 @@
 using Sandbox;
 using System;
+using Sandbox.Money;
 
 namespace Sandbox;
 
@@ -7,8 +8,9 @@ namespace Sandbox;
 /// Gold bar smelting helper attached to the player.
 ///
 /// Design:
-/// - A 200g bar is worth $200 (1 gram = $1 = 1 coin).
-/// - Hand crafting: 1 second per $1 worth of gold (1 coin/second).
+/// - A 200g bar smelts into 200 gold coins.
+/// - Each gold coin is worth $140 (fiat), but this smelter produces coins.
+/// - Hand crafting: 1 second per coin.
 /// - Forge crafting (standing in a PlayerForgeAura): much faster,
 ///   using PlayerVeggaStats.SmeltSpeedMultiplier (e.g. 100x at level 1).
 /// - Smelting is interruptible: remaining grams are stored per bar in
@@ -26,18 +28,20 @@ public sealed class PlayerGoldSmelter : Component
 
 	/// <summary>
 	/// Base coins per second when hand-crafting away from any forge.
-	/// Spec: 1 coin/sec =&gt; 1 second per $1.
+	/// Spec: 1 coin/sec =&gt; 1 second per coin.
 	/// </summary>
 	[Property] public float BaseHandCoinsPerSecond { get; set; } = 1f;
 
 	/// <summary>
-	/// Crafting XP awarded per coin generated.
+	/// Flat Crafting XP awarded per fully smelted 200g bar.
+	/// (Keeps the system simple; we can move this to a furnace station later.)
 	/// </summary>
-	[Property] public int XpPerCoin { get; set; } = 1;
+	[Property] public int CraftingXpPerBar { get; set; } = 250;
 
 	private int _activeSlot = -1;
 	private int _gramsRemainingInJob;
 	private bool _useForgeSpeed;
+	private bool _awardedXpForBar;
 
 	[Sync]
 	public bool IsSmelting { get; private set; }
@@ -99,6 +103,7 @@ public sealed class PlayerGoldSmelter : Component
 		IsSmelting = true;
 		_smeltProgress = 0f;
 		_timeSinceLastTick = 0;
+		_awardedXpForBar = false;
 
 		var name = Stats?.Network?.Owner?.DisplayName ?? GameObject.Name;
 		Log.Info( $"[GoldSmelter] Smelting started for {name}: slot={slot}, grams={grams}, useForge={useForgeSpeed}" );
@@ -142,14 +147,10 @@ public sealed class PlayerGoldSmelter : Component
 		_smeltProgress -= coinsThisFrame;
 		_gramsRemainingInJob -= coinsThisFrame;
 
-		// Pay out money directly (1 coin per gram).
-		Stats.AddMoney( coinsThisFrame );
-
-		// Award Crafting XP so XPDrops/XPBar react.
-		if ( Skills != null && XpPerCoin > 0 )
+		// Mint gold coins (item 2) rather than adding fiat money.
+		if ( Inventory != null && Inventory.IsValid() )
 		{
-			int xp = coinsThisFrame * XpPerCoin;
-			Skills.AddXp( SkillId.Crafting, xp );
+			Inventory.AddItem( VeggaCurrency.GoldCoinItemId, coinsThisFrame );
 		}
 
 		// Update the bar's remaining grams in inventory; if depleted,
@@ -163,6 +164,14 @@ public sealed class PlayerGoldSmelter : Component
 				// Remove the specific bar slot when fully consumed
 				Inventory.SetSlotDurability( _activeSlot, 0 );
 				Inventory.RemoveFromSlot( _activeSlot, 1 );
+
+				// Flat XP per completed bar.
+				if ( !_awardedXpForBar && Skills != null && CraftingXpPerBar > 0 )
+				{
+					Skills.AddXp( SkillId.Crafting, CraftingXpPerBar );
+					_awardedXpForBar = true;
+				}
+
 				_activeSlot = -1;
 				_gramsRemainingInJob = 0;
 				IsSmelting = false;

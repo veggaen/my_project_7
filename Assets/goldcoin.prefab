@@ -1,9 +1,9 @@
 {
   "RootObject": {
-    "__guid": "a60897c4-4e3f-4bd9-9550-71bcef729351",
+    "__guid": "4bc25524-8217-44bb-8265-18b188314d3f",
     "__version": 1,
     "Flags": 0,
-    "Name": "goldbar_200g",
+    "Name": "goldcoin",
     "Position": "0,0,0",
     "Rotation": "0,0,0,1",
     "Scale": "1,1,1",
@@ -16,8 +16,28 @@
     "OwnerTransfer": 1,
     "Components": [
       {
+        "__type": "Sandbox.Prop",
+        "__guid": "b9adc13d-5856-422b-b272-1b3b806717a2",
+        "__enabled": true,
+        "BodyGroups": 18446744073709551615,
+        "Health": 0,
+        "IsStatic": false,
+        "MaterialGroup": null,
+        "Model": "models/goldcoin/goldcoin.vmdl",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "OnPropBreak": null,
+        "OnPropTakeDamage": null,
+        "StartAsleep": false,
+        "Tint": "1,1,1,1"
+      },
+      {
         "__type": "Sandbox.ModelRenderer",
-        "__guid": "1206e36a-e07c-457a-b453-b8b601996954",
+        "__guid": "1e46a574-fc72-4134-ae34-c8932647e422",
         "__enabled": true,
         "BodyGroups": 18446744073709551615,
         "CreateAttachments": false,
@@ -25,7 +45,7 @@
         "MaterialGroup": null,
         "MaterialOverride": null,
         "Materials": null,
-        "Model": "goldbar/gold_bar.vmdl",
+        "Model": "models/goldcoin/goldcoin.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -43,13 +63,13 @@
       },
       {
         "__type": "Sandbox.ModelCollider",
-        "__guid": "0c88af7c-799b-4da0-999f-948fb9042199",
+        "__guid": "61b8d959-4dc5-41b9-bb00-f612701aaa50",
         "__enabled": true,
         "ColliderFlags": 0,
         "Elasticity": null,
         "Friction": null,
         "IsTrigger": false,
-        "Model": "goldbar/gold_bar.vmdl",
+        "Model": "models/goldcoin/goldcoin.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -67,7 +87,7 @@
       },
       {
         "__type": "Sandbox.Rigidbody",
-        "__guid": "e30268ea-c554-4261-b147-a69f0cd9b3b1",
+        "__guid": "69fb7756-3dfb-45e9-a269-58614c674970",
         "__enabled": true,
         "AngularDamping": 0,
         "EnableImpactDamage": true,
@@ -84,7 +104,7 @@
           "Roll": false
         },
         "MassCenterOverride": "0,0,0",
-        "MassOverride": 2,
+        "MassOverride": 0,
         "MinImpactDamageSpeed": 500,
         "MotionEnabled": true,
         "OnComponentDestroy": null,
@@ -99,10 +119,10 @@
       },
       {
         "__type": "Sandbox.VeggaPickupItem",
-        "__guid": "d1be29c1-ffac-4b05-aff2-b81885c7a7d6",
+        "__guid": "70f1034c-15c4-4922-8a08-249363f79ac2",
         "__enabled": true,
         "AutoLootRange": 150,
-        "InteractRange": 50,
+        "InteractRange": 100,
         "ItemId": 100,
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
@@ -115,26 +135,7 @@
         "ShowFloatingName": true
       }
     ],
-    "Children": [],
-    "__properties": {
-      "NetworkInterpolation": true,
-      "TimeScale": 1,
-      "WantsSystemScene": true,
-      "Metadata": {},
-      "NavMesh": {
-        "Enabled": false,
-        "IncludeStaticBodies": true,
-        "IncludeKeyframedBodies": true,
-        "EditorAutoUpdate": true,
-        "AgentHeight": 64,
-        "AgentRadius": 16,
-        "AgentStepSize": 18,
-        "AgentMaxSlope": 40,
-        "ExcludedBodies": "",
-        "IncludedBodies": ""
-      }
-    },
-    "__variables": []
+    "Children": []
   },
   "ResourceVersion": 2,
   "ShowInMenu": false,
@@ -142,7 +143,7 @@
   "MenuIcon": null,
   "DontBreakAsTemplate": false,
   "__references": [
-    "master.goldbar#95106"
+    "baik.goldcoin#42001"
   ],
   "__version": 2
 }

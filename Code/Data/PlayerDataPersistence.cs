@@ -357,18 +357,47 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 		sessionStats.TotalConnects = data.TotalConnects + 1; // Increment connects
 		sessionStats.TotalPropsSpawned = data.TotalPropsSpawned;
 
-		// 🎯 Mark that we're loading money from save data BEFORE setting it
+		// ---- Inventory + cash migration ----
+		var inventory = playerStats.GameObject?.Components.Get<VeggaInventory>();
+		if ( inventory == null )
+		{
+			Log.Warning( "[PlayerDataPersistence] Player has no VeggaInventory component; cannot load cash-as-item." );
+		}
+		else
+		{
+			// Migrate legacy saves (Money int) into inventory cash stack.
+			if ( data.SaveVersion < 2 )
+			{
+				int legacyMoney = Math.Max( 0, data.Money );
+				if ( legacyMoney > 0 )
+				{
+					data.ItemIds ??= new List<int>();
+					data.ItemCounts ??= new List<int>();
+					data.ItemDurability ??= new List<int>();
+					data.ItemIds.Add( 1 );
+					data.ItemCounts.Add( legacyMoney );
+					data.ItemDurability.Add( 0 );
+				}
+
+				data.Money = 0;
+				data.SaveVersion = 2;
+			}
+
+			inventory.LoadSaveData( data.ItemIds, data.ItemCounts, data.ItemDurability );
+		}
+
+		// Mark that persistence ran (prevents fallback)
 		playerStats._moneyLoadedFromSave = true;
 
-		// 🎯 Load money from saved data
-		// data.Money comes from the JSON file - if > 0, use it; otherwise use StartMoney
-		int moneyToLoad = data.Money > 0 ? data.Money : playerStats.StartMoney;
-		
-		Log.Info( $"💰 [Persistence] About to set money. data.Money={data.Money}, StartMoney={playerStats.StartMoney}, Will set: ${moneyToLoad}" );
-		
-		playerStats.SetMoney( moneyToLoad );
-		
-		Log.Info( $"💰 [Persistence] Money set complete. playerStats.Money is now ${playerStats.Money}" );
+		// Ensure new players have starting cash if they ended up with none.
+		if ( inventory != null && inventory.IsValid() )
+		{
+			int cash = playerStats.Money;
+			if ( cash <= 0 )
+			{
+				playerStats.AddMoney( playerStats.StartMoney );
+			}
+		}
 
 		// Increment total connects
 		data.TotalConnects++;
@@ -382,8 +411,19 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 	/// </summary>
 	private PlayerDataManager.PlayerData CreateDataFromPlayer( string steamId, PlayerVeggaStats playerStats, PlayerSessionStats sessionStats )
 	{
+		var ids = new List<int>();
+		var counts = new List<int>();
+		var durability = new List<int>();
+
+		var inventory = playerStats.GameObject?.Components.Get<VeggaInventory>();
+		if ( inventory != null && inventory.IsValid() )
+		{
+			inventory.ExportSaveData( out ids, out counts, out durability );
+		}
+
 		return new PlayerDataManager.PlayerData
 		{
+			SaveVersion = 2,
 			SteamId = steamId,
 			SteamName = sessionStats.SteamName,
 			PreferredUsername = sessionStats.PreferredUsername,
@@ -401,11 +441,14 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 			TotalPropsSpawned = sessionStats.TotalPropsSpawned,
 
 			// Money
-			Money = playerStats.Money,
+			Money = 0,
 			BankBalance = 0, // TODO: Implement bank
 
 			// Inventory
-			InventorySlots = 96,
+			InventorySlots = inventory?.TotalSlots ?? 96,
+			ItemIds = ids,
+			ItemCounts = counts,
+			ItemDurability = durability,
 
 			// Timestamps
 			LastSeen = DateTime.UtcNow

@@ -12,6 +12,9 @@ public static class VeggaHudLayoutState
 	// Allows placing UI a tiny bit off-screen (requested) so users can tuck panels.
 	// Kept small to avoid losing elements entirely.
 	const float AllowedOffscreenPixels = 48f;
+	// If a calibrated safe-area is too small, it was almost certainly mis-clicked.
+	// In that case we ignore it for clamping so the HUD can still reach screen edges.
+	const float MinSafeAreaSizeNormalized = 0.80f;
 
 	/// <summary>
 	/// How a HUD element should be anchored relative to its saved position.
@@ -264,11 +267,44 @@ public static class VeggaHudLayoutState
 		return (new Vector2( 0f, 0f ), new Vector2( 1f, 1f ));
 	}
 
+	static bool IsSafeAreaValid( Vector2 min, Vector2 max )
+	{
+		var size = max - min;
+		return size.x >= MinSafeAreaSizeNormalized && size.y >= MinSafeAreaSizeNormalized;
+	}
+
+	/// <summary>
+	/// True if there is a safe-area entry for this resolution (even if it's invalid).
+	/// </summary>
+
 	public static bool HasSafeAreaForCurrentScreen()
 	{
 		EnsureLoaded();
 		string key = CurrentResolutionKey();
 		return _data.SafeAreas != null && _data.SafeAreas.ContainsKey( key );
+	}
+
+	/// <summary>
+	/// True if the current screen safe-area is present and looks sane.
+	/// </summary>
+	public static bool IsSafeAreaValidForCurrentScreen()
+	{
+		if ( !HasSafeAreaForCurrentScreen() )
+			return false;
+
+		var (min, max) = GetSafeAreaNormalized();
+		return IsSafeAreaValid( min, max );
+	}
+
+	/// <summary>
+	/// Safe-area used for clamping HUD elements. Falls back to full screen if calibration looks invalid.
+	/// </summary>
+	public static (Vector2 min, Vector2 max) GetSafeAreaNormalizedForClamping()
+	{
+		// Safe-area calibration UI was removed. Older saved safe-areas can cause an apparent
+		// "invisible border" where elements stop short of the screen edge (eg. top-right).
+		// Until calibration is reintroduced, clamp against the full screen.
+		return (new Vector2( 0f, 0f ), new Vector2( 1f, 1f ));
 	}
 
 	public static void SetSafeAreaNormalized( Vector2 topLeft, Vector2 bottomRight )
@@ -332,6 +368,13 @@ public static class VeggaHudLayoutState
 		IsActive = active;
 		if ( !active )
 		{
+			// Flush any debounced writes so "Save & Exit" is reliable.
+			if ( _dirty )
+			{
+				FileSystem.Data.WriteJson( LayoutFile, _data );
+				_dirty = false;
+				_nextAutosaveTime = 0f;
+			}
 			SelectedElement = null;
 		}
 		Log.Info( $"[VeggaHudLayoutState] Layout mode set to: {IsActive}" );
@@ -413,6 +456,28 @@ public static class VeggaHudLayoutState
 			ScreenPosition.BottomRight => HudAnchor.BottomRight,
 			_ => GetAnchor( null )
 		};
+	}
+
+	/// <summary>
+	/// Convert a preset (which is defined as 0..1 within the usable area) into a screen-normalized position.
+	/// If a safe-area is calibrated, presets target the safe-area (not the full screen).
+	/// </summary>
+	public static Vector2 GetPresetPositionForCurrentScreen( ScreenPosition preset )
+	{
+		if ( !PresetPositions.TryGetValue( preset, out var presetN ) )
+			presetN = PresetPositions[ScreenPosition.MiddleCenter];
+
+		var (safeMinN, safeMaxN) = GetSafeAreaNormalized();
+		var safeSize = safeMaxN - safeMinN;
+		if ( safeSize.x <= 0f ) safeSize.x = 1f;
+		if ( safeSize.y <= 0f ) safeSize.y = 1f;
+
+		var screenN = new Vector2(
+			safeMinN.x + (presetN.x * safeSize.x),
+			safeMinN.y + (presetN.y * safeSize.y)
+		);
+
+		return ClampToAllowedRange( screenN );
 	}
 
 	/// <summary>
@@ -521,15 +586,31 @@ public static class VeggaHudLayoutState
 		// This makes presets behave intuitively for any element (eg. inventory top-left).
 		entry.Anchor = (int)AnchorFromPreset( preset );
 
-		if ( PresetPositions.TryGetValue( preset, out var pos ) )
-		{
-			entry.X = pos.x;
-			entry.Y = pos.y;
-		}
+		// Presets are defined in full-screen normalized space.
+		// Calibrated safe-area still applies via VeggaHudLayoutApply clamping.
+		if ( !PresetPositions.TryGetValue( preset, out var pos ) )
+			pos = PresetPositions[ScreenPosition.MiddleCenter];
+		pos = ClampToAllowedRange( pos );
+		entry.X = pos.x;
+		entry.Y = pos.y;
 		entry.Preset = (int)preset;
 
 		FileSystem.Data.WriteJson( LayoutFile, _data );
 		Log.Info( $"[HUD Layout] Set {key} to preset: {preset}" );
+	}
+
+	/// <summary>
+	/// Wipe all saved HUD layout data (positions, per-resolution overrides, and safe-areas).
+	/// This is useful if a bad calibration or old file format causes weird offsets.
+	/// </summary>
+	public static void WipeAllSavedLayoutData()
+	{
+		_data = new LayoutSaveData();
+		_loaded = true;
+		_dirty = false;
+		_nextAutosaveTime = 0f;
+		FileSystem.Data.WriteJson( LayoutFile, _data );
+		Log.Info( "[HUD Layout] Wiped hud_layout.json" );
 	}
 
 	/// <summary>

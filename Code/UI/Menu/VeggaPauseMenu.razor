@@ -245,6 +245,7 @@
 
 	bool _isOpen = false;
 	public static bool IsOpenGlobal { get; private set; }
+	static VeggaPauseMenu _instance;
 	MenuView _currentView = MenuView.Main;
 	bool _hasLoggedStart;
 
@@ -277,6 +278,7 @@
 
 	protected override void OnUpdate()
 	{
+		_instance ??= this;
 		if ( !_hasLoggedStart )
 		{
 			_hasLoggedStart = true;
@@ -293,9 +295,10 @@
 			if ( layoutActive )
 			{
 				SetLayoutActive( false );
-				_isOpen = true;
-				_currentView = MenuView.HudSettings;
-				Log.Info( "[VeggaPauseMenu] ESC: Exited layout mode, reopened HUD settings." );
+				// Professional behavior: ESC just exits layout mode.
+				_isOpen = false;
+				_currentView = MenuView.Main;
+				Log.Info( "[VeggaPauseMenu] ESC: Exited layout mode." );
 			}
 			// If on a subpage, go back to main menu
 			else if ( _isOpen && _currentView != MenuView.Main )
@@ -318,6 +321,15 @@
 
 			StateHasChanged();
 		}
+	}
+
+	public static void ForceClose()
+	{
+		IsOpenGlobal = false;
+		if ( _instance == null ) return;
+		_instance._isOpen = false;
+		_instance._currentView = MenuView.Main;
+		_instance.StateHasChanged();
 	}
 
 	void GoToView( MenuView view )

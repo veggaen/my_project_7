@@ -420,7 +420,7 @@ public static class VeggaAdminManager
 			if ( itemDef == null )
 			{
 				ChatMsg( executor, $"Item ID {itemId} not found in registry.", ChatMessageType.Error );
-				ChatMsg( executor, "Known items: 1=Gold Coin, 100=200g Gold Bar, 101=500g Gold Bar", ChatMessageType.Error );
+				ChatMsg( executor, "Known items: 1=Money, 2=Gold Coin, 100=200g Gold Bar", ChatMessageType.Error );
 				return;
 			}
 
@@ -520,13 +520,13 @@ public static class VeggaAdminManager
 			ChatMsg( executor, $"Spawned {amount}x {itemDef.Name} in world.", ChatMessageType.Admin );
 		} );
 
-		// Smelt 200g gold bar(s) into coins over time
-		Register( "smeltbar", "Smelt 200g Gold Bar into coins", "<player|ent> [bars]", ( executor, args ) =>
+		// Smelt 200g gold bar(s) into gold coins over time
+		Register( "smeltbar", "Smelt 200g Gold Bar into gold coins", "<player|ent> [bars]", ( executor, args ) =>
 		{
 			if ( args.Length < 1 )
 			{
 				ChatMsg( executor, "Usage: !hex smeltbar <player|ent> [bars]", ChatMessageType.Error );
-				ChatMsg( executor, "Example: !hex smeltbar ent 1 (smelt one bar for yourself)", ChatMessageType.Error );
+				ChatMsg( executor, "Example: !hex smeltbar ent 1 (smelt one 200g bar into 200x Gold Coin)", ChatMessageType.Error );
 				return;
 			}
 
@@ -559,6 +559,12 @@ public static class VeggaAdminManager
 			if ( barsToSmelt <= 0 )
 			{
 				ChatMsg( executor, "Bar count must be positive.", ChatMessageType.Error );
+				return;
+			}
+
+			if ( barsToSmelt != 1 )
+			{
+				ChatMsg( executor, "Currently only supports smelting 1 bar at a time.", ChatMessageType.Error );
 				return;
 			}
 

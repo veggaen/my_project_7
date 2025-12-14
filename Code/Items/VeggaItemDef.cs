@@ -76,11 +76,24 @@ public static class VeggaItemRegistry
 		Register( new VeggaItemDef
 		{
 			Id = 1,
-			Name = "Gold Coin",
-			Description = "A shiny gold coin worth $1.",
-			IconPath = "ui/items/gold_coin.png",
-			ModelPath = "models/items/gold_coin.vmdl",
+			Name = "Money",
+			Description = "Fiat currency. Stackable.",
+			IconPath = "ui/items/icon_money_batch_used.png",
+			ModelPath = "models/items/money.vmdl",
 			Value = 1,
+			MaxStack = int.MaxValue,
+			Category = ItemCategory.Currency,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = 2,
+			Name = "Gold Coin",
+			Description = "Gold currency. Value: $140 each. Stackable.",
+			IconPath = "ui/items/icon_gold_coin.png",
+			ModelPath = "models/items/gold_coin.vmdl",
+			Value = 140,
 			MaxStack = int.MaxValue,
 			Category = ItemCategory.Currency,
 			Rarity = ItemRarity.Common
@@ -91,12 +104,11 @@ public static class VeggaItemRegistry
 		{
 			Id = 100,
 			Name = "200g Gold Bar",
-			Description = "A solid gold bar weighing 200 grams. Can be slowly shaved by hand or rapidly smelted at a furnace.",
-			IconPath = "ui/items/gold_bar.svg",
+			Description = "A 200g gold bar. Smelt at a furnace into 200 gold coins.",
+			IconPath = "ui/items/icon_gold_bar.png",
 			ModelPath = "goldbar/gold_bar.vmdl",
-			// New design: 1 gram = $1. A 200g bar is worth $200.
-			Value = 200,
-			MaxStack = int.MaxValue,
+			Value = 28000,
+			MaxStack = 1,
 			Category = ItemCategory.Material,
 			Rarity = ItemRarity.Rare,
 			MaxGrams = 200,
@@ -104,32 +116,9 @@ public static class VeggaItemRegistry
 			{
 				new CraftRecipe
 				{
-					OutputItemId = 1, // Gold Coin
+					OutputItemId = 2, // Gold Coin
 					// This mirrors the value above so generic crafting UIs can read it
 					OutputCount = 200,
-					RecipeName = "Smelt into Gold Coins"
-				}
-			}
-		} );
-
-		Register( new VeggaItemDef
-		{
-			Id = 101,
-			Name = "500g Gold Bar",
-			Description = "A hefty gold bar weighing 500 grams. Worth about $500 in coins.",
-			IconPath = "ui/items/gold_bar_large.svg",
-			ModelPath = "goldbar/gold_bar_large.vmdl",
-			Value = 500,
-			MaxStack = int.MaxValue,
-			Category = ItemCategory.Material,
-			Rarity = ItemRarity.Epic,
-			MaxGrams = 500,
-			CraftInto = new List<CraftRecipe>
-			{
-				new CraftRecipe
-				{
-					OutputItemId = 1,
-					OutputCount = 500,
 					RecipeName = "Smelt into Gold Coins"
 				}
 			}

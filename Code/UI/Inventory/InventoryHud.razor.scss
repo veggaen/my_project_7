@@ -2,7 +2,7 @@
 // IMPORTANT: target both the component panel and its Razor <root> so the panel
 // sizes to its content (otherwise anchoring/clamping can treat it as full-screen).
 InventoryHud,
-root {
+InventoryHud root {
 	position: absolute;
 	display: flex;
 	flex-direction: column;
@@ -109,6 +109,11 @@ root {
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 		color: rgba(226, 232, 240, 0.95);
+		flex: 1 1 auto;
+		min-width: 0;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.item-details-close {
@@ -119,6 +124,8 @@ root {
 		color: rgba(226, 232, 240, 0.95);
 		font-size: 12px;
 		cursor: pointer;
+		flex: 0 0 auto;
+		white-space: nowrap;
 	}
 
 	.item-details-icon {
@@ -131,6 +138,20 @@ root {
 		background-repeat: no-repeat;
 		background-position: center;
 		margin-bottom: 10px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: 900;
+		font-size: 28px;
+		letter-spacing: 0.02em;
+		text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+	}
+
+	.item-details-icon.currency {
+		background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.0) 45%),
+			linear-gradient(135deg, rgba(234, 179, 8, 0.95) 0%, rgba(202, 138, 4, 0.95) 100%);
+		border-color: rgba(234, 179, 8, 0.45);
+		color: rgba(15, 23, 42, 0.92);
 	}
 
 	.item-details-name {
@@ -138,6 +159,14 @@ root {
 		font-weight: 800;
 		color: rgba(226, 232, 240, 0.98);
 		margin-bottom: 6px;
+	}
+
+	.item-details-qty {
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		color: rgba(148, 163, 184, 0.95);
+		margin-bottom: 8px;
 	}
 
 	.item-details-desc {
@@ -155,6 +184,15 @@ root {
 		position: relative;
 		cursor: pointer;
 		transition: all 0.1s ease;
+
+		&.dragging {
+			opacity: 0.35;
+		}
+
+		&.moving-to {
+			border-color: rgba(34, 197, 94, 0.85);
+			box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.20);
+		}
 
 		&:hover {
 			background-color: rgba(60, 80, 120, 0.5);
@@ -184,6 +222,20 @@ root {
 			background-position: center;
 			font-size: 18px;
 			pointer-events: none;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.item-icon.currency {
+			background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.0) 45%),
+				linear-gradient(135deg, rgba(234, 179, 8, 0.95) 0%, rgba(202, 138, 4, 0.95) 100%);
+			border-radius: 999px;
+			border: 1px solid rgba(234, 179, 8, 0.45);
+			color: rgba(15, 23, 42, 0.92);
+			font-weight: 900;
+			font-size: 16px;
+			text-shadow: none;
 		}
 
 		.item-count {

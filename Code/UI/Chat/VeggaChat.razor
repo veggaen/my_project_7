@@ -86,6 +86,7 @@
 	bool _isOpen = true;
 	bool _isFocused = false;
 	public static bool IsChatInputOpenGlobal { get; private set; }
+	static VeggaChat _instance;
 	string _inputText = "";
 	bool _wantFocusEntry = false;
 	float _lastMessageTime = 0f;
@@ -106,6 +107,7 @@
 
 	protected override void OnStart()
 	{
+		_instance = this;
 		_chatManager = VeggaChatManager.Local;
 		if ( _chatManager != null )
 		{
@@ -119,6 +121,17 @@
 		// Load saved layout position
 		_layoutPos = VeggaHudLayoutState.GetPosition( ChatKey, _layoutPos );
 		_layoutScale = VeggaHudLayoutState.GetScale( ChatKey, 1f );
+	}
+
+	public static void ForceClose()
+	{
+		IsChatInputOpenGlobal = false;
+		if ( _instance == null ) return;
+		_instance._isFocused = false;
+		_instance._wantFocusEntry = false;
+		_instance._suggestions.Clear();
+		_instance._selectedSuggestionIndex = 0;
+		_instance.StateHasChanged();
 	}
 
 	protected override void OnUpdate()

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using Sandbox;
+using Sandbox.Money;
 using Sandbox.UI;
 
 namespace Sandbox;
@@ -23,11 +24,19 @@ public sealed class PlayerVeggaStats : Component
 	// -------- Runtime networked state --------
 	[Sync] public float Health { get; private set; }
 	[Sync] public float Armor { get; private set; }
-	[Sync] public int Money { get; private set; }
 	[Sync] public string JobName { get; private set; } = "Citizen";
 	[Sync] public float Prayer { get; private set; }
 	[Sync] public float Stamina { get; private set; }
 	[Sync] public float SpecialAttack { get; private set; }
+
+	public int Money
+	{
+		get
+		{
+			var inv = GameObject?.Components.Get<VeggaInventory>();
+			return VeggaCurrency.GetCash( inv );
+		}
+	}
 
 	/// <summary>
 	/// True while the player is standing near at least one active furnace aura.
@@ -169,7 +178,7 @@ public sealed class PlayerVeggaStats : Component
 			_fallbackApplied = true;
 			if ( Money == 0 )
 			{
-				Money = StartMoney;
+				VeggaCurrency.TryAddCash( GameObject, StartMoney );
 				Log.Info( $"💰 [Fallback] Persistence didn't run - using StartMoney: ${StartMoney}" );
 			}
 			else
@@ -193,7 +202,7 @@ public sealed class PlayerVeggaStats : Component
 
 		if ( !_moneyLoadedFromSave && Money == 0 )
 		{
-			Money = StartMoney;
+			VeggaCurrency.TryAddCash( GameObject, StartMoney );
 			Log.Info( $"💰 [FinalizeMoneyInit] No saved money found - using StartMoney: ${StartMoney}" );
 		}
 		else
@@ -419,7 +428,20 @@ public sealed class PlayerVeggaStats : Component
 	public void SetMoney( int value )
 	{
 		if ( Network.IsProxy ) return;
-		Money = Math.Max( 0, value );
+		value = Math.Max( 0, value );
+		int current = Money;
+		if ( value == current )
+			return;
+
+		int delta = value - current;
+		if ( delta > 0 )
+		{
+			VeggaCurrency.TryAddCash( GameObject, delta );
+		}
+		else
+		{
+			VeggaCurrency.TryRemoveCash( GameObject, -delta );
+		}
 
 		// Mark data as changed for auto-save
 		MarkDataChanged();
@@ -428,7 +450,15 @@ public sealed class PlayerVeggaStats : Component
 	public void AddMoney( int amount )
 	{
 		if ( Network.IsProxy ) return;
-		Money += amount;
+		if ( amount == 0 ) return;
+		if ( amount > 0 )
+		{
+			VeggaCurrency.TryAddCash( GameObject, amount );
+		}
+		else
+		{
+			VeggaCurrency.TryRemoveCash( GameObject, -amount );
+		}
 
 		// Mark data as changed for auto-save
 		MarkDataChanged();
@@ -452,9 +482,12 @@ public sealed class PlayerVeggaStats : Component
 	{
 		if ( Network.IsProxy ) return false;
 		if ( amount < 0 || Money < amount ) return false;
-
-		Money -= amount;
-		return true;
+		var ok = VeggaCurrency.TryRemoveCash( GameObject, amount );
+		if ( ok )
+		{
+			MarkDataChanged();
+		}
+		return ok;
 	}
 
 	/// <summary>

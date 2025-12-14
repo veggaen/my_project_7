@@ -27,6 +27,9 @@ public static class PlayerDataManager
 	[Serializable]
 	public class PlayerData
 	{
+		// Save schema version (increment when changing format)
+		public int SaveVersion { get; set; } = 2;
+
 		// Identity
 		public string SteamId { get; set; } = "";
 		public string SteamName { get; set; } = ""; // Steam display name
@@ -54,6 +57,7 @@ public static class PlayerDataManager
 		public int TotalPropsSpawned { get; set; }
 
 		// Money
+		// Legacy field: no longer authoritative. Cash is stored as an inventory item stack.
 		public int Money { get; set; }
 		public int BankBalance { get; set; }
 
@@ -61,6 +65,7 @@ public static class PlayerDataManager
 		public int InventorySlots { get; set; }
 		public List<int> ItemIds { get; set; } = new();
 		public List<int> ItemCounts { get; set; } = new();
+		public List<int> ItemDurability { get; set; } = new();
 
 		// Admin Settings
 		public bool IsStealthMode { get; set; } = false; // Admin invisible mode
@@ -141,7 +146,13 @@ public static class PlayerDataManager
 				return new PlayerData
 				{
 					SteamId = steamId,
-					Money = 500, // Starting money for new players
+					SaveVersion = 2,
+					Money = 0,
+					InventorySlots = 96,
+					// Starting cash is now an inventory stack (CashItemId=1)
+					ItemIds = new List<int> { 1 },
+					ItemCounts = new List<int> { 500 },
+					ItemDurability = new List<int> { 0 },
 					FirstSeen = DateTime.UtcNow,
 					LastSeen = DateTime.UtcNow
 				};

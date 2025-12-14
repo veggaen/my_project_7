@@ -2,7 +2,7 @@
 // IMPORTANT: target both the component panel and its Razor <root> so the panel
 // sizes to its content (otherwise anchoring/clamping can treat it as full-screen).
 XPBar,
-root {
+XPBar root {
 	position: absolute;
 	display: flex;
 	flex-direction: column;

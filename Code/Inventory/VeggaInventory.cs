@@ -35,8 +35,60 @@ public sealed class VeggaInventory : Component
 
 	// ---- Calculated Properties ----
 	public int TotalSlots => Math.Min( BaseSlots + BonusSlotsFromRank + BonusSlotsFromQuests + BonusSlotsFromPurchase, MaxSlots );
-	public int UsedSlots => _itemIds.Count;
+	public int UsedSlots => CountUsedSlots();
 	public int FreeSlots => TotalSlots - UsedSlots;
+
+	private int CountUsedSlots()
+	{
+		int used = 0;
+		int limit = Math.Min( _itemIds.Count, TotalSlots );
+		for ( int i = 0; i < limit; i++ )
+		{
+			if ( _itemIds[i] > 0 && _itemCounts[i] > 0 )
+				used++;
+		}
+		return used;
+	}
+
+	private void EnsureSlotArraysSized()
+	{
+		if ( Network.IsProxy ) return;
+
+		int desired = TotalSlots;
+		if ( desired < 0 ) desired = 0;
+		if ( desired > MaxSlots ) desired = MaxSlots;
+
+		// Grow
+		while ( _itemIds.Count < desired )
+		{
+			_itemIds.Add( 0 );
+			_itemCounts.Add( 0 );
+			_itemDurability.Add( 0 );
+		}
+
+		// Shrink
+		while ( _itemIds.Count > desired )
+		{
+			int last = _itemIds.Count - 1;
+			_itemIds.RemoveAt( last );
+			_itemCounts.RemoveAt( last );
+			_itemDurability.RemoveAt( last );
+		}
+	}
+
+	private bool IsEmptySlot( int slotIndex )
+	{
+		if ( slotIndex < 0 || slotIndex >= _itemIds.Count ) return true;
+		return _itemIds[slotIndex] <= 0 || _itemCounts[slotIndex] <= 0;
+	}
+
+	private void ClearSlot( int slotIndex )
+	{
+		if ( slotIndex < 0 || slotIndex >= _itemIds.Count ) return;
+		_itemIds[slotIndex] = 0;
+		_itemCounts[slotIndex] = 0;
+		_itemDurability[slotIndex] = 0;
+	}
 
 	// ---- Local Singleton ----
 	private static VeggaInventory _local;
@@ -59,6 +111,10 @@ public sealed class VeggaInventory : Component
 
 	protected override void OnStart()
 	{
+			if ( Networking.IsHost && !Network.IsProxy )
+			{
+				EnsureSlotArraysSized();
+			}
 		Log.Info( $"✅ VeggaInventory: {TotalSlots} slots available ({UsedSlots} used, {FreeSlots} free)" );
 	}
 
@@ -67,6 +123,7 @@ public sealed class VeggaInventory : Component
 	{
 		if ( Network.IsProxy ) return false;
 		if ( itemId <= 0 || count <= 0 ) return false;
+			EnsureSlotArraysSized();
 
 		var def = VeggaItemRegistry.Get( itemId );
 		int maxStack = def?.MaxStack ?? MaxStackSize;
@@ -85,11 +142,22 @@ public sealed class VeggaInventory : Component
 				return false;
 			}
 
-			for ( int n = 0; n < count; n++ )
+			int remainingToPlace = count;
+			for ( int i = 0; i < _itemIds.Count && remainingToPlace > 0; i++ )
 			{
-				_itemIds.Add( itemId );
-				_itemCounts.Add( 1 );
-				_itemDurability.Add( usesDurability ? maxDurability : 0 );
+				if ( !IsEmptySlot( i ) )
+					continue;
+
+				_itemIds[i] = itemId;
+				_itemCounts[i] = 1;
+				_itemDurability[i] = usesDurability ? maxDurability : 0;
+				remainingToPlace--;
+			}
+
+			if ( remainingToPlace > 0 )
+			{
+				Log.Warning( "❌ Inventory full!" );
+				return false;
 			}
 
 			Revision++;
@@ -102,7 +170,7 @@ public sealed class VeggaInventory : Component
 		long capacityInExisting = 0;
 		for ( int i = 0; i < _itemIds.Count; i++ )
 		{
-			if ( _itemIds[i] != itemId )
+			if ( _itemIds[i] != itemId || _itemCounts[i] <= 0 )
 				continue;
 
 			// For durability items (eg. gold bars), we only stack into "full stacks".
@@ -134,7 +202,7 @@ public sealed class VeggaInventory : Component
 		// Fill existing stacks first.
 		for ( int i = 0; i < _itemIds.Count && remaining > 0; i++ )
 		{
-			if ( _itemIds[i] != itemId )
+			if ( _itemIds[i] != itemId || _itemCounts[i] <= 0 )
 				continue;
 
 			if ( usesDurability )
@@ -161,14 +229,23 @@ public sealed class VeggaInventory : Component
 			remaining -= add;
 		}
 
-		// Add new stacks as needed.
-		while ( remaining > 0 )
+		// Add new stacks into empty slots as needed.
+		for ( int i = 0; i < _itemIds.Count && remaining > 0; i++ )
 		{
+			if ( !IsEmptySlot( i ) )
+				continue;
+
 			int add = (int)Math.Min( (long)maxStack, remaining );
-			_itemIds.Add( itemId );
-			_itemCounts.Add( add );
-			_itemDurability.Add( usesDurability ? DurableStackMarker : 0 );
+			_itemIds[i] = itemId;
+			_itemCounts[i] = add;
+			_itemDurability[i] = usesDurability ? DurableStackMarker : 0;
 			remaining -= add;
+		}
+
+		if ( remaining > 0 )
+		{
+			Log.Warning( "❌ Inventory full!" );
+			return false;
 		}
 
 		Revision++;
@@ -176,11 +253,56 @@ public sealed class VeggaInventory : Component
 		return true;
 	}
 
+	/// <summary>
+	/// Drag/drop support: request swapping two occupied slots.
+	/// Host executes immediately; clients request via RPC.
+	/// </summary>
+	public void RequestMoveSlot( int fromIndex, int toIndex )
+	{
+		if ( fromIndex == toIndex ) return;
+		if ( Networking.IsHost && !Network.IsProxy )
+		{
+			MoveSlotInternal( fromIndex, toIndex );
+			return;
+		}
+
+		var requesterId = Connection.Local?.Id ?? Guid.Empty;
+		RpcRequestMoveSlot( requesterId, fromIndex, toIndex );
+	}
+
+	[Rpc.Broadcast]
+	private void RpcRequestMoveSlot( Guid requesterId, int fromIndex, int toIndex )
+	{
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) return;
+		if ( Network?.Owner?.Id != requesterId ) return;
+
+		MoveSlotInternal( fromIndex, toIndex );
+	}
+
+	private void MoveSlotInternal( int fromIndex, int toIndex )
+	{
+		if ( Network.IsProxy ) return;
+			EnsureSlotArraysSized();
+			if ( fromIndex < 0 || fromIndex >= TotalSlots ) return;
+			if ( toIndex < 0 || toIndex >= TotalSlots ) return;
+		if ( fromIndex == toIndex ) return;
+			if ( IsEmptySlot( fromIndex ) ) return;
+
+			// True slotted inventory: allow swapping with empty slots.
+			(_itemIds[fromIndex], _itemIds[toIndex]) = (_itemIds[toIndex], _itemIds[fromIndex]);
+			(_itemCounts[fromIndex], _itemCounts[toIndex]) = (_itemCounts[toIndex], _itemCounts[fromIndex]);
+			(_itemDurability[fromIndex], _itemDurability[toIndex]) = (_itemDurability[toIndex], _itemDurability[fromIndex]);
+
+		Revision++;
+	}
+
 	// ---- Remove Item ----
 	public bool RemoveItem( int itemId, int count = 1 )
 	{
 		if ( Network.IsProxy ) return false;
 		if ( itemId <= 0 || count <= 0 ) return false;
+			EnsureSlotArraysSized();
 
 		int remaining = count;
 		bool changed = false;
@@ -188,6 +310,8 @@ public sealed class VeggaInventory : Component
 		for ( int i = 0; i < _itemIds.Count && remaining > 0; i++ )
 		{
 			if ( _itemIds[i] != itemId )
+				continue;
+			if ( _itemCounts[i] <= 0 )
 				continue;
 
 			int take = Math.Min( remaining, _itemCounts[i] );
@@ -197,10 +321,7 @@ public sealed class VeggaInventory : Component
 
 			if ( _itemCounts[i] <= 0 )
 			{
-				_itemIds.RemoveAt( i );
-				_itemCounts.RemoveAt( i );
-				if ( i < _itemDurability.Count )	_itemDurability.RemoveAt( i );
-				i--; // account for removal
+				ClearSlot( i );
 			}
 		}
 
@@ -228,16 +349,15 @@ public sealed class VeggaInventory : Component
 	public bool RemoveFromSlot( int slotIndex, int count = 1 )
 	{
 		if ( Network.IsProxy ) return false;
-		if ( slotIndex < 0 || slotIndex >= _itemIds.Count ) return false;
+			EnsureSlotArraysSized();
+			if ( slotIndex < 0 || slotIndex >= _itemIds.Count ) return false;
 		if ( count <= 0 ) return false;
+			if ( _itemCounts[slotIndex] <= 0 || _itemIds[slotIndex] <= 0 ) return false;
 
 		_itemCounts[slotIndex] -= count;
 		if ( _itemCounts[slotIndex] <= 0 )
 		{
-			_itemIds.RemoveAt( slotIndex );
-			_itemCounts.RemoveAt( slotIndex );
-			if ( slotIndex < _itemDurability.Count )
-				_itemDurability.RemoveAt( slotIndex );
+			ClearSlot( slotIndex );
 		}
 
 		Revision++;
@@ -254,10 +374,13 @@ public sealed class VeggaInventory : Component
 		newSlotIndex = -1;
 		if ( Network.IsProxy ) return false;
 		if ( itemId <= 0 || maxDurability <= 0 ) return false;
+			EnsureSlotArraysSized();
 
 		for ( int i = 0; i < _itemIds.Count; i++ )
 		{
 			if ( _itemIds[i] != itemId )
+				continue;
+			if ( _itemCounts[i] <= 0 )
 				continue;
 
 			int dur = i < _itemDurability.Count ? _itemDurability[i] : 0;
@@ -268,22 +391,27 @@ public sealed class VeggaInventory : Component
 			if ( _itemCounts[i] <= 1 )
 			{
 				// Single bar slot: normalize it into a durable slot.
-				if ( i < _itemDurability.Count )
-					_itemDurability[i] = maxDurability;
-				else
-					_itemDurability.Add( maxDurability );
+				_itemDurability[i] = maxDurability;
 				Revision++;
 				newSlotIndex = i;
 				return true;
 			}
 
-			// Split one out of the stack.
+			// Split one out of the stack into an empty slot.
+			int empty = -1;
+			for ( int j = 0; j < _itemIds.Count; j++ )
+			{
+				if ( IsEmptySlot( j ) ) { empty = j; break; }
+			}
+			if ( empty < 0 )
+				return false;
+
 			_itemCounts[i] -= 1;
-			_itemIds.Add( itemId );
-			_itemCounts.Add( 1 );
-			_itemDurability.Add( maxDurability );
+			_itemIds[empty] = itemId;
+			_itemCounts[empty] = 1;
+			_itemDurability[empty] = maxDurability;
 			Revision++;
-			newSlotIndex = _itemIds.Count - 1;
+			newSlotIndex = empty;
 			return true;
 		}
 
@@ -293,12 +421,93 @@ public sealed class VeggaInventory : Component
 	// ---- Get Item Count ----
 	public int GetItemCount( int itemId )
 	{
-		for ( int i = 0; i < _itemIds.Count; i++ )
+		if ( itemId <= 0 ) return 0;
+		long total = 0;
+			for ( int i = 0; i < _itemIds.Count; i++ )
 		{
-			if ( _itemIds[i] == itemId )
-				return _itemCounts[i];
+			if ( _itemIds[i] != itemId )
+				continue;
+
+			int c = i < _itemCounts.Count ? _itemCounts[i] : 0;
+			if ( c > 0 )
+				total += c;
 		}
-		return 0;
+
+		if ( total <= 0 ) return 0;
+		return total >= int.MaxValue ? int.MaxValue : (int)total;
+	}
+
+	public void ClearAll()
+	{
+		if ( Network.IsProxy ) return;
+			EnsureSlotArraysSized();
+			for ( int i = 0; i < _itemIds.Count; i++ )
+			{
+				_itemIds[i] = 0;
+				_itemCounts[i] = 0;
+				_itemDurability[i] = 0;
+			}
+		Revision++;
+	}
+
+	public void ExportSaveData( out List<int> itemIds, out List<int> itemCounts, out List<int> itemDurability )
+	{
+			EnsureSlotArraysSized();
+			itemIds = new List<int>( _itemIds.Count );
+			itemCounts = new List<int>( _itemCounts.Count );
+			itemDurability = new List<int>( _itemDurability.Count );
+
+			for ( int i = 0; i < _itemIds.Count; i++ )
+				itemIds.Add( _itemIds[i] );
+			for ( int i = 0; i < _itemCounts.Count; i++ )
+				itemCounts.Add( _itemCounts[i] );
+			for ( int i = 0; i < _itemDurability.Count; i++ )
+				itemDurability.Add( _itemDurability[i] );
+	}
+
+	public void LoadSaveData( List<int> itemIds, List<int> itemCounts, List<int> itemDurability )
+	{
+		if ( Network.IsProxy ) return;
+			EnsureSlotArraysSized();
+			ClearAll();
+
+		if ( itemIds == null || itemCounts == null )
+		{
+			Revision++;
+			return;
+		}
+
+		int count = Math.Min( _itemIds.Count, Math.Min( itemIds.Count, itemCounts.Count ) );
+		for ( int i = 0; i < count; i++ )
+		{
+			int id = itemIds[i];
+			int c = itemCounts[i];
+			if ( id <= 0 || c <= 0 )
+			{
+				ClearSlot( i );
+				continue;
+			}
+
+			_itemIds[i] = id;
+			_itemCounts[i] = c;
+		}
+
+		// Durability is optional; align as best-effort.
+		if ( itemDurability != null )
+		{
+			for ( int i = 0; i < count; i++ )
+			{
+				int d = i < itemDurability.Count ? itemDurability[i] : 0;
+				_itemDurability[i] = d;
+			}
+		}
+		else
+		{
+			for ( int i = 0; i < count; i++ )
+				_itemDurability[i] = 0;
+		}
+
+		Revision++;
 	}
 
 	/// <summary>
@@ -320,8 +529,11 @@ public sealed class VeggaInventory : Component
 	public void SetSlotDurability( int slotIndex, int durability )
 	{
 		if ( Network.IsProxy ) return;
-		if ( slotIndex < 0 || slotIndex >= _itemIds.Count || slotIndex >= _itemDurability.Count )
+			EnsureSlotArraysSized();
+			if ( slotIndex < 0 || slotIndex >= _itemIds.Count || slotIndex >= _itemDurability.Count )
 			return;
+			if ( _itemIds[slotIndex] <= 0 || _itemCounts[slotIndex] <= 0 )
+				return;
 
 		int itemId = _itemIds[slotIndex];
 		var def = VeggaItemRegistry.Get( itemId );
@@ -344,7 +556,8 @@ public sealed class VeggaInventory : Component
 	{
 		if ( slotIndex < 0 || slotIndex >= _itemIds.Count )
 			return 0;
-		return _itemIds[slotIndex];
+			if ( _itemCounts[slotIndex] <= 0 ) return 0;
+			return _itemIds[slotIndex];
 	}
 
 	/// <summary>
@@ -354,7 +567,8 @@ public sealed class VeggaInventory : Component
 	{
 		if ( slotIndex < 0 || slotIndex >= _itemCounts.Count )
 			return 0;
-		return _itemCounts[slotIndex];
+			if ( _itemIds[slotIndex] <= 0 ) return 0;
+			return _itemCounts[slotIndex];
 	}
 
 	/// <summary>
@@ -362,9 +576,9 @@ public sealed class VeggaInventory : Component
 	/// </summary>
 	public int FindFirstSlot( int itemId )
 	{
-		for ( int i = 0; i < _itemIds.Count; i++ )
+			for ( int i = 0; i < _itemIds.Count; i++ )
 		{
-			if ( _itemIds[i] == itemId )
+				if ( _itemIds[i] == itemId && _itemCounts[i] > 0 )
 				return i;
 		}
 		return -1;
@@ -375,6 +589,7 @@ public sealed class VeggaInventory : Component
 	{
 		if ( Network.IsProxy ) return;
 		BonusSlotsFromRank += amount;
+			EnsureSlotArraysSized();
 		Log.Info( $"📦 +{amount} inventory slots from rank! Total: {TotalSlots}" );
 	}
 
@@ -382,6 +597,7 @@ public sealed class VeggaInventory : Component
 	{
 		if ( Network.IsProxy ) return;
 		BonusSlotsFromQuests += amount;
+			EnsureSlotArraysSized();
 		Log.Info( $"📦 +{amount} inventory slots from quest! Total: {TotalSlots}" );
 	}
 
@@ -389,6 +605,7 @@ public sealed class VeggaInventory : Component
 	{
 		if ( Network.IsProxy ) return;
 		BonusSlotsFromPurchase += amount;
+			EnsureSlotArraysSized();
 		Log.Info( $"📦 +{amount} inventory slots from purchase! Total: {TotalSlots}" );
 	}
 

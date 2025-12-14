@@ -1,0 +1,220 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Linq
+@using Sandbox.Money
+@namespace Sandbox.UI
+@inherits Panel
+
+<root>
+	@if ( HasItem )
+	{
+		@if ( !string.IsNullOrWhiteSpace( CssIconUrl ) )
+		{
+			<div class="item-icon" style="background-image: url('@CssIconUrl');"></div>
+		}
+		else if ( IsCash )
+		{
+			<div class="item-icon currency">$</div>
+		}
+		else
+		{
+			<div class="item-icon">?</div>
+		}
+
+		@if ( IsCash )
+		{
+			<div class="item-count">@VeggaCurrency.FormatCompact( ItemCount )</div>
+		}
+		else if ( ItemCount > 1 )
+		{
+			<div class="item-count">@ItemCount</div>
+		}
+	}
+</root>
+
+@code
+{
+	[Parameter] public VeggaInventory Inventory { get; set; }
+	[Parameter] public int SlotIndex { get; set; }
+	[Parameter] public bool IsSelected { get; set; }
+	[Parameter] public Action<int> OnSelected { get; set; }
+
+	Panel _ghost;
+	InventoryHudSlot _lastHover;
+
+	bool HasItem
+		=> Inventory != null
+		&& Inventory.IsValid()
+		&& SlotIndex >= 0
+		&& SlotIndex < Inventory.TotalSlots
+		&& Inventory.GetSlotItemId( SlotIndex ) > 0;
+	int ItemId => HasItem ? Inventory.GetSlotItemId( SlotIndex ) : 0;
+	int ItemCount => HasItem ? Inventory.GetSlotCount( SlotIndex ) : 0;
+	bool IsCash => ItemId == VeggaCurrency.CashItemId;
+	string CssIconUrl
+	{
+		get
+		{
+			if ( !HasItem ) return null;
+			var def = VeggaItemRegistry.Get( ItemId );
+			return ResolveCssUrl( def?.IconPath );
+		}
+	}
+
+	public override bool WantsDrag => HasItem;
+
+	protected override void OnAfterTreeRender( bool firstTime )
+	{
+		base.OnAfterTreeRender( firstTime );
+
+		// IMPORTANT: drag events + IsInside() operate on this Panel instance.
+		// Apply the slot styling classes to THIS panel (not the inner <root>).
+		SetClass( "inventory-slot", true );
+		SetClass( "has-item", HasItem );
+		SetClass( "selected", HasItem && IsSelected );
+	}
+
+	protected override void OnClick( MousePanelEvent e )
+	{
+		base.OnClick( e );
+		if ( HasItem )
+		{
+			OnSelected?.Invoke( SlotIndex );
+		}
+	}
+
+	protected override void OnDragStart( DragEvent e )
+	{
+		if ( !HasItem ) return;
+		AddClass( "dragging" );
+
+		// Make a ghost panel (dragging this Panel itself can disturb layout).
+		_ghost = new Panel();
+		_ghost.Style.Position = PositionMode.Absolute;
+		_ghost.Style.Width = 48;
+		_ghost.Style.Height = 48;
+		_ghost.Style.ZIndex = 4000;
+		_ghost.Style.BackgroundColor = new Color( 0, 0, 0, 0.0f );
+		_ghost.Style.PointerEvents = PointerEvents.None;
+
+		var iconUrl = CssIconUrl;
+		if ( !string.IsNullOrWhiteSpace( iconUrl ) )
+		{
+			var icon = new Panel();
+			icon.Style.Width = 48;
+			icon.Style.Height = 48;
+			icon.Style.PointerEvents = PointerEvents.None;
+			icon.Style.Set( "background-image", $"url('{iconUrl}')" );
+			icon.Style.Set( "background-size", "contain" );
+			icon.Style.Set( "background-repeat", "no-repeat" );
+			icon.Style.Set( "background-position", "center" );
+			_ghost.AddChild( icon );
+		}
+		else
+		{
+			// Fallback: simple "$" for cash or "?" for unknown.
+			var label = new Label( IsCash ? "$" : "?" );
+			label.Style.FontSize = 28;
+			label.Style.FontWeight = 900;
+			label.Style.FontColor = IsCash ? new Color( 0.9f, 0.75f, 0.15f, 1f ) : new Color( 1f, 1f, 1f, 1f );
+			label.Style.AlignSelf = Align.Center;
+			label.Style.PointerEvents = PointerEvents.None;
+			_ghost.AddChild( label );
+		}
+
+		FindRootPanel()?.AddChild( _ghost );
+	}
+
+	protected override void OnDrag( DragEvent e )
+	{
+		base.OnDrag( e );
+
+		if ( !_ghost.IsValid() ) return;
+
+		// Keep the ghost under cursor (screen -> panel space).
+		_ghost.Style.Left = (e.ScreenPosition.x - e.LocalGrabPosition.x) * ScaleFromScreen;
+		_ghost.Style.Top = (e.ScreenPosition.y - e.LocalGrabPosition.y) * ScaleFromScreen;
+
+		// Hover highlight: mark the slot we're currently over.
+		var root = FindRootPanel();
+		if ( root == null ) return;
+		var hover = root.Descendants.OfType<InventoryHudSlot>()
+			.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( e.ScreenPosition ) );
+
+		if ( hover != _lastHover )
+		{
+			_lastHover?.RemoveClass( "moving-to" );
+			hover?.AddClass( "moving-to" );
+			_lastHover = hover;
+		}
+	}
+
+	protected override void OnDragEnd( DragEvent e )
+	{
+		base.OnDragEnd( e );
+		RemoveClass( "dragging" );
+
+		_lastHover?.RemoveClass( "moving-to" );
+		_lastHover = null;
+
+		if ( _ghost.IsValid() )
+		{
+			_ghost.Delete();
+			_ghost = null;
+		}
+
+		if ( Inventory == null || !Inventory.IsValid() )
+			return;
+
+		// Drop target detection: find the slot under the cursor.
+		var root = FindRootPanel();
+		if ( root == null ) return;
+
+		var target = root.Descendants.OfType<InventoryHudSlot>()
+			.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( e.ScreenPosition ) );
+
+		if ( target == null )
+			return;
+
+		Inventory.RequestMoveSlot( SlotIndex, target.SlotIndex );
+	}
+
+	public static string ResolveCssUrl( string iconPath )
+	{
+		if ( string.IsNullOrWhiteSpace( iconPath ) )
+			return null;
+
+		iconPath = iconPath.Trim();
+		if ( iconPath.StartsWith( "http://", StringComparison.OrdinalIgnoreCase )
+			|| iconPath.StartsWith( "https://", StringComparison.OrdinalIgnoreCase ) )
+		{
+			return iconPath;
+		}
+
+		// For packaged content, s&box resolves paths like "ui/...".
+		// Guard with FileExists so we don't spam Image.Load when a file isn't mounted.
+		var normalized = iconPath.TrimStart( '/' );
+		try
+		{
+			if ( !FileSystem.Mounted.FileExists( normalized ) )
+				return null;
+		}
+		catch
+		{
+			// If FileSystem isn't available for some reason, fall back to returning the normalized path.
+		}
+		return normalized;
+	}
+
+	public override void OnDeleted()
+	{
+		base.OnDeleted();
+		if ( _ghost.IsValid() )
+		{
+			_ghost.Delete();
+			_ghost = null;
+		}
+		_lastHover = null;
+	}
+}

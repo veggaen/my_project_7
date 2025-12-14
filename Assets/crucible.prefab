@@ -1,11 +1,11 @@
 {
   "RootObject": {
-    "__guid": "a60897c4-4e3f-4bd9-9550-71bcef729351",
+    "__guid": "2e96fa3f-bd4b-4276-8aa0-d41a534ca6a6",
     "__version": 1,
     "Flags": 0,
-    "Name": "goldbar_200g",
+    "Name": "crucible",
     "Position": "0,0,0",
-    "Rotation": "0,0,0,1",
+    "Rotation": "-0.00004458427,-0.000005213544,0.9983041,-0.05821355",
     "Scale": "1,1,1",
     "Tags": "",
     "Enabled": true,
@@ -16,8 +16,28 @@
     "OwnerTransfer": 1,
     "Components": [
       {
+        "__type": "Sandbox.Prop",
+        "__guid": "d426570e-69f9-4332-af8c-55eeb25cdd88",
+        "__enabled": true,
+        "BodyGroups": 18446744073709551615,
+        "Health": 0,
+        "IsStatic": false,
+        "MaterialGroup": null,
+        "Model": "models/items/knick_knacks/bowl.vmdl",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "OnPropBreak": null,
+        "OnPropTakeDamage": null,
+        "StartAsleep": false,
+        "Tint": "1,1,1,1"
+      },
+      {
         "__type": "Sandbox.ModelRenderer",
-        "__guid": "1206e36a-e07c-457a-b453-b8b601996954",
+        "__guid": "52319608-97b5-4af3-8581-5b55ab67a7b2",
         "__enabled": true,
         "BodyGroups": 18446744073709551615,
         "CreateAttachments": false,
@@ -25,7 +45,7 @@
         "MaterialGroup": null,
         "MaterialOverride": null,
         "Materials": null,
-        "Model": "goldbar/gold_bar.vmdl",
+        "Model": "models/items/knick_knacks/bowl.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -43,13 +63,13 @@
       },
       {
         "__type": "Sandbox.ModelCollider",
-        "__guid": "0c88af7c-799b-4da0-999f-948fb9042199",
+        "__guid": "a34207ca-2eeb-42a6-8470-1c02ecd6caf7",
         "__enabled": true,
         "ColliderFlags": 0,
         "Elasticity": null,
         "Friction": null,
         "IsTrigger": false,
-        "Model": "goldbar/gold_bar.vmdl",
+        "Model": "models/items/knick_knacks/bowl.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -67,7 +87,7 @@
       },
       {
         "__type": "Sandbox.Rigidbody",
-        "__guid": "e30268ea-c554-4261-b147-a69f0cd9b3b1",
+        "__guid": "f2af0d78-2b57-45ae-9734-a95dd52efd56",
         "__enabled": true,
         "AngularDamping": 0,
         "EnableImpactDamage": true,
@@ -84,7 +104,7 @@
           "Roll": false
         },
         "MassCenterOverride": "0,0,0",
-        "MassOverride": 2,
+        "MassOverride": 0,
         "MinImpactDamageSpeed": 500,
         "MotionEnabled": true,
         "OnComponentDestroy": null,
@@ -99,7 +119,7 @@
       },
       {
         "__type": "Sandbox.VeggaPickupItem",
-        "__guid": "d1be29c1-ffac-4b05-aff2-b81885c7a7d6",
+        "__guid": "eb34670f-f8e8-4b87-89d4-d1e805bf6b21",
         "__enabled": true,
         "AutoLootRange": 150,
         "InteractRange": 50,
@@ -115,26 +135,7 @@
         "ShowFloatingName": true
       }
     ],
-    "Children": [],
-    "__properties": {
-      "NetworkInterpolation": true,
-      "TimeScale": 1,
-      "WantsSystemScene": true,
-      "Metadata": {},
-      "NavMesh": {
-        "Enabled": false,
-        "IncludeStaticBodies": true,
-        "IncludeKeyframedBodies": true,
-        "EditorAutoUpdate": true,
-        "AgentHeight": 64,
-        "AgentRadius": 16,
-        "AgentStepSize": 18,
-        "AgentMaxSlope": 40,
-        "ExcludedBodies": "",
-        "IncludedBodies": ""
-      }
-    },
-    "__variables": []
+    "Children": []
   },
   "ResourceVersion": 2,
   "ShowInMenu": false,
@@ -142,7 +143,7 @@
   "MenuIcon": null,
   "DontBreakAsTemplate": false,
   "__references": [
-    "master.goldbar#95106"
+    "luke.bowl#22911"
   ],
   "__version": 2
 }

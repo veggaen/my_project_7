@@ -46,7 +46,7 @@ public static class VeggaHudLayoutApply
 			return;
 
 		// Apply within calibrated safe-area if present (per resolution).
-		var (safeMinN, safeMaxN) = VeggaHudLayoutState.GetSafeAreaNormalized();
+		var (safeMinN, safeMaxN) = VeggaHudLayoutState.GetSafeAreaNormalizedForClamping();
 		float safeMinX = safeMinN.x * screen.x;
 		float safeMinY = safeMinN.y * screen.y;
 		float safeMaxX = safeMaxN.x * screen.x;
@@ -84,6 +84,26 @@ public static class VeggaHudLayoutApply
 		w *= scale;
 		h *= scale;
 
+		// In layout editor mode, let the user position freely.
+		// We still apply the chosen anchor + scale, but we do NOT clamp based on panel size.
+		// (Users asked that elements can be pushed all the way to the edges and beyond.)
+		if ( VeggaHudLayoutState.IsActive )
+		{
+			_lastApplied[key] = new LastApplied
+			{
+				PositionN = pos,
+				Scale = scale,
+				Anchor = anchor,
+				SizePxScaled = new Vector2( w, h ),
+				ScreenPx = screen,
+				SafeMinN = safeMinN,
+				SafeMaxN = safeMaxN,
+				HasValidSize = true
+			};
+			ApplyRaw( panel, pos, scale, anchor );
+			return;
+		}
+
 		float pxX = pos.x * screen.x;
 		float pxY = pos.y * screen.y;
 		float localX = pxX - safeMinX;
@@ -109,17 +129,8 @@ public static class VeggaHudLayoutApply
 			SafeMaxN = safeMaxN,
 			HasValidSize = true
 		};
-		// If we're editing layout and we had to clamp, keep the saved position aligned
-		// so the overlay's anchor marker matches the actual on-screen location.
-		if ( VeggaHudLayoutState.IsActive )
-		{
-			var dx = clampedPos.x - pos.x;
-			var dy = clampedPos.y - pos.y;
-			if ( (dx * dx + dy * dy) > 0.00000025f )
-			{
-				VeggaHudLayoutState.UpdatePositionClamped( key, clampedPos );
-			}
-		}
+		// Note: in layout editor mode we skip clamping entirely (see above),
+		// so we don't need to feed clamped positions back into saved state.
 		ApplyRaw( panel, clampedPos, scale, anchor );
 	}
 
@@ -129,29 +140,40 @@ public static class VeggaHudLayoutApply
 		if ( screen.x <= 0 || screen.y <= 0 )
 			return;
 
-		float pxX = pos.x * screen.x;
-		float pxY = pos.y * screen.y;
+		// IMPORTANT: Avoid translate() for anchoring.
+		// In s&box UI, translate-based positioning can produce visual placement that doesn't match
+		// hit-testing, especially near the screen edges ("invisible barrier" / unclickable areas).
+		// Instead, compute a real pixel top-left using the (anchor point) position + scaled size.
+		var anchorPx = new Vector2( pos.x * screen.x, pos.y * screen.y );
+
+		var sizePx = panel.Box.Rect.Size;
+		if ( sizePx.x < 0 ) sizePx.x = 0;
+		if ( sizePx.y < 0 ) sizePx.y = 0;
+
+		var scaledSizePx = sizePx * scale;
+		var topLeftPx = anchorPx + AnchorOffsetPx( anchor, scaledSizePx );
 
 		panel.Style.Position = PositionMode.Absolute;
-		panel.Style.Left = Length.Pixels( pxX );
-		panel.Style.Top = Length.Pixels( pxY );
-		panel.Style.Set( "transform", $"{TranslateForAnchor( anchor )} scale({scale})" );
+		panel.Style.Left = Length.Pixels( topLeftPx.x );
+		panel.Style.Top = Length.Pixels( topLeftPx.y );
+		panel.Style.Set( "transform-origin", "0% 0%" );
+		panel.Style.Set( "transform", $"scale({scale})" );
 	}
 
-	static string TranslateForAnchor( VeggaHudLayoutState.HudAnchor anchor )
+	static Vector2 AnchorOffsetPx( VeggaHudLayoutState.HudAnchor anchor, Vector2 scaledSizePx )
 	{
 		return anchor switch
 		{
-			VeggaHudLayoutState.HudAnchor.TopLeft => "translate(0%,0%)",
-			VeggaHudLayoutState.HudAnchor.TopCenter => "translate(-50%,0%)",
-			VeggaHudLayoutState.HudAnchor.TopRight => "translate(-100%,0%)",
-			VeggaHudLayoutState.HudAnchor.MiddleLeft => "translate(0%,-50%)",
-			VeggaHudLayoutState.HudAnchor.MiddleCenter => "translate(-50%,-50%)",
-			VeggaHudLayoutState.HudAnchor.MiddleRight => "translate(-100%,-50%)",
-			VeggaHudLayoutState.HudAnchor.BottomLeft => "translate(0%,-100%)",
-			VeggaHudLayoutState.HudAnchor.BottomCenter => "translate(-50%,-100%)",
-			VeggaHudLayoutState.HudAnchor.BottomRight => "translate(-100%,-100%)",
-			_ => "translate(-50%,-50%)"
+			VeggaHudLayoutState.HudAnchor.TopLeft => new Vector2( 0, 0 ),
+			VeggaHudLayoutState.HudAnchor.TopCenter => new Vector2( -scaledSizePx.x * 0.5f, 0 ),
+			VeggaHudLayoutState.HudAnchor.TopRight => new Vector2( -scaledSizePx.x, 0 ),
+			VeggaHudLayoutState.HudAnchor.MiddleLeft => new Vector2( 0, -scaledSizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.MiddleCenter => new Vector2( -scaledSizePx.x * 0.5f, -scaledSizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.MiddleRight => new Vector2( -scaledSizePx.x, -scaledSizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.BottomLeft => new Vector2( 0, -scaledSizePx.y ),
+			VeggaHudLayoutState.HudAnchor.BottomCenter => new Vector2( -scaledSizePx.x * 0.5f, -scaledSizePx.y ),
+			VeggaHudLayoutState.HudAnchor.BottomRight => new Vector2( -scaledSizePx.x, -scaledSizePx.y ),
+			_ => new Vector2( -scaledSizePx.x * 0.5f, -scaledSizePx.y * 0.5f )
 		};
 	}
 
