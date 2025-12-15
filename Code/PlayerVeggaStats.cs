@@ -96,12 +96,43 @@ public sealed class PlayerVeggaStats : Component
 			_local = null;
 
 			var scene = Game.ActiveScene;
-			if ( scene is null || localConn is null ) return null;
+			if ( scene is null ) return null;
 
-			// Find the stats component owned by our local connection
+			// 1) Prefer exact Network.Owner match (normal multiplayer case)
+			if ( localConn is not null )
+			{
+				foreach ( var stats in scene.GetAllComponents<PlayerVeggaStats>() )
+				{
+					if ( stats.IsValid() && stats.Network.Owner == localConn )
+					{
+						_local = stats;
+						return _local;
+					}
+				}
+			}
+
+			// 2) Editor / transient network states: owner can be null. Prefer a non-proxy.
 			foreach ( var stats in scene.GetAllComponents<PlayerVeggaStats>() )
 			{
-				if ( stats.IsValid() && stats.Network.Owner == localConn )
+				if ( !stats.IsValid() )
+					continue;
+
+				var net = stats.Network;
+				if ( net != null && net.Owner == null && !net.IsProxy )
+				{
+					_local = stats;
+					return _local;
+				}
+			}
+
+			// 3) Final fallback: any non-proxy stats in the scene.
+			foreach ( var stats in scene.GetAllComponents<PlayerVeggaStats>() )
+			{
+				if ( !stats.IsValid() )
+					continue;
+
+				var net = stats.Network;
+				if ( net == null || !net.IsProxy )
 				{
 					_local = stats;
 					return _local;

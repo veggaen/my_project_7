@@ -26,6 +26,7 @@ public enum ChatMessageType
 {
 	Normal,
 	System,
+	Help,
 	Admin,
 	Private,
 	Action,  // /me
@@ -38,7 +39,7 @@ public enum ChatMessageType
 /// </summary>
 public sealed class VeggaChatManager : Component
 {
-	[Property] public int MaxMessages { get; set; } = 100;
+	[Property] public int MaxMessages { get; set; } = 500;
 	[Property] public float MessageFadeTime { get; set; } = 8f;
 
 	/// <summary>
@@ -113,6 +114,18 @@ public sealed class VeggaChatManager : Component
 			_defaultCommandsRegistered = true;
 			RegisterDefaultCommands();
 		}
+
+		// Welcome message for the local player (on join).
+		// Keep it local-only so we don't spam everyone.
+		try
+		{
+			var local = Connection.Local;
+			if ( local != null && Network?.Owner == local )
+			{
+				AddLocalMessage( $"Welcome, {local.DisplayName}! Type /help for commands.", ChatMessageType.System );
+			}
+		}
+		catch { }
 	}
 
 	void RegisterDefaultCommands()
@@ -158,10 +171,10 @@ public sealed class VeggaChatManager : Component
 		// Help
 		RegisterCommand( "help", "Show available commands", "", ( args ) =>
 		{
-			AddLocalMessage( "=== Available Commands ===", ChatMessageType.System );
+			AddLocalMessage( "=== Available Commands ===", ChatMessageType.Help );
 			foreach ( var cmd in _commands.Values.OrderBy( c => c.Name ) )
 			{
-				AddLocalMessage( $"/{cmd.Name} {cmd.Usage} - {cmd.Description}", ChatMessageType.System );
+				AddLocalMessage( $"/{cmd.Name} {cmd.Usage} - {cmd.Description}", ChatMessageType.Help );
 			}
 		} );
 

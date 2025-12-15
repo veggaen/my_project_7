@@ -49,6 +49,24 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 
 	protected override void OnDestroy()
 	{
+		// Best-effort flush on shutdown/hot-reload.
+		// This helps ensure skills/inventory changes persist even if the session ends
+		// without clean disconnect events firing.
+		if ( Networking.IsHost )
+		{
+			try
+			{
+				foreach ( var steamId in _lastSaveTime.Keys.ToArray() )
+				{
+					SavePlayerNow( steamId );
+				}
+			}
+			catch ( Exception ex )
+			{
+				Log.Warning( ex, "[PlayerDataPersistence] Flush-on-destroy failed" );
+			}
+		}
+
 		base.OnDestroy();
 		if ( _instance == this )
 		{
@@ -386,6 +404,26 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 			inventory.LoadSaveData( data.ItemIds, data.ItemCounts, data.ItemDurability );
 		}
 
+		// ---- Skills ----
+		var skills = playerStats.GameObject?.Components.Get<PlayerVeggaSkills>();
+		if ( skills == null || !skills.IsValid() )
+		{
+			// Skills are optional on some prefabs, so don't hard-fail.
+			Log.Warning( "[PlayerDataPersistence] Player has no PlayerVeggaSkills component; skipping skills load." );
+		}
+		else
+		{
+			// Initialize lists for older saves.
+			if ( data.SaveVersion < 3 )
+			{
+				data.SkillLevels ??= new List<int>();
+				data.SkillXps ??= new List<int>();
+				data.SaveVersion = 3;
+			}
+
+			skills.LoadSaveData( data.SkillLevels, data.SkillXps );
+		}
+
 		// Mark that persistence ran (prevents fallback)
 		playerStats._moneyLoadedFromSave = true;
 
@@ -414,6 +452,8 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 		var ids = new List<int>();
 		var counts = new List<int>();
 		var durability = new List<int>();
+		var skillLevels = new List<int>();
+		var skillXps = new List<int>();
 
 		var inventory = playerStats.GameObject?.Components.Get<VeggaInventory>();
 		if ( inventory != null && inventory.IsValid() )
@@ -421,9 +461,15 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 			inventory.ExportSaveData( out ids, out counts, out durability );
 		}
 
+		var skills = playerStats.GameObject?.Components.Get<PlayerVeggaSkills>();
+		if ( skills != null && skills.IsValid() )
+		{
+			skills.ExportSaveData( out skillLevels, out skillXps );
+		}
+
 		return new PlayerDataManager.PlayerData
 		{
-			SaveVersion = 2,
+			SaveVersion = 3,
 			SteamId = steamId,
 			SteamName = sessionStats.SteamName,
 			PreferredUsername = sessionStats.PreferredUsername,
@@ -449,6 +495,10 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 			ItemIds = ids,
 			ItemCounts = counts,
 			ItemDurability = durability,
+
+			// Skills
+			SkillLevels = skillLevels,
+			SkillXps = skillXps,
 
 			// Timestamps
 			LastSeen = DateTime.UtcNow

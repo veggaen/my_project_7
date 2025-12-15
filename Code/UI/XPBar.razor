@@ -22,7 +22,7 @@
 			</div>
 		}
 		<div class="xp-bar-container">
-			<div class="xp-skill-name">Cb.@_combatLevel</div>
+			<div class="xp-skill-name">Lv. @(_hasSkills ? _combatLevel.ToString() : "-")</div>
 			<div class="xp-bar-bg" onmouseover="@(() => _isHovered = true)" onmouseout="@(() => _isHovered = false)">
 				<div @ref="_xpBarRef" class="xp-bar-fill"></div>
 				<div class="xp-bar-text">@_xpText</div>
@@ -69,6 +69,7 @@
 	float _combatPrecise;
 	string _combatType = "Warrior";
 	string _nextCombatHint = "";
+	bool _hasSkills;
 	bool _isLayoutMode;
 	bool _isHovered;
 	string _playerName = "";
@@ -76,6 +77,14 @@
 	string _combatSummary = "";
 	int _nextCombatTarget;
 	System.Collections.Generic.List<string> _nextReqLines = new();
+
+	protected override int BuildHash()
+	{
+		int h = HashCode.Combine( _hasSkills, _combatLevel, _combatPrecise, _xpText );
+		h = HashCode.Combine( h, _combatType, _nextCombatHint, _isLayoutMode, _isHovered );
+		h = HashCode.Combine( h, _isDragging, _layoutPos, _layoutScale );
+		return h;
+	}
 
 	// Drag state
 	bool _isDragging;
@@ -130,13 +139,18 @@
 
 	void UpdateCombatStats()
 	{
-		var player = PlayerVeggaStats.Local;
-		if ( player == null ) return;
+		var skills = FindLocalSkills();
+		_hasSkills = skills != null;
+		if ( skills == null )
+		{
+			_xpText = "--";
+			_nextCombatHint = "";
+			_combatSummary = "";
+			_nextReqLines?.Clear();
+			return;
+		}
 
-		var skills = player.GameObject.Components.Get<PlayerVeggaSkills>();
-		if ( skills == null ) return;
-
-		_playerName = player.GameObject?.Name ?? "Player";
+		_playerName = skills.GameObject?.Name ?? "Player";
 		_att = skills.AttackLevel;
 		_str = skills.StrengthLevel;
 		_def = skills.DefenceLevel;
@@ -163,6 +177,48 @@
 			float pct = frac * 100f;
 			_xpBarRef.Style.Set( "width", $"{pct}%" );
 		}
+	}
+
+	PlayerVeggaSkills FindLocalSkills()
+	{
+		// 1) Preferred: local stats cache (works on host / proper ownership setups)
+		var stats = PlayerVeggaStats.Local;
+		var skillsFromStats = stats?.Components.Get<PlayerVeggaSkills>();
+		if ( skillsFromStats != null && skillsFromStats.IsValid() )
+			return skillsFromStats;
+
+		var scene = Game.ActiveScene;
+		if ( scene == null )
+			return null;
+
+		// 2) Try exact network owner match
+		var localConn = Connection.Local;
+		if ( localConn != null )
+		{
+			foreach ( var skills in scene.GetAllComponents<PlayerVeggaSkills>() )
+			{
+				if ( skills == null || !skills.IsValid() )
+					continue;
+
+				var net = skills.Network;
+				if ( net != null && net.Owner == localConn )
+					return skills;
+			}
+		}
+
+		// 3) Prefer a non-proxy instance if available
+		foreach ( var skills in scene.GetAllComponents<PlayerVeggaSkills>() )
+		{
+			if ( skills == null || !skills.IsValid() )
+				continue;
+
+			var net = skills.Network;
+			if ( net == null || !net.IsProxy )
+				return skills;
+		}
+
+		// 4) Last resort: first valid
+		return scene.GetAllComponents<PlayerVeggaSkills>().FirstOrDefault( s => s != null && s.IsValid() );
 	}
 
 	string BuildCombatSummary( PlayerVeggaSkills skills )

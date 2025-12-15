@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Sandbox;
 
 namespace Sandbox;
@@ -7,16 +8,14 @@ public sealed class PlayerVeggaSkills : Component
 {
 	public const int SkillCount = 23;
 
-	// Local arrays (not synced yet – we can add proper syncing later)
-	private readonly int[] _xp = new int[SkillCount];
-	private readonly int[] _level = new int[SkillCount];
+	// Networked skill data (fixed size). Host/owner writes; proxies receive.
+	[Sync] private NetList<int> _xp { get; set; } = new();
+	[Sync] private NetList<int> _level { get; set; } = new();
 
-	// These CAN be synced because they are properties
-	[Sync]
+	// Combat is derived from levels; compute locally from synced data.
 	[Property, Group( "Combat Info" ), ReadOnly]
 	public int CombatLevel { get; private set; }
 
-	[Sync]
 	[Property, Group( "Combat Info" ), ReadOnly]
 	public string CombatType { get; private set; } = "Warrior";
 
@@ -110,6 +109,8 @@ public sealed class PlayerVeggaSkills : Component
 	public event Action<SkillId, int>? OnSkillLevelUp;
 	public event Action<SkillId, int>? OnXPGained;
 
+	int _lastLevelHash;
+
 	protected override void OnStart()
 	{
 		// Auto-find stats if not wired manually
@@ -120,40 +121,106 @@ public sealed class PlayerVeggaSkills : Component
 			Log.Warning( "PlayerVeggaSkills: No PlayerVeggaStats found on same GameObject." );
 		}
 
-		// Initialize all skills: OSRS-style defaults
-		// Combat: Attack/Strength/Defence/Prayer/Ranged/Magic = 1, XP 0
-		// Hitpoints = 10, correct XP for level 10 (1154)
-		for ( int i = 0; i < SkillCount; i++ )
+		// Host/owner initializes the networked lists.
+		if ( !Network.IsProxy )
 		{
-			_level[i] = 1;
-			_xp[i] = 0;
+			EnsureSkillListsSizedAndDefaults();
+			ApplyHitpointsToStats();
 		}
-
-		// Hitpoints level 10 with appropriate XP
-		_level[(int)SkillId.Hitpoints] = 10;
-		_xp[(int)SkillId.Hitpoints] = SkillXpTable.GetXpForLevel( 10 );
-
-		// Make sure our Hitpoints level is applied to MaxHealth / Health
-		ApplyHitpointsToStats();
 
 		RecalculateCombatLevel();
 	}
 
+	protected override void OnUpdate()
+	{
+		// On clients/proxies, levels replicate over time. Detect changes and recompute derived combat.
+		if ( Network.IsProxy )
+		{
+			int h = 17;
+			int count = _level.Count;
+			for ( int i = 0; i < count; i++ )
+				h = (h * 31) + _level[i];
+
+			if ( h != _lastLevelHash )
+			{
+				_lastLevelHash = h;
+				RecalculateCombatLevel();
+			}
+		}
+	}
+
+	void EnsureSkillListsSizedAndDefaults()
+	{
+		if ( Network.IsProxy )
+			return;
+
+		bool wasEmpty = _level.Count == 0 && _xp.Count == 0;
+
+		// Grow/shrink to fixed size
+		while ( _level.Count < SkillCount ) _level.Add( 1 );
+		while ( _xp.Count < SkillCount ) _xp.Add( 0 );
+		while ( _level.Count > SkillCount ) _level.RemoveAt( _level.Count - 1 );
+		while ( _xp.Count > SkillCount ) _xp.RemoveAt( _xp.Count - 1 );
+
+		// If this is a fresh init, enforce OSRS-style defaults.
+		if ( wasEmpty )
+		{
+			for ( int i = 0; i < SkillCount; i++ )
+			{
+				_level[i] = 1;
+				_xp[i] = 0;
+			}
+
+			_level[(int)SkillId.Hitpoints] = 10;
+			_xp[(int)SkillId.Hitpoints] = SkillXpTable.GetXpForLevel( 10 );
+		}
+		else
+		{
+			// Defensive: clamp any zeros to minimums.
+			for ( int i = 0; i < SkillCount; i++ )
+			{
+				if ( _level[i] <= 0 ) _level[i] = 1;
+				if ( _xp[i] < 0 ) _xp[i] = 0;
+			}
+		}
+	}
+
 	// -------- Public accessors --------
 
-	public int GetLevel( SkillId skill ) => _level[(int)skill];
+	static int DefaultLevelFor( SkillId skill )
+	{
+		return skill == SkillId.Hitpoints ? 10 : 1;
+	}
 
-	public int GetXp( SkillId skill ) => _xp[(int)skill];
+	public int GetLevel( SkillId skill )
+	{
+		int idx = (int)skill;
+		if ( idx < 0 || idx >= _level.Count )
+			return DefaultLevelFor( skill );
+		return _level[idx];
+	}
+
+	public int GetXp( SkillId skill )
+	{
+		int idx = (int)skill;
+		if ( idx < 0 || idx >= _xp.Count )
+			return SkillXpTable.GetXpForLevel( DefaultLevelFor( skill ) );
+		return _xp[idx];
+	}
 
 	// -------- Core logic: set level / add XP --------
 
 	public void SetSkillLevel( SkillId skill, int level )
 	{
+		if ( Network.IsProxy ) return;
+		EnsureSkillListsSizedAndDefaults();
+
 		level = level.Clamp( 1, SkillXpTable.MaxLevel );
 
 		int idx = (int)skill;
 		_level[idx] = level;
 		_xp[idx] = SkillXpTable.GetXpForLevel( level );
+		MarkPlayerDataDirty();
 
 		// If Hitpoints changes, update HP/MaxHealth on stats
 		if ( skill == SkillId.Hitpoints )
@@ -165,6 +232,9 @@ public sealed class PlayerVeggaSkills : Component
 
 	public void AddXp( SkillId skill, int amount )
 	{
+		if ( Network.IsProxy ) return;
+		EnsureSkillListsSizedAndDefaults();
+
 		if ( amount <= 0 ) return;
 
 		int idx = (int)skill;
@@ -173,6 +243,7 @@ public sealed class PlayerVeggaSkills : Component
 
 		int newXp = (oldXp + amount).Clamp( 0, maxXp );
 		_xp[idx] = newXp;
+		MarkPlayerDataDirty();
 
 		// Fire XP gained event
 		OnXPGained?.Invoke( skill, amount );
@@ -194,6 +265,78 @@ public sealed class PlayerVeggaSkills : Component
 		if ( IsCombatSkill( skill ) )
 			RecalculateCombatLevel();
 	}
+
+	void MarkPlayerDataDirty()
+	{
+		if ( !Networking.IsHost )
+			return;
+
+		var owner = Network?.Owner;
+		var steamId = owner?.SteamId.ToString();
+		if ( string.IsNullOrWhiteSpace( steamId ) )
+		{
+			steamId = Connection.Local?.SteamId.ToString();
+		}
+
+		if ( !string.IsNullOrWhiteSpace( steamId ) )
+			PlayerDataPersistence.MarkPlayerDataChanged( steamId );
+	}
+
+	// -------- Persistence helpers --------
+
+	public void ExportSaveData( out List<int> levels, out List<int> xps )
+	{
+		levels = new List<int>( SkillCount );
+		xps = new List<int>( SkillCount );
+
+		// If we're a proxy, we still export what we have (best-effort), but the server/owner
+		// should be the one actually saving.
+		if ( !Network.IsProxy )
+			EnsureSkillListsSizedAndDefaults();
+
+		for ( int i = 0; i < SkillCount; i++ )
+		{
+			int lvl = (i >= 0 && i < _level.Count) ? _level[i] : (i == (int)SkillId.Hitpoints ? 10 : 1);
+			int xp = (i >= 0 && i < _xp.Count) ? _xp[i] : SkillXpTable.GetXpForLevel( lvl );
+			levels.Add( lvl );
+			xps.Add( xp );
+		}
+	}
+
+	public void LoadSaveData( IReadOnlyList<int> levels, IReadOnlyList<int> xps )
+	{
+		if ( Network.IsProxy )
+			return;
+
+		EnsureSkillListsSizedAndDefaults();
+
+		bool hasLevels = levels != null && levels.Count == SkillCount;
+		bool hasXps = xps != null && xps.Count == SkillCount;
+		if ( !hasLevels && !hasXps )
+			return;
+
+		for ( int i = 0; i < SkillCount; i++ )
+		{
+			int targetXp;
+			if ( hasXps )			// prefer XP as source of truth
+			{
+				targetXp = Math.Max( 0, xps[i] );
+			}
+			else
+			{
+				int lvl = levels[i].Clamp( 1, SkillXpTable.MaxLevel );
+				targetXp = SkillXpTable.GetXpForLevel( lvl );
+			}
+
+			targetXp = targetXp.Clamp( 0, SkillXpTable.GetXpForLevel( SkillXpTable.MaxLevel ) );
+			_xp[i] = targetXp;
+			_level[i] = SkillXpTable.GetLevelForXp( targetXp ).Clamp( 1, SkillXpTable.MaxLevel );
+		}
+
+		ApplyHitpointsToStats();
+		RecalculateCombatLevel();
+	}
+
 
 	/// <summary>
 	/// Apply the Hitpoints level to PlayerVeggaStats.MaxHealth/Health.

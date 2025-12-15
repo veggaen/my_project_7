@@ -28,7 +28,7 @@ public static class PlayerDataManager
 	public class PlayerData
 	{
 		// Save schema version (increment when changing format)
-		public int SaveVersion { get; set; } = 2;
+		public int SaveVersion { get; set; } = 3;
 
 		// Identity
 		public string SteamId { get; set; } = "";
@@ -66,6 +66,10 @@ public static class PlayerDataManager
 		public List<int> ItemIds { get; set; } = new();
 		public List<int> ItemCounts { get; set; } = new();
 		public List<int> ItemDurability { get; set; } = new();
+
+		// Skills
+		public List<int> SkillLevels { get; set; } = new();
+		public List<int> SkillXps { get; set; } = new();
 
 		// Admin Settings
 		public bool IsStealthMode { get; set; } = false; // Admin invisible mode
@@ -146,13 +150,15 @@ public static class PlayerDataManager
 				return new PlayerData
 				{
 					SteamId = steamId,
-					SaveVersion = 2,
+					SaveVersion = 3,
 					Money = 0,
 					InventorySlots = 96,
 					// Starting cash is now an inventory stack (CashItemId=1)
 					ItemIds = new List<int> { 1 },
 					ItemCounts = new List<int> { 500 },
 					ItemDurability = new List<int> { 0 },
+					SkillLevels = new List<int>(),
+					SkillXps = new List<int>(),
 					FirstSeen = DateTime.UtcNow,
 					LastSeen = DateTime.UtcNow
 				};

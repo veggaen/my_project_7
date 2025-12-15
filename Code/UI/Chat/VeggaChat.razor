@@ -10,10 +10,14 @@
 <root>
 	<div class="chat-container @(_isOpen ? "open" : "closed") @(_isFocused ? "focused" : "")">
 		@* Messages *@
-		<div class="messages-container" @ref="_messagesPanel">
+		<scrollpanel class="messages-container"
+					 @ref="_messagesPanel"
+					 @onmouseenter=@(() => SetMessagesHover( true ))
+					 @onmouseleave=@(() => SetMessagesHover( false ))>
+			@* Hovering messages enables scrollback without entering write mode *@
 			@foreach ( var msg in GetVisibleMessages() )
 			{
-				<div class="message @GetMessageClass(msg)">
+				<div class="message @GetMessageClass(msg)" @key="msg.MessageId">
 					<div class="message-header">
 						@if ( ShouldShowBadge( msg, out var badgeText ) )
 						{
@@ -42,32 +46,34 @@
 					</div>
 				</div>
 			}
-		</div>
+		</scrollpanel>
 
-		@* Input *@
+		@* Footer *@
 		@if ( _isFocused )
 		{
-			<div class="input-container">
-				<span class="input-prefix">Say:</span>
-				<textentry class="input-entry" @ref="_textEntry" />
-			</div>
+			<div class="chat-footer">
+				@if ( _suggestions.Count > 0 )
+				{
+					<div class="suggestions">
+						@for ( int i = 0; i < _suggestions.Count; i++ )
+						{
+							var s = _suggestions[i];
+							<div class="suggestion-item @(i == _selectedSuggestionIndex ? "selected" : "")"
+								 @onclick=@(() => AcceptSuggestion( i ))
+								 @onmouseover=@(() => _selectedSuggestionIndex = i)>
+								<span class="kind">@s.Kind</span>
+								<span class="main">@s.Main</span>
+								<span class="desc">@s.Desc</span>
+							</div>
+						}
+					</div>
+				}
 
-			@if ( _suggestions.Count > 0 )
-			{
-				<div class="suggestions">
-					@for ( int i = 0; i < _suggestions.Count; i++ )
-					{
-						var s = _suggestions[i];
-						<div class="suggestion-item @(i == _selectedSuggestionIndex ? "selected" : "")"
-							 @onclick=@(() => AcceptSuggestion( i ))
-							 @onmouseover=@(() => _selectedSuggestionIndex = i)>
-							<span class="kind">@s.Kind</span>
-							<span class="main">@s.Main</span>
-							<span class="desc">@s.Desc</span>
-						</div>
-					}
+				<div class="input-container">
+					<span class="input-prefix">Say:</span>
+					<textentry class="input-entry" @ref="_textEntry" />
 				</div>
-			}
+			</div>
 		}
 		else
 		{
@@ -82,6 +88,9 @@
 	TextEntry _textEntry;
 	VeggaChatManager _chatManager;
 	List<ChatMessage> _messages = new();
+	readonly List<string> _sentHistory = new();
+	int _historyIndex = -1; // 0 = most recent
+	string _historyDraft = "";
 
 	bool _isOpen = true;
 	bool _isFocused = false;
@@ -94,6 +103,17 @@
 	bool _capturingBottomScroll = false;
 	float _bottomScrollY = 0f;
 	bool _lockToHistoryScroll = false;
+	bool _isHoveringMessages = false;
+
+	const int FocusedTakeInitial = 60;
+	const int FocusedTakeStep = 40;
+	int _focusedTake = FocusedTakeInitial;
+	float _nextFocusedTakeIncreaseTime = 0f;
+
+	const int HoverTakeInitial = 60;
+	const int HoverTakeStep = 60;
+	int _hoverTake = HoverTakeInitial;
+	float _nextHoverTakeIncreaseTime = 0f;
 
 	readonly List<ChatSuggestion> _suggestions = new();
 	int _selectedSuggestionIndex = 0;
@@ -249,7 +269,7 @@
 					_bottomScrollY = _messagesPanel.ScrollOffset.y;
 					_capturingBottomScroll = false;
 				}
-				else if ( _isFocused )
+				else if ( _isFocused || _isHoveringMessages )
 				{
 					var y = _messagesPanel.ScrollOffset.y;
 					// If the user scrolls up from the last known bottom, lock auto-scroll until they return.
@@ -257,6 +277,15 @@
 						_lockToHistoryScroll = true;
 					if ( _lockToHistoryScroll && y >= _bottomScrollY - 10f )
 						_lockToHistoryScroll = false;
+
+					// Focused/hover mode: if user scrolls to the very top, increase how many messages we render.
+					if ( _lockToHistoryScroll && y <= 20f )
+					{
+						if ( _isFocused )
+							TryIncreaseFocusedTake();
+						else
+							TryIncreaseHoverTake();
+					}
 				}
 			}
 			catch ( Exception )
@@ -270,12 +299,37 @@
 		}
 	}
 
+	void SetMessagesHover( bool isHovering )
+	{
+		if ( _isHoveringMessages == isHovering )
+			return;
+
+		_isHoveringMessages = isHovering;
+		if ( _isHoveringMessages )
+		{
+			_hoverTake = HoverTakeInitial;
+			// Don't force-scroll here; let the user keep their position and scroll naturally.
+		}
+		else
+		{
+			// When leaving hover, snap back to bottom and keep viewer-mode compact.
+			_pendingScrollToBottom = true;
+			_capturingBottomScroll = false;
+			_lockToHistoryScroll = false;
+		}
+
+		StateHasChanged();
+	}
+
 	void OpenChatInput()
 	{
 		_isFocused = true;
 		_isOpen = true;
 		IsChatInputOpenGlobal = true;
 		_inputText = "";
+		_historyIndex = -1;
+		_historyDraft = "";
+		_focusedTake = FocusedTakeInitial;
 		_wantFocusEntry = true;
 		_suggestions.Clear();
 		_selectedSuggestionIndex = 0;
@@ -284,11 +338,50 @@
 		_lockToHistoryScroll = false;
 	}
 
+	void TryIncreaseFocusedTake()
+	{
+		if ( !_isFocused ) return;
+		if ( _chatManager == null ) return;
+		if ( Time.Now < _nextFocusedTakeIncreaseTime ) return;
+
+		var cap = _chatManager.MaxMessages > 0 ? _chatManager.MaxMessages : 100;
+		cap = Math.Min( cap, _chatManager.Messages.Count );
+		if ( cap <= 0 ) return;
+
+		var next = Math.Min( cap, _focusedTake + FocusedTakeStep );
+		if ( next == _focusedTake ) return;
+
+		_focusedTake = next;
+		_nextFocusedTakeIncreaseTime = Time.Now + 0.15f;
+		StateHasChanged();
+	}
+
+	void TryIncreaseHoverTake()
+	{
+		if ( _isFocused ) return;
+		if ( !_isHoveringMessages ) return;
+		if ( _chatManager == null ) return;
+		if ( Time.Now < _nextHoverTakeIncreaseTime ) return;
+
+		var cap = _chatManager.MaxMessages > 0 ? _chatManager.MaxMessages : 100;
+		cap = Math.Min( cap, _chatManager.Messages.Count );
+		if ( cap <= 0 ) return;
+
+		var next = Math.Min( cap, _hoverTake + HoverTakeStep );
+		if ( next == _hoverTake ) return;
+
+		_hoverTake = next;
+		_nextHoverTakeIncreaseTime = Time.Now + 0.15f;
+		StateHasChanged();
+	}
+
 	void CloseChatInput()
 	{
 		_isFocused = false;
 		IsChatInputOpenGlobal = false;
 		_inputText = "";
+		_historyIndex = -1;
+		_historyDraft = "";
 		_wantFocusEntry = false;
 		_suggestions.Clear();
 		_selectedSuggestionIndex = 0;
@@ -303,6 +396,7 @@
 			try
 			{
 				_chatManager?.SendMessage( text );
+				AddToHistory( text );
 			}
 			catch ( Exception ex )
 			{
@@ -312,6 +406,66 @@
 		}
 
 		CloseChatInput();
+	}
+
+	void AddToHistory( string text )
+	{
+		text = text?.TrimEnd() ?? "";
+		if ( string.IsNullOrWhiteSpace( text ) ) return;
+		if ( _sentHistory.Count > 0 && string.Equals( _sentHistory[^1], text, StringComparison.Ordinal ) )
+			return;
+		_sentHistory.Add( text );
+		while ( _sentHistory.Count > 50 )
+			_sentHistory.RemoveAt( 0 );
+		_historyIndex = -1;
+		_historyDraft = "";
+	}
+
+	void OnTextEntryKeyDown( int key )
+	{
+		if ( !_isFocused || _textEntry == null ) return;
+		if ( _sentHistory.Count == 0 ) return;
+
+		// Key codes here follow the UI keydown event codes.
+		// 38 = ArrowUp, 40 = ArrowDown
+		bool up = key == 38;
+		bool down = key == 40;
+		if ( !up && !down ) return;
+
+		var current = _textEntry.Text ?? "";
+
+		// Only start history nav from an empty input (unless already navigating).
+		if ( _historyIndex == -1 && !string.IsNullOrWhiteSpace( current ) )
+			return;
+
+		if ( _historyIndex == -1 )
+			_historyDraft = current;
+
+		if ( up )
+		{
+			if ( _historyIndex < _sentHistory.Count - 1 )
+				_historyIndex++;
+		}
+		else
+		{
+			if ( _historyIndex >= 0 )
+				_historyIndex--;
+		}
+
+		string nextText;
+		if ( _historyIndex < 0 )
+		{
+			nextText = _historyDraft;
+		}
+		else
+		{
+			int offsetFromEnd = _historyIndex + 1; // 1 = most recent
+			nextText = _sentHistory[^offsetFromEnd];
+		}
+
+		_textEntry.Text = nextText;
+		_inputText = nextText;
+		_wantFocusEntry = true;
 	}
 
 	void ApplyLayoutPosition()
@@ -488,8 +642,8 @@
 			_messages.RemoveAt( 0 );
 		}
 
-		// Scroll to bottom unless the user is reading history (scrolled up while focused)
-		if ( !_isFocused || !_lockToHistoryScroll )
+		// Scroll to bottom unless the user is reading history (scrolled up while focused/hovering)
+		if ( !(_isFocused || _isHoveringMessages) || !_lockToHistoryScroll )
 		{
 			_pendingScrollToBottom = true;
 		}
@@ -503,16 +657,14 @@
 	void ScrollToBottom()
 	{
 		// Scroll messages panel to bottom
-		if ( _messagesPanel != null )
+		if ( _messagesPanel == null ) return;
+		try
 		{
-			try
-			{
-				_messagesPanel.ScrollOffset = new Vector2( 0, 99999 );
-			}
-			catch ( Exception )
-			{
-				_messagesPanel = null;
-			}
+			_messagesPanel.ScrollOffset = new Vector2( 0, 99999 );
+		}
+		catch ( Exception )
+		{
+			_messagesPanel = null;
 		}
 	}
 
@@ -523,15 +675,21 @@
 		// If focused, show a lot more so scroll-back works
 		if ( _isFocused )
 		{
-			var take = _chatManager.MaxMessages > 0 ? _chatManager.MaxMessages : 100;
-			return _chatManager.Messages.TakeLast( take );
+			var cap = _chatManager.MaxMessages > 0 ? _chatManager.MaxMessages : 100;
+			var take = Math.Max( FocusedTakeInitial, Math.Min( cap, _focusedTake ) );
+			return _chatManager.Messages.TakeLast( take ).ToList();
 		}
 
-		// Otherwise show recent messages, but always keep at least a few lines visible.
-		var minAlways = _chatManager.Messages.TakeLast( 3 ).ToList();
-		var cutoff = DateTime.Now.AddSeconds( -8 );
-		var recent = _chatManager.Messages.Where( m => m.Time > cutoff ).TakeLast( 10 ).ToList();
-		return recent.Count >= 3 ? recent : minAlways;
+		// Hovering (not focused): allow scrollback without opening chat input.
+		if ( _isHoveringMessages )
+		{
+			var cap = _chatManager.MaxMessages > 0 ? _chatManager.MaxMessages : 100;
+			var take = Math.Max( HoverTakeInitial, Math.Min( cap, _hoverTake ) );
+			return _chatManager.Messages.TakeLast( take ).ToList();
+		}
+
+		// Viewer mode: keep render cost small but show enough context.
+		return _chatManager.Messages.TakeLast( 10 ).ToList();
 	}
 
 	string GetMessageClass( ChatMessage msg )
@@ -540,6 +698,7 @@
 		{
 			ChatMessageType.Normal => "normal",
 			ChatMessageType.System => "system",
+			ChatMessageType.Help => "help",
 			ChatMessageType.Admin => "admin",
 			ChatMessageType.Private => "private",
 			ChatMessageType.Action => "action",
@@ -550,14 +709,19 @@
 
 	protected override int BuildHash()
 	{
-		return HashCode.Combine(
-			_isOpen,
-			_isFocused,
-			_inputText,
-			_chatManager?.Messages?.Count ?? 0,
-			_lockToHistoryScroll,
-			_messagesVersion
-		);
+		var hash = new HashCode();
+		hash.Add( _isOpen );
+		hash.Add( _isFocused );
+		hash.Add( _isHoveringMessages );
+		hash.Add( _inputText );
+		hash.Add( _chatManager?.Messages?.Count ?? 0 );
+		hash.Add( _focusedTake );
+		hash.Add( _hoverTake );
+		hash.Add( _lockToHistoryScroll );
+		hash.Add( _messagesVersion );
+		hash.Add( _suggestions.Count );
+		hash.Add( _selectedSuggestionIndex );
+		return hash.ToHashCode();
 	}
 
 	int GetReactionCount( ChatMessage msg, string reactionKey )

@@ -69,6 +69,12 @@ public sealed class HUDManagerScene : Component
 	[Property, Group( "Links" )]
 	public VeggaChat ChatPanel { get; set; }
 
+	/// <summary>
+	/// Link to the SkillsPanel component. Set this in the inspector!
+	/// </summary>
+	[Property, Group( "Links" )]
+	public SkillsPanel SkillsPanel { get; set; }
+
 	private PlayerVeggaStats _currentPlayerStats;
 
 	protected override void OnStart()
@@ -129,6 +135,18 @@ public sealed class HUDManagerScene : Component
 		if ( ChatPanel == null )
 		{
 			ChatPanel = Components.Get<VeggaChat>();
+		}
+
+		if ( SkillsPanel == null )
+		{
+			SkillsPanel = Components.Get<SkillsPanel>();
+			if ( SkillsPanel == null )
+			{
+				// If the scene doesn't have one, create it so skills UI is always available.
+				var go = new GameObject( true, "UI_SkillsPanel" );
+				go.Components.Create<ScreenPanel>();
+				SkillsPanel = go.Components.Create<SkillsPanel>();
+			}
 		}
 
 		// Ensure layout mode is off when scene loads

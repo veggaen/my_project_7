@@ -1,0 +1,186 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Collections.Generic
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/code/ui/skills/skillspanel.razor.scss" )]
+
+<root>
+	<div class="skills-panel">
+		<div class="skills-header">
+			<div class="skills-title">Skills</div>
+			<div class="skills-subtitle">Skills Interface: lists skills and progress. Hover for XP details.</div>
+		</div>
+
+		@if ( _hasSkills )
+		{
+			<div class="skills-list">
+				@foreach ( var skill in _skills )
+				{
+					var level = _skillsComp.GetLevel( skill.Id );
+					var xp = _skillsComp.GetXp( skill.Id );
+					var max = SkillXpTable.MaxLevel;
+					var nextLevel = Math.Min( level + 1, max );
+					var xpCur = SkillXpTable.GetXpForLevel( level );
+					var xpNext = SkillXpTable.GetXpForLevel( nextLevel );
+					var denom = Math.Max( 1, xpNext - xpCur );
+					var frac = (level >= max) ? 1f : (float)(xp - xpCur) / denom;
+					frac = frac.Clamp( 0f, 1f );
+					var pct = frac * 100f;
+					var remaining = Math.Max( 0, xpNext - xp );
+
+					<div class="skill-row">
+						<div class="skill-top">
+							<div class="skill-name">@skill.Name</div>
+							<div class="skill-level">@level</div>
+						</div>
+						<div class="skill-barframe">
+							<div class="skill-barfill" style="width: @($"{pct:0.##}%")"></div>
+							<div class="skill-bartext">@FormatXp(xp) / @FormatXp(xpNext)</div>
+						</div>
+
+						<div class="skill-tooltip">
+							<div class="tt-title">@skill.Name</div>
+							<div class="tt-row"><span class="k">Current XP</span><span class="v">@xp.ToString("N0")</span></div>
+							<div class="tt-row"><span class="k">Next level XP</span><span class="v">@xpNext.ToString("N0")</span></div>
+							<div class="tt-row"><span class="k">Remaining</span><span class="v">@remaining.ToString("N0")</span></div>
+						</div>
+					</div>
+				}
+			</div>
+		}
+		else
+		{
+			<div class="skills-empty">Waiting for skills…</div>
+		}
+	</div>
+</root>
+
+@code
+{
+	sealed class SkillMeta
+	{
+		public SkillId Id { get; init; }
+		public string Name { get; init; }
+	}
+
+	static readonly List<SkillMeta> _skills = new()
+	{
+		new() { Id = SkillId.Attack, Name = "Attack" },
+		new() { Id = SkillId.Strength, Name = "Strength" },
+		new() { Id = SkillId.Defence, Name = "Defence" },
+		new() { Id = SkillId.Hitpoints, Name = "Hitpoints" },
+		new() { Id = SkillId.Prayer, Name = "Prayer" },
+		new() { Id = SkillId.Ranged, Name = "Ranged" },
+		new() { Id = SkillId.Magic, Name = "Magic" },
+
+		new() { Id = SkillId.Mining, Name = "Mining" },
+		new() { Id = SkillId.Woodcutting, Name = "Woodcutting" },
+		new() { Id = SkillId.Fishing, Name = "Fishing" },
+		new() { Id = SkillId.Farming, Name = "Farming" },
+		new() { Id = SkillId.Hunter, Name = "Hunter" },
+
+		new() { Id = SkillId.Cooking, Name = "Cooking" },
+		new() { Id = SkillId.Crafting, Name = "Crafting" },
+		new() { Id = SkillId.Smithing, Name = "Smithing" },
+		new() { Id = SkillId.Fletching, Name = "Fletching" },
+		new() { Id = SkillId.Herblore, Name = "Herblore" },
+		new() { Id = SkillId.Runecraft, Name = "Runecraft" },
+		new() { Id = SkillId.Construction, Name = "Construction" },
+		new() { Id = SkillId.Firemaking, Name = "Firemaking" },
+
+		new() { Id = SkillId.Agility, Name = "Agility" },
+		new() { Id = SkillId.Slayer, Name = "Slayer" },
+		new() { Id = SkillId.Thieving, Name = "Thieving" },
+	};
+
+	bool _registered;
+	bool _hasSkills;
+	PlayerVeggaSkills _skillsComp;
+
+	protected override void OnUpdate()
+	{
+		if ( !_registered )
+		{
+			_registered = true;
+			VeggaHudLayoutState.RegisterElement(
+				VeggaHudLayoutState.KeySkillsPanel,
+				"Skills",
+				VeggaHudLayoutState.GetDefaultPosition( VeggaHudLayoutState.KeySkillsPanel )
+			);
+		}
+
+		VeggaHudLayoutApply.Apply( Panel, VeggaHudLayoutState.KeySkillsPanel, VeggaHudLayoutState.GetDefaultPosition( VeggaHudLayoutState.KeySkillsPanel ), 1f );
+
+		// Disable interactions while editing the HUD.
+		if ( Panel != null )
+		{
+			Panel.Style.PointerEvents = VeggaHudLayoutState.IsActive ? PointerEvents.None : PointerEvents.All;
+			Panel.Style.ZIndex = VeggaHudLayoutState.IsActive && VeggaHudLayoutState.SelectedElement == VeggaHudLayoutState.KeySkillsPanel ? 2601 : 0;
+		}
+
+		_skillsComp = FindLocalSkills();
+		_hasSkills = _skillsComp != null && _skillsComp.IsValid();
+	}
+
+	protected override int BuildHash()
+	{
+		var hash = new HashCode();
+		hash.Add( _hasSkills );
+
+		if ( _skillsComp == null || !_skillsComp.IsValid() )
+			return hash.ToHashCode();
+
+		// Hash all skill levels + xp so the UI refreshes immediately.
+		foreach ( var s in _skills )
+		{
+			hash.Add( (int)s.Id );
+			hash.Add( _skillsComp.GetLevel( s.Id ) );
+			hash.Add( _skillsComp.GetXp( s.Id ) );
+		}
+
+		return hash.ToHashCode();
+	}
+
+	PlayerVeggaSkills FindLocalSkills()
+	{
+		var stats = PlayerVeggaStats.Local;
+		var skills = stats?.Components.Get<PlayerVeggaSkills>();
+		if ( skills != null && skills.IsValid() )
+			return skills;
+
+		var scene = Game.ActiveScene;
+		if ( scene == null )
+			return null;
+
+		var localConn = Connection.Local;
+		if ( localConn != null )
+		{
+			foreach ( var s in scene.GetAllComponents<PlayerVeggaSkills>() )
+			{
+				if ( s == null || !s.IsValid() ) continue;
+				var net = s.Network;
+				if ( net != null && net.Owner == localConn )
+					return s;
+			}
+		}
+
+		foreach ( var s in scene.GetAllComponents<PlayerVeggaSkills>() )
+		{
+			if ( s == null || !s.IsValid() ) continue;
+			var net = s.Network;
+			if ( net == null || !net.IsProxy )
+				return s;
+		}
+
+		return scene.GetAllComponents<PlayerVeggaSkills>().FirstOrDefault( s => s != null && s.IsValid() );
+	}
+
+	string FormatXp( int xp )
+	{
+		if ( xp >= 1_000_000 ) return $"{xp / 1_000_000f:0.#}M";
+		if ( xp >= 1_000 ) return $"{xp / 1_000f:0.#}k";
+		return xp.ToString();
+	}
+}

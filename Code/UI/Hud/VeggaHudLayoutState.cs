@@ -46,6 +46,8 @@ public static class VeggaHudLayoutState
 		{ KeyInventory, HudAnchor.BottomRight },
 		// Minimap sits in the top-right.
 		{ KeyMinimap, HudAnchor.TopRight },
+		// Skills panel is a list that grows downward.
+		{ KeySkillsPanel, HudAnchor.TopLeft },
 	};
 
 	// Runtime registry for modular HUD "plugins".
@@ -66,6 +68,7 @@ public static class VeggaHudLayoutState
 	public const string KeyMinimap = "minimap";
 	public const string KeyChat = "chat";
 	public const string KeyInventory = "inventory";
+	public const string KeySkillsPanel = "skills";
 
 	/// <summary>
 	/// Available screen positions.
@@ -113,6 +116,7 @@ public static class VeggaHudLayoutState
 		{ KeyChat, new Vector2( 0.04f, 0.78f ) },
 		{ KeyMinimap, new Vector2( 0.96f, 0.04f ) },
 		{ KeyInventory, new Vector2( 0.96f, 0.96f ) },
+		{ KeySkillsPanel, new Vector2( 0.70f, 0.10f ) },
 	};
 
 	/// <summary>
@@ -662,7 +666,8 @@ public static class VeggaHudLayoutState
 			KeyXpBar,
 			KeyChat,
 			KeyMinimap,
-			KeyInventory
+			KeyInventory,
+			KeySkillsPanel
 		};
 
 		foreach ( var k in _registeredKeys )
@@ -701,6 +706,7 @@ public static class VeggaHudLayoutState
 			KeyChat => "Chat Box",
 			KeyMinimap => "Minimap",
 			KeyInventory => "Inventory",
+			KeySkillsPanel => "Skills",
 			_ => key
 		};
 	}
@@ -708,6 +714,44 @@ public static class VeggaHudLayoutState
 	/// <summary>
 	/// Reset all saved HUD layout back to defaults.
 	/// </summary>
+	public static void ResetElement( string key )
+	{
+		EnsureLoaded();
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return;
+
+		key = key.Trim();
+
+		// Remove the per-resolution override for the current screen, if any.
+		var per = GetElementsForCurrentScreen( create: false );
+		per?.Remove( key );
+
+		// Reset the global/default entry.
+		if ( _data.Elements == null )
+			_data.Elements = new Dictionary<string, LayoutEntry>();
+
+		var pos = GetDefaultPosition( key );
+		var anchor = AnchorByKey.TryGetValue( key, out var a ) ? a : HudAnchor.MiddleCenter;
+
+		_data.Elements[key] = new LayoutEntry
+		{
+			X = pos.x,
+			Y = pos.y,
+			Preset = -1,
+			Scale = 1f,
+			Anchor = (int)anchor
+		};
+
+		FileSystem.Data.WriteJson( LayoutFile, _data );
+		Log.Info( $"[HUD Layout] Reset '{key}' to defaults" );
+	}
+
+	[ConCmd( "vegga_hud_reset_chat" )]
+	public static void ResetChatLayoutCommand()
+	{
+		ResetElement( KeyChat );
+	}
+
 	public static void ResetAll()
 	{
 		EnsureLoaded();
@@ -723,7 +767,8 @@ public static class VeggaHudLayoutState
 			KeyXpBar,
 			KeyChat,
 			KeyMinimap,
-			KeyInventory
+			KeyInventory,
+			KeySkillsPanel
 		};
 
 		foreach ( var k in _registeredKeys )
