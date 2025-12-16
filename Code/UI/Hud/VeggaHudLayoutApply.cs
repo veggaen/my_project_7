@@ -1,5 +1,6 @@
 using Sandbox;
 using Sandbox.UI;
+using System.Globalization;
 
 namespace Sandbox.UI;
 
@@ -12,6 +13,29 @@ public static class VeggaHudLayoutApply
 {
 	const float MarginPx = 48f;
 	static readonly Vector2 FallbackSizePx = new( 160f, 60f );
+
+	static Vector2 GetFallbackSizePxForKey( string key )
+	{
+		// These are only used before a panel has measured at least once.
+		// If the fallback is too small, clamping can allow the real (larger) panel
+		// to disappear off-screen on right/bottom presets.
+		return key switch
+		{
+			// Chat has explicit width/height in CSS.
+			VeggaHudLayoutState.KeyChat => new Vector2( 720f, 360f ),
+			// Inventory: grid (520w) + details (240w) ≈ 760w, height varies.
+			VeggaHudLayoutState.KeyInventory => new Vector2( 780f, 460f ),
+			// Skills: min-width 480; height varies with list.
+			VeggaHudLayoutState.KeySkillsPanel => new Vector2( 560f, 420f ),
+			// Player modular HUD is relatively small.
+			VeggaHudLayoutState.KeyPlayerHud => new Vector2( 340f, 220f ),
+			// XP bar is a slim horizontal widget.
+			VeggaHudLayoutState.KeyXpBar => new Vector2( 520f, 90f ),
+			// Minimap is typically square-ish.
+			VeggaHudLayoutState.KeyMinimap => new Vector2( 260f, 260f ),
+			_ => FallbackSizePx
+		};
+	}
 
 	static Vector2 GetCanvasPx( Panel panel )
 	{
@@ -61,6 +85,7 @@ public static class VeggaHudLayoutApply
 
 	static readonly System.Collections.Generic.Dictionary<string, LastApplied> _lastApplied = new();
 	static readonly System.Collections.Generic.Dictionary<string, System.WeakReference<Panel>> _panels = new();
+	static readonly System.Collections.Generic.HashSet<string> _loggedParentMismatch = new();
 
 	public static bool TryGetLastApplied( string key, out LastApplied info )
 	{
@@ -123,7 +148,7 @@ public static class VeggaHudLayoutApply
 		// If the panel hasn't measured yet, use cached size (if available) or a safe fallback.
 		var measuredSizePx = panel.Box.Rect.Size;
 		bool measuredValid = measuredSizePx.x > 1f && measuredSizePx.y > 1f;
-		Vector2 baseSizePx = measuredValid ? measuredSizePx : FallbackSizePx;
+		Vector2 baseSizePx = measuredValid ? measuredSizePx : GetFallbackSizePxForKey( key );
 		bool hadCachedValid = false;
 		if ( !measuredValid && _lastApplied.TryGetValue( key, out var prev ) && prev.HasValidSize )
 		{
@@ -136,11 +161,20 @@ public static class VeggaHudLayoutApply
 		var scaledSizePx = baseSizePx * scale;
 		bool hasValidSize = measuredValid || hadCachedValid;
 
+		// Clamp the anchor position so the element can't fully leave the screen.
+		// This prevents Right/Bottom presets from pushing menus out of view.
+		var clampedPos = ClampToBoundsNormalized( pos, anchor, scaledSizePx, canvas );
+		if ( VeggaHudLayoutState.IsActive && (System.Math.Abs( clampedPos.x - pos.x ) > 0.0001f || System.Math.Abs( clampedPos.y - pos.y ) > 0.0001f) )
+		{
+			// Persist the clamped value while in layout mode so the editor boxes and gameplay stay in sync.
+			VeggaHudLayoutState.UpdatePositionClamped( key, clampedPos );
+		}
+
 		// IMPORTANT: Keep positioning identical between editor preview (blue boxes) and normal gameplay.
 		// We do not apply safe-area clamping here; if you can place it in the editor, it should stay there.
 		_lastApplied[key] = new LastApplied
 		{
-			PositionN = pos,
+			PositionN = clampedPos,
 			Scale = scale,
 			Anchor = anchor,
 			SizePxScaled = scaledSizePx,
@@ -149,30 +183,92 @@ public static class VeggaHudLayoutApply
 			SafeMaxN = safeMaxN,
 			HasValidSize = hasValidSize
 		};
-		ApplyRaw( panel, pos, scale, anchor, scaledSizePx );
+		ApplyRaw( panel, clampedPos, scale, anchor, scaledSizePx, canvas );
 	}
 
-	static void ApplyRaw( Panel panel, Vector2 pos, float scale, VeggaHudLayoutState.HudAnchor anchor, Vector2? scaledSizePxOverride = null )
+	static Vector2 ClampToBoundsNormalized( Vector2 posN, VeggaHudLayoutState.HudAnchor anchor, Vector2 scaledSizePx, Vector2 canvasPx )
 	{
-		// IMPORTANT: Use percentage positioning and translate anchoring.
-		// This matches how other UI elements (like the crosshair) are centered, and it behaves
-		// correctly under ScreenPanel scaling (ConsistentHeight/etc) without drift.
-		float leftPct = pos.x * 100f;
-		float topPct = pos.y * 100f;
+		float w = System.Math.Max( 0f, scaledSizePx.x );
+		float h = System.Math.Max( 0f, scaledSizePx.y );
+		float screenW = System.Math.Max( 1f, canvasPx.x );
+		float screenH = System.Math.Max( 1f, canvasPx.y );
 
-		(float txPct, float tyPct) = anchor switch
+		// Robust clamping: clamp the panel's *top-left* rather than clamping the anchor point.
+		// Clamping anchor directly can behave badly for right/bottom anchors and/or large panels
+		// (eg. when w > screenW, the anchor clamp ranges can invert and shove the panel away).
+		var anchorPx = new Vector2( posN.x * screenW, posN.y * screenH );
+		var offsetPx = AnchorOffsetPx( anchor, new Vector2( w, h ) );
+		var topLeftPx = anchorPx + offsetPx;
+
+		// Allow a small amount of off-screen to keep HUD from feeling "pinned".
+		// Works even when the panel is larger than the screen.
+		// Desired constraints:
+		// left >= -Margin
+		// left + w <= screenW + Margin  =>  left <= (screenW - w) + Margin
+		// Same for top.
+		float leftA = -MarginPx;
+		float leftB = (screenW - w) + MarginPx;
+		float topA = -MarginPx;
+		float topB = (screenH - h) + MarginPx;
+
+		float minLeft = System.Math.Min( leftA, leftB );
+		float maxLeft = System.Math.Max( leftA, leftB );
+		float minTop = System.Math.Min( topA, topB );
+		float maxTop = System.Math.Max( topA, topB );
+
+		topLeftPx.x = topLeftPx.x.Clamp( minLeft, maxLeft );
+		topLeftPx.y = topLeftPx.y.Clamp( minTop, maxTop );
+
+		anchorPx = topLeftPx - offsetPx;
+		return new Vector2( anchorPx.x / screenW, anchorPx.y / screenH );
+	}
+
+	static void ApplyRaw( Panel panel, Vector2 posN, float scale, VeggaHudLayoutState.HudAnchor anchor, Vector2 scaledSizePx, Vector2 canvasPx )
+	{
+		if ( panel == null )
+			return;
+
+		// The layout positions are saved in full-screen normalized space.
+		// BUT: CSS percentages are relative to the panel's *parent*.
+		// If a HUD panel isn't parented directly to the full-screen root, using root-normalized %
+		// will drift and can push right/bottom presets off-screen while BoxHud (root-space) looks correct.
+		// So we convert the anchor point from root-space -> parent-space, then apply % + translate anchoring.
+		var root = GetRootPanel( panel );
+		var rootRect = root?.Box.Rect ?? default;
+		var parentRect = panel.Parent?.Box.Rect ?? rootRect;
+
+		float rootW = System.Math.Max( 1f, canvasPx.x );
+		float rootH = System.Math.Max( 1f, canvasPx.y );
+		float parentW = System.Math.Max( 1f, parentRect.Width );
+		float parentH = System.Math.Max( 1f, parentRect.Height );
+
+		var anchorPxInRoot = new Vector2( posN.x * rootW, posN.y * rootH );
+		var anchorPxInScreen = new Vector2( rootRect.Left + anchorPxInRoot.x, rootRect.Top + anchorPxInRoot.y );
+
+
+		// Convert desired anchor point -> desired TOP-LEFT in screen space.
+		//
+		// Why: some panels were visually acting like translate(-50%/-100%) anchoring was not applied,
+		// making right/bottom presets appear off-screen while the layout editor (which uses anchor math)
+		// looked correct. By baking the anchor offset into left/top directly, presets don't depend on
+		// CSS translate being honored.
+		var invScale = scale <= 0.0001f ? 1f : scale;
+		var baseSizePx = scaledSizePx / invScale;
+		var topLeftInScreen = anchorPxInScreen + AnchorOffsetPx( anchor, baseSizePx );
+
+		float leftPct = ((topLeftInScreen.x - parentRect.Left) / parentW) * 100f;
+		float topPct = ((topLeftInScreen.y - parentRect.Top) / parentH) * 100f;
+
+		if ( !_loggedParentMismatch.Contains( panel.GetHashCode().ToString() ) )
 		{
-			VeggaHudLayoutState.HudAnchor.TopLeft => (0f, 0f),
-			VeggaHudLayoutState.HudAnchor.TopCenter => (-50f, 0f),
-			VeggaHudLayoutState.HudAnchor.TopRight => (-100f, 0f),
-			VeggaHudLayoutState.HudAnchor.MiddleLeft => (0f, -50f),
-			VeggaHudLayoutState.HudAnchor.MiddleCenter => (-50f, -50f),
-			VeggaHudLayoutState.HudAnchor.MiddleRight => (-100f, -50f),
-			VeggaHudLayoutState.HudAnchor.BottomLeft => (0f, -100f),
-			VeggaHudLayoutState.HudAnchor.BottomCenter => (-50f, -100f),
-			VeggaHudLayoutState.HudAnchor.BottomRight => (-100f, -100f),
-			_ => (-50f, -50f)
-		};
+			// One-time log per panel instance (helps diagnose why only some presets fail).
+			bool parentMismatch = System.Math.Abs( parentW - rootW ) > 1f || System.Math.Abs( parentH - rootH ) > 1f;
+			if ( parentMismatch )
+			{
+				_loggedParentMismatch.Add( panel.GetHashCode().ToString() );
+				Log.Info( $"[HudLayout] Parent mismatch for {panel.GetType().Name}: parent={parentW:0}x{parentH:0} root={rootW:0}x{rootH:0} parentRect={parentRect} rootRect={rootRect}" );
+			}
+		}
 
 		panel.Style.Position = PositionMode.Absolute;
 		// Margins can shift an absolutely-positioned panel away from its computed top-left,
@@ -183,10 +279,11 @@ public static class VeggaHudLayoutApply
 		// "offset" from the layout editor's intended position.
 		panel.Style.Set( "right", "auto" );
 		panel.Style.Set( "bottom", "auto" );
-		panel.Style.Set( "left", $"{leftPct:0.###}%" );
-		panel.Style.Set( "top", $"{topPct:0.###}%" );
+		panel.Style.Set( "left", leftPct.ToString( "0.###", CultureInfo.InvariantCulture ) + "%" );
+		panel.Style.Set( "top", topPct.ToString( "0.###", CultureInfo.InvariantCulture ) + "%" );
 		panel.Style.Set( "transform-origin", "0% 0%" );
-		panel.Style.Set( "transform", $"translate({txPct:0.#}%, {tyPct:0.#}%) scale({scale})" );
+		var scaleText = scale.ToString( "0.###", CultureInfo.InvariantCulture );
+		panel.Style.Set( "transform", $"scale({scaleText})" );
 	}
 
 	static Vector2 AnchorOffsetPx( VeggaHudLayoutState.HudAnchor anchor, Vector2 scaledSizePx )

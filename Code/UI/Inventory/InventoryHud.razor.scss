@@ -255,10 +255,3 @@ InventoryHud root {
 	}
 }
 
-// Let the Razor <root> size the component panel.
-// If <root> is absolute, it can stop contributing to the parent size, which makes
-// Box.Rect.Size disagree with the menu's visible bounds.
-InventoryHud root {
-	position: relative;
-}
-

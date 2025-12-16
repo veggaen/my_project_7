@@ -614,11 +614,21 @@
 			var mouse = Mouse.Position;
 
 			string appliedText = "(no last-applied info yet)";
+			Vector2 expectedTopLeftPx = default;
 			if ( VeggaHudLayoutApply.TryGetLastApplied( key, out var applied ) )
 			{
 				var anchorPx = new Vector2( applied.PositionN.x * applied.ScreenPx.x, applied.PositionN.y * applied.ScreenPx.y );
-				var topLeftPx = anchorPx + AnchorOffsetPx( applied.Anchor, applied.SizePxScaled );
-				appliedText = $"posN={applied.PositionN} scale={applied.Scale:0.###} anchor={applied.Anchor} sizePxScaled={applied.SizePxScaled} hasValidSize={applied.HasValidSize} screenPx={applied.ScreenPx} topLeftPx={topLeftPx} safeMinN={applied.SafeMinN} safeMaxN={applied.SafeMaxN}";
+				var invScale = applied.Scale <= 0.0001f ? 1f : applied.Scale;
+				var baseSizePx = applied.SizePxScaled / invScale;
+				expectedTopLeftPx = anchorPx + AnchorOffsetPx( applied.Anchor, baseSizePx );
+				appliedText = $"posN={applied.PositionN} scale={applied.Scale:0.###} anchor={applied.Anchor} sizePxScaled={applied.SizePxScaled} hasValidSize={applied.HasValidSize} screenPx={applied.ScreenPx} topLeftPx={expectedTopLeftPx} safeMinN={applied.SafeMinN} safeMaxN={applied.SafeMaxN}";
+			}
+
+			string runtimeText = "(no runtime rect)";
+			if ( VeggaHudLayoutApply.TryGetRuntimePanelRectPx( key, out var runtimeTopLeftPx, out var runtimeSizePx ) )
+			{
+				var d = runtimeTopLeftPx - expectedTopLeftPx;
+				runtimeText = $"runtimeTopLeftPx={runtimeTopLeftPx} runtimeSizePx={runtimeSizePx} dPx={d}";
 			}
 
 			string rectText = "(no rect)";
@@ -627,7 +637,7 @@
 				rectText = $"left={leftPct:0.###}% top={topPct:0.###}% w={widthPct:0.###}% h={heightPct:0.###}%";
 			}
 
-			Log.Info( $"[HUD Layout Debug] {reason} key={key} name={GetElementName( key )} | saved: posN={savedPosN} preset={savedPreset} scale={savedScale:0.###} anchor={savedAnchor} | applied: {appliedText} | blueRect: {rectText} | mousePx={mouse} screenPx={screen}" );
+			Log.Info( $"[HUD Layout Debug] {reason} key={key} name={GetElementName( key )} | saved: posN={savedPosN} preset={savedPreset} scale={savedScale:0.###} anchor={savedAnchor} | applied: {appliedText} | runtime: {runtimeText} | blueRect: {rectText} | mousePx={mouse} screenPx={screen}" );
 		}
 		catch ( System.Exception e )
 		{
