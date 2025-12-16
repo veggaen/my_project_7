@@ -28,6 +28,12 @@ public sealed class HUDManagerScene : Component
 	public InventoryHud InventoryPanel { get; set; }
 
 	/// <summary>
+	/// Link to the XPBar component. Set this in the inspector!
+	/// </summary>
+	[Property, Group( "Links" )]
+	public XPBar XpBarPanel { get; set; }
+
+	/// <summary>
 	/// Link to the CrossVeggaHair component. Set this in the inspector!
 	/// </summary>
 	[Property, Group( "Links" )]
@@ -50,6 +56,12 @@ public sealed class HUDManagerScene : Component
 	/// </summary>
 	[Property, Group( "Links" )]
 	public VeggaHudLayoutOverlay HudLayoutOverlay { get; set; }
+
+	/// <summary>
+	/// Link to the VeggaBoxHud component (blue-box HUD surfaces).
+	/// </summary>
+	[Property, Group( "Links" )]
+	public VeggaBoxHud BoxHudPanel { get; set; }
 
 	/// <summary>
 	/// Link to the TradeWindow component. Set this in the inspector!
@@ -79,6 +91,10 @@ public sealed class HUDManagerScene : Component
 
 	protected override void OnStart()
 	{
+		// Disable the experimental Box HUD by default.
+		// Hotload can preserve static values, so force it off to avoid duplicate blue-box layers.
+		VeggaHudLayoutState.BoxHudEnabled = false;
+
 		// Auto-find HUD components
 		if ( HudPanel == null )
 		{
@@ -87,12 +103,59 @@ public sealed class HUDManagerScene : Component
 
 		if ( ModularHudPanel == null )
 		{
+			// Keep modular HUD on the same ScreenPanel (UI Root) as the layout overlay.
 			ModularHudPanel = Components.Get<Sandbox.UI.PlayerVeggaModularHud>();
+			if ( ModularHudPanel == null )
+			{
+				var existing = Scene.GetAllComponents<Sandbox.UI.PlayerVeggaModularHud>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					existing.Enabled = false;
+					Log.Info( "[HUDManagerScene] Disabled external PlayerVeggaModularHud (different GameObject)." );
+				}
+				ModularHudPanel = Components.Create<Sandbox.UI.PlayerVeggaModularHud>();
+			}
+		}
+
+		// If both HUD implementations exist in the UI scene, prefer the modular HUD.
+		// The legacy PlayerHud has fixed CSS placement and does not follow the layout system,
+		// which makes it look like the real UI is ignoring the blue/pink overlay boxes.
+		if ( ModularHudPanel != null && HudPanel != null && HudPanel.Enabled )
+		{
+			HudPanel.Enabled = false;
+			Log.Info( "[HUDManagerScene] Disabled legacy PlayerHud (modular HUD present)." );
 		}
 
 		if ( InventoryPanel == null )
 		{
+			// Same-canvas preference so positioning math matches the editor.
 			InventoryPanel = Components.Get<InventoryHud>();
+			if ( InventoryPanel == null )
+			{
+				var existing = Scene.GetAllComponents<InventoryHud>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					existing.Enabled = false;
+					Log.Info( "[HUDManagerScene] Disabled external InventoryHud (different GameObject)." );
+				}
+				InventoryPanel = Components.Create<InventoryHud>();
+			}
+		}
+
+		if ( XpBarPanel == null )
+		{
+			// Same-canvas preference for XP bar.
+			XpBarPanel = Components.Get<XPBar>();
+			if ( XpBarPanel == null )
+			{
+				var existing = Scene.GetAllComponents<XPBar>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					existing.Enabled = false;
+					Log.Info( "[HUDManagerScene] Disabled external XPBar (different GameObject)." );
+				}
+				XpBarPanel = Components.Create<XPBar>();
+			}
 		}
 
 		if ( CrosshairPanel == null )
@@ -115,6 +178,16 @@ public sealed class HUDManagerScene : Component
 			HudLayoutOverlay = Components.Get<VeggaHudLayoutOverlay>();
 		}
 
+		if ( BoxHudPanel == null )
+		{
+			BoxHudPanel = Components.Get<VeggaBoxHud>();
+			// Only auto-create if the feature is enabled.
+			if ( BoxHudPanel == null && VeggaHudLayoutState.BoxHudEnabled )
+			{
+				BoxHudPanel = Components.Create<VeggaBoxHud>();
+			}
+		}
+
 		if ( TradeWindowPanel == null )
 		{
 			TradeWindowPanel = Components.Get<TradeWindow>();
@@ -122,19 +195,33 @@ public sealed class HUDManagerScene : Component
 
 		if ( PickupHintPanel == null )
 		{
-			PickupHintPanel = Components.Get<PickupHint>() ?? Scene.GetAllComponents<PickupHint>().FirstOrDefault();
+			// Prefer keeping all HUD panels on the same ScreenPanel (UI Root) so layout coordinates match.
+			PickupHintPanel = Components.Get<PickupHint>();
 			if ( PickupHintPanel == null )
 			{
-				// If the scene doesn't have one, create it so pickup hints always work.
-				var go = new GameObject( true, "UI_PickupHint" );
-				go.Components.Create<ScreenPanel>();
-				PickupHintPanel = go.Components.Create<PickupHint>();
+				var existing = Scene.GetAllComponents<PickupHint>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					// Disable external instance to avoid duplicates and coordinate drift.
+					existing.Enabled = false;
+				}
+				PickupHintPanel = Components.Create<PickupHint>();
 			}
 		}
 
 		if ( ChatPanel == null )
 		{
+			// Same-canvas preference (see PickupHint/Skills).
 			ChatPanel = Components.Get<VeggaChat>();
+			if ( ChatPanel == null )
+			{
+				var existing = Scene.GetAllComponents<VeggaChat>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					existing.Enabled = false;
+				}
+				ChatPanel = Components.Create<VeggaChat>();
+			}
 		}
 
 		if ( SkillsPanel == null )
@@ -142,10 +229,12 @@ public sealed class HUDManagerScene : Component
 			SkillsPanel = Components.Get<SkillsPanel>();
 			if ( SkillsPanel == null )
 			{
-				// If the scene doesn't have one, create it so skills UI is always available.
-				var go = new GameObject( true, "UI_SkillsPanel" );
-				go.Components.Create<ScreenPanel>();
-				SkillsPanel = go.Components.Create<SkillsPanel>();
+				var existing = Scene.GetAllComponents<SkillsPanel>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					existing.Enabled = false;
+				}
+				SkillsPanel = Components.Create<SkillsPanel>();
 			}
 		}
 

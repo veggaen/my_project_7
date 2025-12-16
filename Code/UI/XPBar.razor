@@ -7,20 +7,7 @@
 @* Force recompile - Dec 11 2025 *@
 
 <root>
-	<div class="xp-bar-wrapper @(_isLayoutMode ? "layout-mode" : "") @(_isDragging ? "dragging" : "")">
-		@if ( _isLayoutMode )
-		{
-			<div class="drag-handle" onmousedown="@OnDragStart">
-				<span class="drag-icon">✥</span>
-				<span class="drag-label">XP Bar</span>
-			</div>
-			<div class="nudge-controls">
-				<button class="nudge-btn" onclick="@(() => Nudge(-0.01f, 0))">◀</button>
-				<button class="nudge-btn" onclick="@(() => Nudge(0, -0.01f))">▲</button>
-				<button class="nudge-btn" onclick="@(() => Nudge(0, 0.01f))">▼</button>
-				<button class="nudge-btn" onclick="@(() => Nudge(0.01f, 0))">▶</button>
-			</div>
-		}
+	<div class="xp-bar-wrapper @(_isLayoutMode ? "layout-mode" : "")">
 		<div class="xp-bar-container">
 			<div class="xp-skill-name">Lv. @(_hasSkills ? _combatLevel.ToString() : "-")</div>
 			<div class="xp-bar-bg" onmouseover="@(() => _isHovered = true)" onmouseout="@(() => _isHovered = false)">
@@ -82,18 +69,8 @@
 	{
 		int h = HashCode.Combine( _hasSkills, _combatLevel, _combatPrecise, _xpText );
 		h = HashCode.Combine( h, _combatType, _nextCombatHint, _isLayoutMode, _isHovered );
-		h = HashCode.Combine( h, _isDragging, _layoutPos, _layoutScale );
 		return h;
 	}
-
-	// Drag state
-	bool _isDragging;
-	Vector2 _dragStartMouse;
-	Vector2 _dragStartPos;
-
-	// Layout position (normalized 0–1)
-	Vector2 _layoutPos = new Vector2( 0.5f, 0.92f ); // Default: bottom center
-	float _layoutScale = 1f;
 
 	// Instance wrappers to avoid static method substitution errors
 	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
@@ -103,26 +80,9 @@
 	string XpBarKey => VeggaHudLayoutState.KeyXpBar;
 	string SelectedElement => VeggaHudLayoutState.SelectedElement;
 
-	protected override void OnStart()
-	{
-		// Load saved position
-		_layoutPos = GetLayoutPosition( XpBarKey, _layoutPos );
-		_layoutScale = GetLayoutScale( XpBarKey, 1f );
-	}
-
 	protected override void OnUpdate()
 	{
 		_isLayoutMode = IsLayoutActive;
-		if ( !_isLayoutMode && _isDragging )
-		{
-			StopDrag();
-		}
-
-		// Handle dragging
-		if ( _isDragging )
-		{
-			UpdateDrag();
-		}
 
 		// Update combat stats
 		UpdateCombatStats();
@@ -316,69 +276,6 @@
 	{
 		if ( Panel == null ) return;
 		VeggaHudLayoutApply.Apply( Panel, XpBarKey, VeggaHudLayoutState.GetDefaultPosition( XpBarKey ), 1f );
-	}
-
-	void OnDragStart()
-	{
-		if ( !_isLayoutMode ) return;
-
-		_isDragging = true;
-		_dragStartMouse = Mouse.Position;
-		_dragStartPos = _layoutPos;
-
-		Log.Info( $"[XPBar] Drag started at {_dragStartMouse}" );
-	}
-
-	void UpdateDrag()
-	{
-		// Stop dragging if mouse released
-		if ( !Input.Down( "attack1" ) )
-		{
-			StopDrag();
-			return;
-		}
-
-		var screenSize = Screen.Size;
-		if ( screenSize.x <= 0 || screenSize.y <= 0 ) return;
-
-		// Calculate delta in normalized coords
-		var currentMouse = Mouse.Position;
-		var deltaPixels = currentMouse - _dragStartMouse;
-		var deltaNorm = new Vector2(
-			deltaPixels.x / screenSize.x,
-			deltaPixels.y / screenSize.y
-		);
-
-		// Apply delta to starting position
-		_layoutPos = _dragStartPos + deltaNorm;
-
-		// Clamp to near-screen bounds (tiny off-screen allowed)
-		const float marginPx = 48f;
-		float mx = marginPx / screenSize.x;
-		float my = marginPx / screenSize.y;
-		_layoutPos.x = _layoutPos.x.Clamp( -mx, 1f + mx );
-		_layoutPos.y = _layoutPos.y.Clamp( -my, 1f + my );
-	}
-
-	void StopDrag()
-	{
-		if ( !_isDragging ) return;
-
-		_isDragging = false;
-
-		// Save the new position
-		SaveLayoutPosition( XpBarKey, _layoutPos );
-		Log.Info( $"[XPBar] Saved position: {_layoutPos}" );
-	}
-
-	void Nudge( float dx, float dy )
-	{
-		_layoutPos.x = _layoutPos.x + dx;
-		_layoutPos.y = _layoutPos.y + dy;
-
-		// Save immediately
-		SaveLayoutPosition( XpBarKey, _layoutPos );
-		Log.Info( $"[XPBar] Nudged to: {_layoutPos}" );
 	}
 
 	string FormatXP( int xp )

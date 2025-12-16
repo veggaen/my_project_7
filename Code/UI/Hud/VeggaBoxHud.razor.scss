@@ -1,0 +1,92 @@
+VeggaBoxHud,
+VeggaBoxHud root {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	// Pointer events are controlled by code (enabled only in layout mode).
+	pointer-events: all;
+
+	.boxhud {
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		pointer-events: all;
+	}
+
+	.box-slot {
+		position: absolute;
+		border-radius: 10px;
+		// Pink boxes (requested)
+		background-color: rgba(236, 72, 153, 0.12);
+		border: 1px solid rgba(244, 114, 182, 0.30);
+		box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+		pointer-events: all;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		justify-content: flex-start;
+		padding: 10px 12px;
+		gap: 2px;
+
+		.box-title {
+			font-size: 11px;
+			font-weight: 900;
+			letter-spacing: 0.14em;
+			text-transform: uppercase;
+			color: rgba(226, 232, 240, 0.90);
+			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+			pointer-events: none;
+		}
+
+		.box-name {
+			font-size: 13px;
+			font-weight: 700;
+			color: rgba(251, 207, 232, 0.92);
+			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+			pointer-events: none;
+		}
+	}
+
+	// Interactive styling only while editing layout (so it doesn't interfere with gameplay)
+	.boxhud.layout-active {
+		pointer-events: none;
+
+		.box-slot {
+			pointer-events: all;
+			cursor: move;
+			transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
+		}
+
+		.box-slot:hover {
+			// Green glow on hover
+			box-shadow:
+				0 10px 24px rgba(0, 0, 0, 0.30),
+				0 0 18px rgba(34, 197, 94, 0.28);
+			transform: translateY(-1px) scale(1.01);
+		}
+
+		.box-slot.selected {
+			border-color: rgba(250, 204, 21, 0.85);
+			box-shadow:
+				0 10px 24px rgba(0, 0, 0, 0.30),
+				0 0 18px rgba(250, 204, 21, 0.22);
+		}
+
+		&.drag-enabled .box-slot {
+			// Pink-ish border hint that dragging is allowed
+			border-color: rgba(244, 114, 182, 0.75);
+		}
+
+		.box-slot.dragging {
+			border-color: rgba(34, 197, 94, 0.95);
+			box-shadow:
+				0 10px 24px rgba(0, 0, 0, 0.30),
+				0 0 26px rgba(34, 197, 94, 0.55);
+			transform: scale(1.02);
+		}
+	}
+}

@@ -1,0 +1,213 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/ui/hud/veggaboxhud.razor.scss" )]
+
+<root>
+	@if ( VeggaHudLayoutState.BoxHudEnabled )
+	{
+		<div class="boxhud @(IsLayoutActive ? "layout-active" : "") @(VeggaHudLayoutState.DragModeEnabled ? "drag-enabled" : "")">
+			@foreach ( var key in GetElementKeys() )
+			{
+				if ( TryGetElementRectPercent( key, out var l, out var t, out var w, out var h ) )
+				{
+					<div class="box-slot @(VeggaHudLayoutState.SelectedElement == key ? "selected" : "") @((_isDragging && _dragKey == key) ? "dragging" : "")"
+						 style="left: @l%; top: @t%; width: @w%; height: @h%;"
+						 onmousedown="@(() => OnSlotMouseDown( key ))">
+						<div class="box-title">@GetElementShortName( key )</div>
+						<div class="box-name">@VeggaHudLayoutState.GetElementName( key )</div>
+					</div>
+				}
+			}
+		</div>
+	}
+</root>
+
+@code
+{
+	bool _isDragging;
+	string _dragKey;
+	Vector2 _dragGrabOffsetPx;
+	Vector2 _dragLastPosN;
+
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+
+	System.Collections.Generic.List<string> GetElementKeys() => VeggaHudLayoutState.GetAllElementKeys();
+
+	static Vector2 AnchorOffsetPx( VeggaHudLayoutState.HudAnchor anchor, Vector2 sizePx )
+	{
+		return anchor switch
+		{
+			VeggaHudLayoutState.HudAnchor.TopLeft => new Vector2( 0, 0 ),
+			VeggaHudLayoutState.HudAnchor.TopCenter => new Vector2( -sizePx.x * 0.5f, 0 ),
+			VeggaHudLayoutState.HudAnchor.TopRight => new Vector2( -sizePx.x, 0 ),
+			VeggaHudLayoutState.HudAnchor.MiddleLeft => new Vector2( 0, -sizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.MiddleCenter => new Vector2( -sizePx.x * 0.5f, -sizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.MiddleRight => new Vector2( -sizePx.x, -sizePx.y * 0.5f ),
+			VeggaHudLayoutState.HudAnchor.BottomLeft => new Vector2( 0, -sizePx.y ),
+			VeggaHudLayoutState.HudAnchor.BottomCenter => new Vector2( -sizePx.x * 0.5f, -sizePx.y ),
+			VeggaHudLayoutState.HudAnchor.BottomRight => new Vector2( -sizePx.x, -sizePx.y ),
+			_ => new Vector2( -sizePx.x * 0.5f, -sizePx.y * 0.5f )
+		};
+	}
+
+	string GetElementShortName( string key )
+	{
+		return key switch
+		{
+			VeggaHudLayoutState.KeyPlayerHud => "HP",
+			VeggaHudLayoutState.KeyXpBar => "XP",
+			VeggaHudLayoutState.KeySkillsPanel => "Sk",
+			VeggaHudLayoutState.KeyChat => "Chat",
+			VeggaHudLayoutState.KeyMinimap => "Map",
+			VeggaHudLayoutState.KeyInventory => "Inv",
+			_ => key.Length >= 2 ? key.Substring( 0, 2 ).ToUpper() : key
+		};
+	}
+
+	protected override void OnUpdate()
+	{
+		// Don't intercept gameplay clicks outside of layout mode.
+		if ( Panel != null )
+			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.All : PointerEvents.None;
+
+		if ( !IsLayoutActive && _isDragging )
+		{
+			StopDrag();
+		}
+
+		if ( IsLayoutActive && VeggaHudLayoutState.DragModeEnabled && _isDragging )
+		{
+			UpdateDrag();
+		}
+	}
+
+	void OnSlotMouseDown( string key )
+	{
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return;
+
+		VeggaHudLayoutState.SelectedElement = key;
+
+		if ( !IsLayoutActive || !VeggaHudLayoutState.DragModeEnabled )
+			return;
+
+		var screen = Panel?.Box.Rect.Size ?? default;
+		if ( screen.x <= 0 || screen.y <= 0 )
+			screen = Screen.Size;
+		if ( screen.x <= 0 || screen.y <= 0 )
+			return;
+
+		var anchorN = VeggaHudLayoutState.GetPosition( key, VeggaHudLayoutState.GetDefaultPosition( key ) );
+		var anchorPx = new Vector2( anchorN.x * screen.x, anchorN.y * screen.y );
+
+		// Mouse.Position is in Screen.Size space; convert to canvas if needed.
+		var mouse = Mouse.Position;
+		var screenForMouse = Screen.Size;
+		if ( screenForMouse.x > 1f && screenForMouse.y > 1f && (System.Math.Abs( screenForMouse.x - screen.x ) > 1f || System.Math.Abs( screenForMouse.y - screen.y ) > 1f) )
+			mouse = new Vector2( mouse.x * screen.x / screenForMouse.x, mouse.y * screen.y / screenForMouse.y );
+
+		_dragGrabOffsetPx = mouse - anchorPx;
+
+		// Make dragging a single undo step.
+		VeggaHudLayoutState.SetPosition( key, anchorN );
+
+		_dragKey = key;
+		_isDragging = true;
+	}
+
+	void UpdateDrag()
+	{
+		if ( string.IsNullOrWhiteSpace( _dragKey ) )
+		{
+			StopDrag();
+			return;
+		}
+
+		if ( !Input.Down( "attack1" ) )
+		{
+			StopDrag();
+			return;
+		}
+
+		var screen = Panel?.Box.Rect.Size ?? default;
+		if ( screen.x <= 0 || screen.y <= 0 )
+			screen = Screen.Size;
+		if ( screen.x <= 0 || screen.y <= 0 )
+			return;
+
+		var mouse = Mouse.Position;
+		var screenForMouse = Screen.Size;
+		if ( screenForMouse.x > 1f && screenForMouse.y > 1f && (System.Math.Abs( screenForMouse.x - screen.x ) > 1f || System.Math.Abs( screenForMouse.y - screen.y ) > 1f) )
+			mouse = new Vector2( mouse.x * screen.x / screenForMouse.x, mouse.y * screen.y / screenForMouse.y );
+
+		var anchorPx = mouse - _dragGrabOffsetPx;
+		var nextN = new Vector2( anchorPx.x / screen.x, anchorPx.y / screen.y );
+		_dragLastPosN = nextN;
+
+		VeggaHudLayoutState.UpdatePositionClamped( _dragKey, nextN );
+	}
+
+	void StopDrag()
+	{
+		if ( !string.IsNullOrWhiteSpace( _dragKey ) )
+		{
+			VeggaHudLayoutState.SetPositionNoUndo( _dragKey, _dragLastPosN );
+		}
+
+		_isDragging = false;
+		_dragKey = null;
+		_dragGrabOffsetPx = default;
+		_dragLastPosN = default;
+	}
+
+	bool TryGetElementRectPercent( string key, out float leftPct, out float topPct, out float widthPct, out float heightPct )
+	{
+		leftPct = topPct = widthPct = heightPct = 0f;
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return false;
+
+		Vector2 screen;
+		if ( VeggaHudLayoutApply.TryGetLastApplied( key, out var applied ) && applied.ScreenPx.x > 1f && applied.ScreenPx.y > 1f )
+			screen = applied.ScreenPx;
+		else
+		{
+			screen = Panel?.Box.Rect.Size ?? default;
+			if ( screen.x <= 0 || screen.y <= 0 )
+				screen = Screen.Size;
+		}
+		if ( screen.x <= 0 || screen.y <= 0 )
+			return false;
+
+		Vector2 posN;
+		float scale;
+		VeggaHudLayoutState.HudAnchor anchor;
+		Vector2 sizePx;
+
+		if ( VeggaHudLayoutApply.TryGetLastApplied( key, out var info ) )
+		{
+			posN = info.PositionN;
+			scale = info.Scale <= 0.0001f ? 1f : info.Scale;
+			anchor = info.Anchor;
+			sizePx = info.HasValidSize ? info.SizePxScaled : new Vector2( 160f, 60f ) * scale;
+		}
+		else
+		{
+			posN = VeggaHudLayoutState.GetPosition( key, VeggaHudLayoutState.GetDefaultPosition( key ) );
+			scale = VeggaHudLayoutState.GetScale( key, 1f );
+			anchor = VeggaHudLayoutState.GetAnchor( key );
+			sizePx = new Vector2( 160f, 60f ) * scale;
+		}
+
+		var anchorPx = new Vector2( posN.x * screen.x, posN.y * screen.y );
+		var topLeftPx = anchorPx + AnchorOffsetPx( anchor, sizePx );
+
+		leftPct = (topLeftPx.x / screen.x) * 100f;
+		topPct = (topLeftPx.y / screen.y) * 100f;
+		widthPct = (sizePx.x / screen.x) * 100f;
+		heightPct = (sizePx.y / screen.y) * 100f;
+		return true;
+	}
+}

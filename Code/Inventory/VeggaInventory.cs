@@ -11,6 +11,8 @@ namespace Sandbox;
 /// </summary>
 public sealed class VeggaInventory : Component
 {
+	const bool DebugNet = true;
+
 	// ---- Constants ----
 	public const int BaseSlots = 96; // 12x8 grid
 	public const int MaxSlots = 1024; // Maximum possible slots
@@ -88,6 +90,21 @@ public sealed class VeggaInventory : Component
 		_itemIds[slotIndex] = 0;
 		_itemCounts[slotIndex] = 0;
 		_itemDurability[slotIndex] = 0;
+	}
+
+	/// <summary>
+	/// Host-to-owner: add items to the owning client's inventory.
+	/// This is used by server-authoritative world interactions (eg. pickups) where
+	/// the host validates, then instructs the owner to mutate their [Sync] inventory.
+	/// </summary>
+	[Rpc.Broadcast]
+	public void RpcGiveItemToOwner( Guid targetId, int itemId, int count )
+	{
+		if ( Connection.Local?.Id != targetId ) return;
+		if ( Network.IsProxy ) return;
+		if ( DebugNet ) Log.Info( $"[Inv] RpcGiveItemToOwner targetId={targetId} itemId={itemId} count={count}" );
+		if ( itemId <= 0 || count <= 0 ) return;
+		AddItem( itemId, count );
 	}
 
 	// ---- Local Singleton ----
@@ -255,19 +272,23 @@ public sealed class VeggaInventory : Component
 
 	/// <summary>
 	/// Drag/drop support: request swapping two occupied slots.
-	/// Host executes immediately; clients request via RPC.
+	/// IMPORTANT (multiplayer): inventories are player-owned, so slot moves must execute on the owner.
+	/// Host cannot reliably mutate a remote player's [Sync] inventory lists (it will be a proxy).
 	/// </summary>
 	public void RequestMoveSlot( int fromIndex, int toIndex )
 	{
 		if ( fromIndex == toIndex ) return;
-		if ( Networking.IsHost && !Network.IsProxy )
+		if ( DebugNet ) Log.Info( $"[Inv] RequestMoveSlot from={fromIndex} to={toIndex} host={Networking.IsHost} proxy={Network.IsProxy} local={Connection.Local?.Id}" );
+
+		// If we own this inventory, execute locally so [Sync] changes replicate.
+		if ( !Network.IsProxy )
 		{
+			if ( DebugNet ) Log.Info( "[Inv] MoveSlot executing on owner (local mutate)" );
 			MoveSlotInternal( fromIndex, toIndex );
 			return;
 		}
 
-		var requesterId = Connection.Local?.Id ?? Guid.Empty;
-		RpcRequestMoveSlot( requesterId, fromIndex, toIndex );
+		if ( DebugNet ) Log.Warning( "[Inv] MoveSlot ignored: inventory is proxy on this machine" );
 	}
 
 	[Rpc.Broadcast]
@@ -278,6 +299,274 @@ public sealed class VeggaInventory : Component
 		if ( Network?.Owner?.Id != requesterId ) return;
 
 		MoveSlotInternal( fromIndex, toIndex );
+	}
+
+	/// <summary>
+	/// Split a stack: move <paramref name="count"/> from <paramref name="fromIndex"/> into an empty <paramref name="toIndex"/>.
+	/// Intended for Shift-drag "half stack" behavior.
+	/// </summary>
+	public void RequestSplitMoveSlot( int fromIndex, int toIndex, int count )
+	{
+		if ( fromIndex == toIndex ) return;
+		if ( count <= 0 ) return;
+		if ( DebugNet ) Log.Info( $"[Inv] RequestSplitMoveSlot from={fromIndex} to={toIndex} count={count} host={Networking.IsHost} proxy={Network.IsProxy} local={Connection.Local?.Id}" );
+
+		// Owner executes locally so [Sync] changes replicate.
+		if ( !Network.IsProxy )
+		{
+			if ( DebugNet ) Log.Info( "[Inv] SplitMoveSlot executing on owner (local mutate)" );
+			SplitMoveSlotInternal( fromIndex, toIndex, count );
+			return;
+		}
+
+		if ( DebugNet ) Log.Warning( "[Inv] SplitMoveSlot ignored: inventory is proxy on this machine" );
+	}
+
+	[Rpc.Broadcast]
+	private void RpcRequestSplitMoveSlot( Guid requesterId, int fromIndex, int toIndex, int count )
+	{
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) return;
+		if ( Network?.Owner?.Id != requesterId ) return;
+
+		SplitMoveSlotInternal( fromIndex, toIndex, count );
+	}
+
+	private void SplitMoveSlotInternal( int fromIndex, int toIndex, int count )
+	{
+		if ( Network.IsProxy ) return;
+		EnsureSlotArraysSized();
+		if ( fromIndex < 0 || fromIndex >= TotalSlots ) return;
+		if ( toIndex < 0 || toIndex >= TotalSlots ) return;
+		if ( fromIndex == toIndex ) return;
+		if ( IsEmptySlot( fromIndex ) ) return;
+		if ( !IsEmptySlot( toIndex ) ) return;
+		if ( count <= 0 ) return;
+
+		int itemId = _itemIds[fromIndex];
+		int available = _itemCounts[fromIndex];
+		if ( itemId <= 0 || available <= 0 ) return;
+		if ( count >= available ) return; // splitting should leave something behind
+
+		var def = VeggaItemRegistry.Get( itemId );
+		int maxStack = def?.MaxStack ?? MaxStackSize;
+		if ( maxStack <= 1 ) return; // non-stackable items can't be split like this
+		if ( count > maxStack ) count = maxStack;
+
+		_itemCounts[fromIndex] = available - count;
+		_itemIds[toIndex] = itemId;
+		_itemCounts[toIndex] = count;
+		_itemDurability[toIndex] = _itemDurability[fromIndex];
+
+		Revision++;
+	}
+
+	/// <summary>
+	/// Drop a quantity from a slot into the world as a pickup.
+	/// Multiplayer: host spawns the world drop, then the owning client consumes from their inventory.
+	/// </summary>
+	public void RequestDropFromSlot( int slotIndex, int count )
+	{
+		if ( count <= 0 ) return;
+		if ( DebugNet ) Log.Info( $"[Inv] RequestDropFromSlot slot={slotIndex} count={count} host={Networking.IsHost} proxy={Network.IsProxy} local={Connection.Local?.Id}" );
+		if ( Networking.IsHost && !Network.IsProxy )
+		{
+			if ( DebugNet ) Log.Info( "[Inv] DropFromSlot executing on host-local (singleplayer/host-owner)" );
+			DropFromSlotInternal( slotIndex, count );
+			return;
+		}
+		var requesterId = Connection.Local?.Id ?? Guid.Empty;
+		if ( DebugNet ) Log.Info( $"[Inv] DropFromSlot sending RPC requesterId={requesterId}" );
+		RpcRequestDropFromSlot( requesterId, slotIndex, count );
+	}
+
+	[Rpc.Broadcast]
+	private void RpcRequestDropFromSlot( Guid requesterId, int slotIndex, int count )
+	{
+		if ( DebugNet ) Log.Info( $"[Inv] RpcRequestDropFromSlot requesterId={requesterId} slot={slotIndex} count={count} host={Networking.IsHost}" );
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: empty requesterId" ); return; }
+		if ( count <= 0 ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: count<=0" ); return; }
+
+		// Validate the inventory belongs to the requester (don't rely on this component's Network.Owner).
+		var scene = Scene ?? Game.ActiveScene;
+		if ( scene == null ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: no scene" ); return; }
+
+		PlayerVeggaStats stats = null;
+		foreach ( var s in scene.GetAllComponents<PlayerVeggaStats>() )
+		{
+			if ( s != null && s.IsValid() && s.Network?.Owner?.Id == requesterId )
+			{
+				stats = s;
+				break;
+			}
+		}
+		if ( stats == null ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: requester stats not found" ); return; }
+		if ( DebugNet ) Log.Info( $"[Inv] Drop RPC requester={stats.Network?.Owner?.DisplayName}" );
+
+		var inv = stats.GameObject?.Components.Get<VeggaInventory>();
+		if ( inv == null || inv != this ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: inv mismatch" ); return; }
+
+		// Validate slot contents using the host's view of the owner's [Sync] state.
+		if ( slotIndex < 0 || slotIndex >= TotalSlots ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: slotIndex out of range" ); return; }
+		if ( IsEmptySlot( slotIndex ) ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: empty slot" ); return; }
+		int itemId = _itemIds[slotIndex];
+		int available = _itemCounts[slotIndex];
+		if ( itemId <= 0 || available <= 0 ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: invalid slot contents" ); return; }
+		if ( count > available ) count = available;
+
+		var def = VeggaItemRegistry.Get( itemId );
+		if ( def != null && !def.Droppable ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: item not droppable" ); return; }
+
+		// Spawn slightly in front of the requester.
+		var spawnPos = stats.WorldPosition + stats.WorldRotation.Forward * 40f + Vector3.Up * 20f;
+		var spawnRot = stats.WorldRotation;
+		var worldScene = stats.Scene ?? scene;
+		if ( worldScene == null ) { if ( DebugNet ) Log.Warning( "[Inv] Drop RPC rejected: worldScene null" ); return; }
+
+		if ( itemId == Sandbox.Money.VeggaCurrency.CashItemId )
+		{
+			Sandbox.Money.CashWorldDrop.Spawn( worldScene, spawnPos, spawnRot, count );
+		}
+		else
+		{
+			var go = new GameObject( true, $"DroppedItem_{itemId}" );
+			go.WorldPosition = spawnPos;
+			go.WorldRotation = spawnRot;
+
+			var renderer = go.Components.Create<ModelRenderer>();
+			if ( def != null && !string.IsNullOrWhiteSpace( def.ModelPath ) )
+			{
+				try { renderer.Model = Model.Load( def.ModelPath ); } catch { }
+			}
+
+			var pickup = go.Components.Create<VeggaPickupItem>();
+			pickup.ItemId = itemId;
+			pickup.Quantity = count;
+			pickup.PickupDelay = 0.25f;
+
+			var rb = go.Components.Create<Rigidbody>();
+			rb.Gravity = true;
+
+			var collider = go.Components.Create<SphereCollider>();
+			collider.Radius = 12f;
+			collider.IsTrigger = false;
+		}
+
+		// Tell the owning client to consume items from their inventory.
+		if ( DebugNet ) Log.Info( $"[Inv] Drop RPC spawned world drop itemId={itemId} count={count}; consuming on owner" );
+		RpcConsumeDroppedFromSlot( requesterId, slotIndex, count, itemId );
+	}
+
+	[Rpc.Broadcast]
+	private void RpcConsumeDroppedFromSlot( Guid targetId, int slotIndex, int count, int expectedItemId )
+	{
+		// Only the owning client should mutate their [Sync] inventory state.
+		if ( Connection.Local?.Id != targetId ) return;
+		if ( Network.IsProxy ) return;
+		if ( DebugNet ) Log.Info( $"[Inv] RpcConsumeDroppedFromSlot targetId={targetId} slot={slotIndex} count={count} expectedItemId={expectedItemId}" );
+		if ( count <= 0 ) return;
+		EnsureSlotArraysSized();
+		if ( slotIndex < 0 || slotIndex >= TotalSlots ) return;
+		if ( _itemIds[slotIndex] != expectedItemId ) return;
+		RemoveFromSlot( slotIndex, count );
+	}
+
+	/// <summary>
+	/// Can this inventory fit an item quantity? Works for proxies (no mutation).
+	/// Used by host-side pickup validation.
+	/// </summary>
+	public bool CanFitItem( int itemId, int count )
+	{
+		if ( itemId <= 0 || count <= 0 ) return false;
+		int limit = Math.Min( _itemIds.Count, TotalSlots );
+		if ( limit <= 0 ) return false;
+
+		var def = VeggaItemRegistry.Get( itemId );
+		int maxStack = def?.MaxStack ?? MaxStackSize;
+		if ( maxStack <= 0 ) maxStack = 1;
+		if ( maxStack > MaxStackSize ) maxStack = MaxStackSize;
+		bool isStackable = maxStack > 1;
+
+		if ( !isStackable )
+		{
+			return FreeSlots >= count;
+		}
+
+		long remaining = count;
+		long capacityInExisting = 0;
+		for ( int i = 0; i < limit; i++ )
+		{
+			if ( _itemIds[i] != itemId || _itemCounts[i] <= 0 )
+				continue;
+
+			int current = _itemCounts[i];
+			if ( current < 0 ) current = 0;
+			if ( current > maxStack ) current = maxStack;
+			capacityInExisting += (maxStack - current);
+			if ( capacityInExisting >= remaining )
+				break;
+		}
+
+		long needAfterExisting = Math.Max( 0, remaining - capacityInExisting );
+		int newStacksNeeded = needAfterExisting > 0 ? (int)((needAfterExisting + (long)maxStack - 1) / (long)maxStack) : 0;
+		return FreeSlots >= newStacksNeeded;
+	}
+
+	private void DropFromSlotInternal( int slotIndex, int count )
+	{
+		if ( Network.IsProxy ) return;
+		EnsureSlotArraysSized();
+		if ( slotIndex < 0 || slotIndex >= TotalSlots ) return;
+		if ( IsEmptySlot( slotIndex ) ) return;
+		if ( count <= 0 ) return;
+
+		int itemId = _itemIds[slotIndex];
+		int available = _itemCounts[slotIndex];
+		if ( itemId <= 0 || available <= 0 ) return;
+		if ( count > available ) count = available;
+
+		var def = VeggaItemRegistry.Get( itemId );
+		if ( def != null && !def.Droppable ) return;
+
+		var scene = Scene ?? Game.ActiveScene;
+		if ( scene == null ) return;
+
+		// Drop slightly in front of the player.
+		var pos = GameObject.WorldPosition + (GameObject.WorldRotation.Forward * 40f) + Vector3.Up * 20f;
+		var rot = GameObject.WorldRotation;
+
+		if ( itemId == Sandbox.Money.VeggaCurrency.CashItemId )
+		{
+			Sandbox.Money.CashWorldDrop.Spawn( scene, pos, rot, count );
+		}
+		else
+		{
+			var go = new GameObject( true, $"DroppedItem_{itemId}" );
+			go.WorldPosition = pos;
+			go.WorldRotation = rot;
+
+			var renderer = go.Components.Create<ModelRenderer>();
+			if ( def != null && !string.IsNullOrWhiteSpace( def.ModelPath ) )
+			{
+				try { renderer.Model = Model.Load( def.ModelPath ); } catch { }
+			}
+
+			var pickup = go.Components.Create<VeggaPickupItem>();
+			pickup.ItemId = itemId;
+			pickup.Quantity = count;
+			pickup.PickupDelay = 0.25f;
+
+			var rb = go.Components.Create<Rigidbody>();
+			rb.Gravity = true;
+
+			var collider = go.Components.Create<SphereCollider>();
+			collider.Radius = 12f;
+			collider.IsTrigger = false;
+		}
+
+		// Remove from inventory after successful spawn.
+		RemoveFromSlot( slotIndex, count );
 	}
 
 	private void MoveSlotInternal( int fromIndex, int toIndex )

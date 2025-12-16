@@ -12,6 +12,7 @@ public sealed class HUDManager : Component
 {
 	private PlayerVeggaStats _playerStats;
 	private PlayerHud _hudPanel;
+	private Sandbox.UI.PlayerVeggaModularHud _modularHudPanel;
 
 	protected override void OnStart()
 	{
@@ -35,17 +36,37 @@ public sealed class HUDManager : Component
 		VeggaHudLayoutState.SetActive( false );
 
 		// Find the PlayerHud component in the scene (it should be on a ScreenPanel)
+		_modularHudPanel = Scene.GetAllComponents<Sandbox.UI.PlayerVeggaModularHud>().FirstOrDefault();
 		_hudPanel = Scene.GetAllComponents<PlayerHud>().FirstOrDefault();
 
-		// Link the player stats to the HUD
-		if ( _hudPanel != null && _playerStats != null )
+		// Prefer modular HUD when available.
+		if ( _modularHudPanel != null && _hudPanel != null && _hudPanel.Enabled )
 		{
-			_hudPanel.PlayerStats = _playerStats;
-			Log.Info( "✅ HUDManager: Linked player stats to HUD!" );
+			_hudPanel.Enabled = false;
+			Log.Info( "[HUDManager] Disabled legacy PlayerHud (modular HUD present)." );
+		}
+
+		// Link the player stats to the preferred HUD.
+		if ( _playerStats != null )
+		{
+			if ( _modularHudPanel != null )
+			{
+				_modularHudPanel.PlayerStats = _playerStats;
+				Log.Info( "✅ HUDManager: Linked player stats to modular HUD!" );
+			}
+			else if ( _hudPanel != null )
+			{
+				_hudPanel.PlayerStats = _playerStats;
+				Log.Info( "✅ HUDManager: Linked player stats to legacy HUD!" );
+			}
+			else
+			{
+				Log.Warning( "⚠️ HUDManager: No HUD found to link." );
+			}
 		}
 		else
 		{
-			Log.Warning( $"⚠️ HUDManager: Could not link HUD. HUD found: {_hudPanel != null}, Stats found: {_playerStats != null}" );
+			Log.Warning( "⚠️ HUDManager: Player stats missing; cannot link HUD." );
 		}
 	}
 }

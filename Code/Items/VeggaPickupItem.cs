@@ -9,6 +9,7 @@ namespace Sandbox;
 /// </summary>
 public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 {
+	const bool DebugNet = true;
 	/// <summary>
 	/// The item ID from VeggaItemRegistry.
 	/// </summary>
@@ -61,6 +62,11 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 	private float _pickupTimer;
 
 	/// <summary>
+	/// Host-side: prevents double-pickup.
+	/// </summary>
+	[Sync] private bool _consumed { get; set; } = false;
+
+	/// <summary>
 	/// Cached item definition.
 	/// </summary>
 	public VeggaItemDef ItemDef => VeggaItemRegistry.Get( ItemId );
@@ -82,21 +88,30 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 
 	protected override void OnUpdate()
 	{
-		// Countdown pickup delay
+		if ( _consumed ) return;
+
+		// Clients: only handle input (request pickup). Never simulate vacuum/physics.
+		if ( Network.IsProxy )
+		{
+			CheckManualPickup();
+			return;
+		}
+
+		// Host (or local owner sim): countdown pickup delay
 		if ( _pickupTimer > 0 )
 		{
 			_pickupTimer -= Time.Delta;
 			return;
 		}
 
-		// Handle vacuum loot movement
+		// Host: handle vacuum loot movement
 		if ( IsBeingLooted && _vacuumTarget != null && _vacuumTarget.IsValid )
 		{
 			VacuumTowardTarget();
 			return;
 		}
 
-		// Check for manual E press pickup (clients request; host validates)
+		// Host (singleplayer): allow manual pickup too
 		CheckManualPickup();
 	}
 
@@ -104,6 +119,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 	{
 		var localPlayer = PlayerVeggaStats.Local;
 		if ( localPlayer == null ) return;
+		if ( _consumed ) return;
 
 		var playerPos = localPlayer.WorldPosition;
 		var itemPos = WorldPosition;
@@ -115,13 +131,16 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		// Player pressed E
 		if ( Input.Pressed( "use" ) )
 		{
+			if ( DebugNet ) Log.Info( $"[Pickup] Use pressed; host={Networking.IsHost} proxy={Network.IsProxy} local={Connection.Local?.Id} dist={dist:0.0}" );
 			if ( Networking.IsHost && !Network.IsProxy )
 			{
 				TryPickupOnHost( localPlayer.GameObject );
 			}
 			else
 			{
-				RpcRequestPickup( localPlayer.Network?.Owner?.Id ?? Guid.Empty );
+				var id = Connection.Local?.Id ?? Guid.Empty;
+				if ( DebugNet ) Log.Info( $"[Pickup] Sending pickup request id={id}" );
+				RpcRequestPickup( id );
 			}
 		}
 	}
@@ -129,8 +148,11 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 	[Rpc.Broadcast]
 	void RpcRequestPickup( Guid requesterId )
 	{
+		if ( DebugNet ) Log.Info( $"[Pickup] RpcRequestPickup requesterId={requesterId} host={Networking.IsHost} consumed={_consumed} timer={_pickupTimer:0.00}" );
 		if ( !Networking.IsHost ) return;
-		if ( requesterId == Guid.Empty ) return;
+		if ( requesterId == Guid.Empty ) { if ( DebugNet ) Log.Warning( "[Pickup] Reject: empty requesterId" ); return; }
+		if ( _consumed ) { if ( DebugNet ) Log.Warning( "[Pickup] Reject: already consumed" ); return; }
+		if ( _pickupTimer > 0 ) { if ( DebugNet ) Log.Warning( "[Pickup] Reject: pickup delay active" ); return; }
 
 		// Validate requester is near the item.
 		var scene = Scene ?? Game.ActiveScene;
@@ -146,12 +168,20 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			}
 		}
 
-		if ( requester == null ) return;
+		if ( requester == null ) { if ( DebugNet ) Log.Warning( "[Pickup] Reject: requester stats not found" ); return; }
 
 		float dist = Vector3.DistanceBetween( requester.WorldPosition, WorldPosition );
-		if ( dist > InteractRange ) return;
+		if ( dist > InteractRange ) { if ( DebugNet ) Log.Warning( $"[Pickup] Reject: too far dist={dist:0.0} range={InteractRange:0.0}" ); return; }
 
-		TryPickupOnHost( requester.GameObject );
+		var inventory = requester.GameObject?.Components.Get<VeggaInventory>();
+		if ( inventory == null ) { if ( DebugNet ) Log.Warning( "[Pickup] Reject: requester has no inventory" ); return; }
+		if ( !inventory.CanFitItem( ItemId, Quantity ) ) { if ( DebugNet ) Log.Warning( "[Pickup] Reject: inventory full" ); return; }
+
+		// Mark consumed before granting to avoid double-pickup.
+		_consumed = true;
+		if ( DebugNet ) Log.Info( $"[Pickup] Granting itemId={ItemId} qty={Quantity} to requesterId={requesterId}" );
+		inventory.RpcGiveItemToOwner( requesterId, ItemId, Quantity );
+		GameObject.Destroy();
 	}
 
 	/// <summary>
@@ -159,6 +189,9 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 	/// </summary>
 	public void OnTriggerEnter( Collider other )
 	{
+		// Only the host should drive vacuum movement for networked pickups.
+		if ( Network.IsProxy ) return;
+		if ( _consumed ) return;
 		if ( _pickupTimer > 0 ) return;
 		if ( IsBeingLooted ) return;
 
@@ -173,6 +206,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		var player = collector.GetPlayerOwner();
 		if ( player != null )
 		{
+			if ( DebugNet ) Log.Info( $"[Pickup] AutoLoot vacuum start -> {player.Name}" );
 			StartVacuum( player );
 		}
 	}
@@ -227,6 +261,8 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 	void TryPickupOnHost( GameObject player )
 	{
 		if ( Network.IsProxy ) return;
+		if ( _consumed ) return;
+		if ( _pickupTimer > 0 ) return;
 
 		var inventory = player.Components.Get<VeggaInventory>();
 		if ( inventory == null )
@@ -242,20 +278,24 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			return;
 		}
 
-		// Try to add to inventory
+		if ( !inventory.CanFitItem( ItemId, Quantity ) )
+		{
+			Log.Warning( "❌ Inventory full - cannot pickup!" );
+			IsBeingLooted = false;
+			return;
+		}
+
+		// Host/local owner can mutate directly.
 		if ( inventory.AddItem( ItemId, Quantity ) )
 		{
-			Log.Info( $"✅ Picked up {def.Name} x{Quantity}" );
-
-			// Play pickup effect/sound here if desired
-			// Sound.FromWorld( "pickup.item", WorldPosition );
-
-			// Destroy the pickup
+			if ( DebugNet ) Log.Info( $"[Pickup] Host/local pickup success itemId={ItemId} qty={Quantity}" );
+			_consumed = true;
 			GameObject.Destroy();
 		}
 		else
 		{
-			Log.Warning( "❌ Inventory full - cannot pickup!" );
+			if ( DebugNet ) Log.Warning( "[Pickup] Host/local pickup failed to add" );
+			Log.Warning( "❌ Inventory add failed - cannot pickup!" );
 			IsBeingLooted = false;
 		}
 	}

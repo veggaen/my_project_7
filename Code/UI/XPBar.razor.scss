@@ -45,7 +45,6 @@ XPBar root {
 			box-shadow:
 				0 0 14px rgba(59, 130, 246, 0.9),
 				0 0 32px rgba(59, 130, 246, 0.4);
-			transform: translateY(-2px) scale(1.02);
 		}
 
 		&.dragging {
@@ -224,4 +223,8 @@ XPBar root {
 		color: rgba(248, 250, 252, 0.8);
 		text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
 	}
+}
+
+XPBar root {
+	position: relative;
 }

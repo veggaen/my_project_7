@@ -5,7 +5,7 @@
 @inherits PanelComponent
 @attribute [StyleSheet( "/ui/hud/veggahudlayoutoverlay.razor.scss" )]
 
-<root>
+<root class="veggahudlayoutoverlay">
 	@if ( IsLayoutActive )
 	{
 		<div class="hud-layout-editor">
@@ -28,7 +28,8 @@
 					@foreach ( var key in GetElementKeys() )
 					{
 						<button class="element-btn @(SelectedElement == key ? "selected" : "")" 
-								onclick="@(() => SelectElement(key))">
+								onclick="@(() => SelectElement(key))"
+								title="Select @GetElementName(key)">
 							@GetElementName(key)
 						</button>
 					}
@@ -46,19 +47,19 @@
 					@* 3x3 Grid of position presets - using rows for s&box compatibility *@
 					<div class="preset-flex">
 						<div class="preset-row">
-							<button class="preset-btn @(GetCurrentPreset() == 0 ? "active" : "")" onclick="@(() => SetPreset(0))">Top Left</button>
-							<button class="preset-btn @(GetCurrentPreset() == 1 ? "active" : "")" onclick="@(() => SetPreset(1))">Top</button>
-							<button class="preset-btn @(GetCurrentPreset() == 2 ? "active" : "")" onclick="@(() => SetPreset(2))">Top Right</button>
+							<button class="preset-btn @(GetCurrentPreset() == 0 ? "active" : "")" onclick="@(() => SetPreset(0))" title="Move selected element to Top Left">Top Left</button>
+							<button class="preset-btn @(GetCurrentPreset() == 1 ? "active" : "")" onclick="@(() => SetPreset(1))" title="Move selected element to Top Center">Top</button>
+							<button class="preset-btn @(GetCurrentPreset() == 2 ? "active" : "")" onclick="@(() => SetPreset(2))" title="Move selected element to Top Right">Top Right</button>
 						</div>
 						<div class="preset-row">
-							<button class="preset-btn @(GetCurrentPreset() == 3 ? "active" : "")" onclick="@(() => SetPreset(3))">Left</button>
-							<button class="preset-btn @(GetCurrentPreset() == 4 ? "active" : "")" onclick="@(() => SetPreset(4))">Center</button>
-							<button class="preset-btn @(GetCurrentPreset() == 5 ? "active" : "")" onclick="@(() => SetPreset(5))">Right</button>
+							<button class="preset-btn @(GetCurrentPreset() == 3 ? "active" : "")" onclick="@(() => SetPreset(3))" title="Move selected element to Middle Left">Left</button>
+							<button class="preset-btn @(GetCurrentPreset() == 4 ? "active" : "")" onclick="@(() => SetPreset(4))" title="Move selected element to Center">Center</button>
+							<button class="preset-btn @(GetCurrentPreset() == 5 ? "active" : "")" onclick="@(() => SetPreset(5))" title="Move selected element to Middle Right">Right</button>
 						</div>
 						<div class="preset-row">
-							<button class="preset-btn @(GetCurrentPreset() == 6 ? "active" : "")" onclick="@(() => SetPreset(6))">Bottom Left</button>
-							<button class="preset-btn @(GetCurrentPreset() == 7 ? "active" : "")" onclick="@(() => SetPreset(7))">Bottom</button>
-							<button class="preset-btn @(GetCurrentPreset() == 8 ? "active" : "")" onclick="@(() => SetPreset(8))">Bottom Right</button>
+							<button class="preset-btn @(GetCurrentPreset() == 6 ? "active" : "")" onclick="@(() => SetPreset(6))" title="Move selected element to Bottom Left">Bottom Left</button>
+							<button class="preset-btn @(GetCurrentPreset() == 7 ? "active" : "")" onclick="@(() => SetPreset(7))" title="Move selected element to Bottom Center">Bottom</button>
+							<button class="preset-btn @(GetCurrentPreset() == 8 ? "active" : "")" onclick="@(() => SetPreset(8))" title="Move selected element to Bottom Right">Bottom Right</button>
 						</div>
 					</div>
 
@@ -70,27 +71,28 @@
 								@foreach ( var preset in _nudgePresetSteps )
 								{
 									<button class="nudge-preset-btn @((Math.Abs(_nudgePixels - preset) < 0.01f) ? "active" : "")"
-											onclick="@(() => SetNudgePixels(preset))">@FormatNudgeLabel(preset)</button>
+											onclick="@(() => SetNudgePixels(preset))"
+											title="Set fine-tune step to @FormatNudgeLabel(preset) pixels">@FormatNudgeLabel(preset)</button>
 								}
 							</div>
 							<div class="nudge-custom-row">
 								<textentry class="nudge-entry" @ref="_nudgeEntry" onsubmit="@ApplyCustomNudge" />
-								<button class="nudge-apply-btn" onclick="@ApplyCustomNudge">Set</button>
+								<button class="nudge-apply-btn" onclick="@ApplyCustomNudge" title="Apply custom fine-tune step (in pixels)">Set</button>
 							</div>
 							<div class="nudge-flex">
 								<div class="nudge-row">
 									<div class="nudge-spacer"></div>
-									<button class="nudge-btn" onclick="@(() => Nudge(0, -_nudgePixels))">UP</button>
+									<button class="nudge-btn" onclick="@(() => Nudge(0, -_nudgePixels))" title="Nudge selected element up by @FormatNudgeLabel(_nudgePixels) px">UP</button>
 									<div class="nudge-spacer"></div>
 								</div>
 								<div class="nudge-row">
-									<button class="nudge-btn" onclick="@(() => Nudge(-_nudgePixels, 0))">L</button>
+									<button class="nudge-btn" onclick="@(() => Nudge(-_nudgePixels, 0))" title="Nudge selected element left by @FormatNudgeLabel(_nudgePixels) px">L</button>
 									<div class="nudge-info">@FormatNudgeLabel(_nudgePixels)</div>
-									<button class="nudge-btn" onclick="@(() => Nudge(_nudgePixels, 0))">R</button>
+									<button class="nudge-btn" onclick="@(() => Nudge(_nudgePixels, 0))" title="Nudge selected element right by @FormatNudgeLabel(_nudgePixels) px">R</button>
 								</div>
 								<div class="nudge-row">
 									<div class="nudge-spacer"></div>
-									<button class="nudge-btn" onclick="@(() => Nudge(0, _nudgePixels))">DN</button>
+									<button class="nudge-btn" onclick="@(() => Nudge(0, _nudgePixels))" title="Nudge selected element down by @FormatNudgeLabel(_nudgePixels) px">DN</button>
 									<div class="nudge-spacer"></div>
 								</div>
 							</div>
@@ -100,10 +102,10 @@
 						<div class="scale-controls">
 							<h4 class="scale-title">Scale: @(GetCurrentScale().ToString("P0"))</h4>
 							<div class="scale-buttons">
-								<button class="scale-btn" onclick="@(() => SetScale(0.75f))">75%</button>
-								<button class="scale-btn" onclick="@(() => SetScale(1.0f))">100%</button>
-								<button class="scale-btn" onclick="@(() => SetScale(1.25f))">125%</button>
-								<button class="scale-btn" onclick="@(() => SetScale(1.5f))">150%</button>
+								<button class="scale-btn" onclick="@(() => SetScale(0.75f))" title="Set selected element scale to 75%">75%</button>
+								<button class="scale-btn" onclick="@(() => SetScale(1.0f))" title="Set selected element scale to 100%">100%</button>
+								<button class="scale-btn" onclick="@(() => SetScale(1.25f))" title="Set selected element scale to 125%">125%</button>
+								<button class="scale-btn" onclick="@(() => SetScale(1.5f))" title="Set selected element scale to 150%">150%</button>
 							</div>
 						</div>
 					</div>
@@ -112,10 +114,12 @@
 
 			@* Actions *@
 			<div class="layout-actions">
-				<button class="action-btn reset" onclick="@ResetLayout">Reset All</button>
-				<button class="action-btn reset-selected" onclick="@ResetSelected" disabled="@(SelectedElement == null)">Reset Selected</button>
-				<button class="action-btn reset-selected" onclick="@ToggleDebug">Debug: @(_debug ? "On" : "Off")</button>
-				<button class="action-btn done" onclick="@ExitLayout">Save &amp; Exit</button>
+				<button class="action-btn reset" onclick="@ResetLayout" title="Reset all HUD elements to defaults">Reset All</button>
+				<button class="action-btn reset-selected" onclick="@ResetSelected" disabled="@(SelectedElement == null)" title="Reset only the selected element">Reset Selected</button>
+				<button class="action-btn reset-selected" onclick="@UndoLast" disabled="@(_isDragging || !VeggaHudLayoutState.CanUndo)" title="Undo last layout change">Undo</button>
+				<button class="action-btn reset-selected @( VeggaHudLayoutState.DragModeEnabled ? "active" : "" )" onclick="@ToggleDragMode" title="Toggle drag mode for moving elements">Drag: @(VeggaHudLayoutState.DragModeEnabled ? "On" : "Off")</button>
+				<button class="action-btn reset-selected" onclick="@ToggleDebug" title="Show debug rectangle and size/anchor info">Debug: @(_debug ? "On" : "Off")</button>
+				<button class="action-btn done" onclick="@ExitLayout" title="Exit layout editor (changes are already saved)">Save &amp; Exit</button>
 			</div>
 		</div>
 
@@ -123,11 +127,15 @@
 		<div class="position-guides">
 			@foreach ( var key in GetElementKeys() )
 			{
-				var pos = GetGuidePosition(key);
-				<div class="guide-marker @(SelectedElement == key ? "selected" : "")" 
-					 style="left: @(pos.x * 100)%; top: @(pos.y * 100)%;">
-					<span class="guide-label">@GetElementShortName(key)</span>
-				</div>
+				if ( VeggaHudLayoutState.DragModeEnabled && TryGetElementRectPercent( key, out var left, out var top, out var width, out var height ) )
+				{
+					<div class="drag-target @(SelectedElement == key ? "selected" : "") @(_isDragging && _dragKey == key ? "dragging" : "")"
+						 style="left: @left%; top: @top%; width: @width%; height: @height%;"
+						 onmousedown="@(() => OnElementDragStart( key ))"
+						 title="Drag @GetElementName(key)">
+						<span class="drag-label">@GetElementShortName(key)</span>
+					</div>
+				}
 			}
 
 			@if ( _debug && SelectedElement != null )
@@ -137,6 +145,12 @@
 					<div class="debug-rect" style="left: @left%; top: @top%; width: @width%; height: @height%;"></div>
 					<div class="debug-text" style="left: @left%; top: @top%;">@label</div>
 				}
+
+				if ( TryGetSelectedRuntimeRect( out var rLeft, out var rTop, out var rWidth, out var rHeight, out var rLabel ) )
+				{
+					<div class="runtime-rect" style="left: @rLeft%; top: @rTop%; width: @rWidth%; height: @rHeight%;"></div>
+					<div class="runtime-text" style="left: @rLeft%; top: @rTop%;">@rLabel</div>
+				}
 			}
 		</div>
 	}
@@ -145,6 +159,19 @@
 @code
 {
 	bool _lastActive;
+	bool _isDragging;
+	string _dragKey;
+	Vector2 _dragGrabOffsetPx;
+	Vector2 _dragLastPosN;
+
+	struct PendingLog
+	{
+		public string Key;
+		public string Reason;
+		public int Frames;
+	}
+
+	readonly System.Collections.Generic.List<PendingLog> _pendingLogs = new();
 
 	// Instance wrappers
 	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
@@ -152,14 +179,37 @@
 	void SetLayoutActive( bool active ) => VeggaHudLayoutState.SetActive( active );
 	void ResetAllPositions() => VeggaHudLayoutState.ResetAll();
 
-	System.Collections.Generic.List<string> GetElementKeys() => VeggaHudLayoutState.GetAllElementKeys();
-	string GetElementName( string key ) => VeggaHudLayoutState.GetElementName( key );
-
 	readonly float[] _nudgePresetSteps = new[] { 0.5f, 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
 	float _nudgePixels { get; set; } = 4f;
 	TextEntry _nudgeEntry;
 
 	bool _debug;
+
+	System.Collections.Generic.List<string> GetElementKeys() => VeggaHudLayoutState.GetAllElementKeys();
+	string GetElementName( string key ) => VeggaHudLayoutState.GetElementName( key );
+
+	void ToggleDragMode()
+	{
+		VeggaHudLayoutState.DragModeEnabled = !VeggaHudLayoutState.DragModeEnabled;
+		StopDrag();
+		StateHasChanged();
+	}
+
+	void RequestDeferredLog( string reason )
+	{
+		// Give panels a couple frames to re-apply so VeggaHudLayoutApply.LastApplied is up-to-date.
+		// Queue logs so every click (preset/nudge/scale/reset) gets a debug line.
+		var key = SelectedElement;
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return;
+
+		_pendingLogs.Add( new PendingLog
+		{
+			Key = key,
+			Reason = reason,
+			Frames = 2
+		} );
+	}
 
 	string FormatNudgeLabel( float px )
 	{
@@ -170,7 +220,7 @@
 	void SetNudgePixels( float px )
 	{
 		_nudgePixels = Math.Max( 0.5f, Math.Min( 500f, px ) );
-		if ( _nudgeEntry != null )		// reflect current value
+		if ( _nudgeEntry != null )
 		{
 			_nudgeEntry.Text = _nudgePixels.ToString( "0.##" );
 		}
@@ -187,11 +237,15 @@
 		if ( float.TryParse( raw, out var value ) )
 		{
 			SetNudgePixels( value );
+			RequestDeferredLog( $"nudge-step -> {_nudgePixels:0.##}px" );
 		}
 	}
 
 	string GetElementShortName( string key )
 	{
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return "??";
+
 		return key switch
 		{
 			VeggaHudLayoutState.KeyPlayerHud => "HP",
@@ -200,7 +254,7 @@
 			VeggaHudLayoutState.KeyChat => "Chat",
 			VeggaHudLayoutState.KeyMinimap => "Map",
 			VeggaHudLayoutState.KeyInventory => "Inv",
-			_ => key.Substring( 0, 2 ).ToUpper()
+			_ => (key.Length >= 2 ? key.Substring( 0, 2 ) : key).ToUpperInvariant()
 		};
 	}
 
@@ -269,6 +323,48 @@
 		return true;
 	}
 
+	bool TryGetSelectedRuntimeRect( out float leftPct, out float topPct, out float wPct, out float hPct, out string label )
+	{
+		leftPct = topPct = wPct = hPct = 0f;
+		label = string.Empty;
+
+		var key = SelectedElement;
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return false;
+
+		if ( !VeggaHudLayoutApply.TryGetRuntimePanelRectPx( key, out var topLeftPx, out var sizePx ) )
+			return false;
+
+		// Use the same canvas that VeggaHudLayoutApply used when computing the expected rect.
+		// Screen.Size can differ from the effective UI canvas size when ScreenPanel scaling is active.
+		Vector2 screen;
+		if ( VeggaHudLayoutApply.TryGetLastApplied( key, out var infoForScreen ) && infoForScreen.ScreenPx.x > 1f && infoForScreen.ScreenPx.y > 1f )
+			screen = infoForScreen.ScreenPx;
+		else
+			screen = Screen.Size;
+
+		if ( screen.x <= 1f || screen.y <= 1f )
+			return false;
+
+		leftPct = (topLeftPx.x / screen.x) * 100f;
+		topPct = (topLeftPx.y / screen.y) * 100f;
+		wPct = (sizePx.x / screen.x) * 100f;
+		hPct = (sizePx.y / screen.y) * 100f;
+
+		// Delta vs computed blue-box rect (if we have it)
+		string deltaText = "";
+		if ( VeggaHudLayoutApply.TryGetLastApplied( key, out var info ) && info.HasValidSize )
+		{
+			var anchorPx = new Vector2( info.PositionN.x * info.ScreenPx.x, info.PositionN.y * info.ScreenPx.y );
+			var expectedTopLeftPx = anchorPx + AnchorOffsetPx( info.Anchor, info.SizePxScaled );
+			var d = topLeftPx - expectedTopLeftPx;
+			deltaText = $"  dPx={d:0}";
+		}
+
+		label = $"actual {key}  rectPx={topLeftPx:0},{sizePx:0}{deltaText}";
+		return true;
+	}
+
 	int GetCurrentPreset()
 	{
 		if ( SelectedElement == null ) return -1;
@@ -298,11 +394,160 @@
 			return;
 		}
 
+		if ( active && VeggaHudLayoutState.DragModeEnabled && _isDragging )
+		{
+			UpdateDrag();
+		}
+
+		if ( active && _pendingLogs.Count > 0 )
+		{
+			for ( int i = _pendingLogs.Count - 1; i >= 0; i-- )
+			{
+				var item = _pendingLogs[i];
+				item.Frames--;
+				if ( item.Frames <= 0 )
+				{
+					LogKeyDebug( item.Key, item.Reason );
+					_pendingLogs.RemoveAt( i );
+				}
+				else
+				{
+					_pendingLogs[i] = item;
+				}
+			}
+		}
+
 		if ( active != _lastActive )
 		{
 			_lastActive = active;
 			Log.Info( $"[VeggaHudLayoutOverlay] Active = {_lastActive}" );
 		}
+	}
+
+	void OnElementDragStart( string key )
+	{
+		if ( !VeggaHudLayoutState.DragModeEnabled || !IsLayoutActive )
+			return;
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return;
+
+		SelectElement( key );
+
+		Vector2 screen;
+		if ( VeggaHudLayoutApply.TryGetLastApplied( key, out var appliedForScreen ) && appliedForScreen.ScreenPx.x > 1f && appliedForScreen.ScreenPx.y > 1f )
+			screen = appliedForScreen.ScreenPx;
+		else
+		{
+			screen = Panel?.Box.Rect.Size ?? default;
+			if ( screen.x <= 0 || screen.y <= 0 )
+				screen = Screen.Size;
+		}
+		if ( screen.x <= 0 || screen.y <= 0 )
+			return;
+
+		Vector2 anchorN = GetGuidePosition( key );
+		var anchorPx = new Vector2( anchorN.x * screen.x, anchorN.y * screen.y );
+
+		// Mouse.Position is reported in Screen.Size space.
+		// Our layout canvas may differ (eg. ScreenPanel scaling), so convert mouse to canvas space.
+		var mouse = Mouse.Position;
+		var screenForMouse = Screen.Size;
+		if ( screenForMouse.x > 1f && screenForMouse.y > 1f && (System.Math.Abs( screenForMouse.x - screen.x ) > 1f || System.Math.Abs( screenForMouse.y - screen.y ) > 1f) )
+			mouse = new Vector2( mouse.x * screen.x / screenForMouse.x, mouse.y * screen.y / screenForMouse.y );
+
+		_dragGrabOffsetPx = mouse - anchorPx;
+
+		// Make dragging a single undo step.
+		VeggaHudLayoutState.SetPosition( key, anchorN );
+
+		_dragKey = key;
+		_isDragging = true;
+	}
+
+	void UpdateDrag()
+	{
+		if ( string.IsNullOrWhiteSpace( _dragKey ) )
+		{
+			StopDrag();
+			return;
+		}
+
+		// Stop dragging when mouse button released.
+		if ( !Input.Down( "attack1" ) )
+		{
+			StopDrag();
+			return;
+		}
+
+		Vector2 screen;
+		if ( VeggaHudLayoutApply.TryGetLastApplied( _dragKey, out var appliedForScreen ) && appliedForScreen.ScreenPx.x > 1f && appliedForScreen.ScreenPx.y > 1f )
+			screen = appliedForScreen.ScreenPx;
+		else
+		{
+			screen = Panel?.Box.Rect.Size ?? default;
+			if ( screen.x <= 0 || screen.y <= 0 )
+				screen = Screen.Size;
+		}
+		if ( screen.x <= 0 || screen.y <= 0 )
+			return;
+
+		var mouse = Mouse.Position;
+		var screenForMouse = Screen.Size;
+		if ( screenForMouse.x > 1f && screenForMouse.y > 1f && (System.Math.Abs( screenForMouse.x - screen.x ) > 1f || System.Math.Abs( screenForMouse.y - screen.y ) > 1f) )
+			mouse = new Vector2( mouse.x * screen.x / screenForMouse.x, mouse.y * screen.y / screenForMouse.y );
+
+		var anchorPx = mouse - _dragGrabOffsetPx;
+		var nextN = new Vector2( anchorPx.x / screen.x, anchorPx.y / screen.y );
+		_dragLastPosN = nextN;
+
+		// Debounced write to avoid hammering disk while dragging.
+		VeggaHudLayoutState.UpdatePositionClamped( _dragKey, nextN );
+	}
+
+	void StopDrag()
+	{
+		if ( !string.IsNullOrWhiteSpace( _dragKey ) )
+		{
+			// Final flush (single write) so the last position is guaranteed persisted.
+			// No undo push here; drag start already captured the previous state.
+			VeggaHudLayoutState.SetPositionNoUndo( _dragKey, _dragLastPosN );
+		}
+		_isDragging = false;
+		_dragKey = null;
+		_dragGrabOffsetPx = default;
+		_dragLastPosN = default;
+	}
+
+	void UndoLast()
+	{
+		StopDrag();
+		VeggaHudLayoutState.Undo();
+		StateHasChanged();
+	}
+
+	bool TryGetElementRectPercent( string key, out float leftPct, out float topPct, out float widthPct, out float heightPct )
+	{
+		leftPct = topPct = widthPct = heightPct = 0f;
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return false;
+
+		if ( !VeggaHudLayoutApply.TryGetLastApplied( key, out var info ) )
+			return false;
+
+		var screen = info.ScreenPx;
+		if ( screen.x <= 0 || screen.y <= 0 )
+			return false;
+
+		// If the element hasn't measured yet, use a small, still-clickable fallback.
+		var sizePx = info.HasValidSize ? info.SizePxScaled : new Vector2( 160f, 60f );
+		var anchorPx = new Vector2( info.PositionN.x * screen.x, info.PositionN.y * screen.y );
+		var topLeftPx = anchorPx + AnchorOffsetPx( info.Anchor, sizePx );
+
+		leftPct = (topLeftPx.x / screen.x) * 100f;
+		topPct = (topLeftPx.y / screen.y) * 100f;
+		widthPct = (sizePx.x / screen.x) * 100f;
+		heightPct = (sizePx.y / screen.y) * 100f;
+		return true;
 	}
 
 	void SelectElement( string key )
@@ -315,40 +560,84 @@
 	{
 		if ( SelectedElement == null ) return;
 		VeggaHudLayoutState.SetPreset( SelectedElement, (VeggaHudLayoutState.ScreenPosition)presetIndex );
+		RequestDeferredLog( $"preset -> {(VeggaHudLayoutState.ScreenPosition)presetIndex}" );
 	}
 
 	void Nudge( float x, float y )
 	{
 		if ( SelectedElement == null ) return;
 		VeggaHudLayoutState.NudgePosition( SelectedElement, new Vector2( x, y ) );
+		RequestDeferredLog( $"nudge -> dx={x:0.##}px dy={y:0.##}px" );
 	}
 
 	void SetScale( float scale )
 	{
 		if ( SelectedElement == null ) return;
 		VeggaHudLayoutState.SetScale( SelectedElement, scale );
+		RequestDeferredLog( $"scale -> {scale:0.###}" );
 	}
 
 	void ResetLayout()
 	{
-		// "Reset All" should fully clean saved state (including any historical calibration data)
-		// and revert to defaults.
-		VeggaHudLayoutState.WipeAllSavedLayoutData();
-		Log.Info( "[HUD Layout] Reset all (wiped saved layout)" );
+		// Old behavior: stack everything in the center so it's easy to find.
+		VeggaHudLayoutState.ResetAllToCenter();
+		Log.Info( "[HUD Layout] Reset all -> centered" );
 	}
 
 	void ResetSelected()
 	{
 		if ( SelectedElement == null ) return;
-		var pos = VeggaHudLayoutState.GetDefaultPosition( SelectedElement );
-		VeggaHudLayoutState.SetPosition( SelectedElement, pos );
-		VeggaHudLayoutState.SetScale( SelectedElement, 1f );
+		VeggaHudLayoutState.ResetElement( SelectedElement );
 		Log.Info( $"[HUD Layout] Reset selected {SelectedElement} -> default" );
+		RequestDeferredLog( "reset-selected" );
 	}
 
 	void ExitLayout()
 	{
 		SetLayoutActive( false );
 		Log.Info( "[HUD Layout] Exited layout mode" );
+	}
+
+	void LogKeyDebug( string key, string reason )
+	{
+		try
+		{
+			if ( string.IsNullOrWhiteSpace( key ) )
+				return;
+
+			var savedPosN = VeggaHudLayoutState.GetPosition( key );
+			var savedScale = VeggaHudLayoutState.GetScale( key, 1f );
+			var savedPreset = VeggaHudLayoutState.GetPreset( key );
+			var savedAnchor = VeggaHudLayoutState.GetAnchor( key );
+
+			var screen = Screen.Size;
+			var mouse = Mouse.Position;
+
+			string appliedText = "(no last-applied info yet)";
+			if ( VeggaHudLayoutApply.TryGetLastApplied( key, out var applied ) )
+			{
+				var anchorPx = new Vector2( applied.PositionN.x * applied.ScreenPx.x, applied.PositionN.y * applied.ScreenPx.y );
+				var topLeftPx = anchorPx + AnchorOffsetPx( applied.Anchor, applied.SizePxScaled );
+				appliedText = $"posN={applied.PositionN} scale={applied.Scale:0.###} anchor={applied.Anchor} sizePxScaled={applied.SizePxScaled} hasValidSize={applied.HasValidSize} screenPx={applied.ScreenPx} topLeftPx={topLeftPx} safeMinN={applied.SafeMinN} safeMaxN={applied.SafeMaxN}";
+			}
+
+			string rectText = "(no rect)";
+			if ( TryGetElementRectPercent( key, out var leftPct, out var topPct, out var widthPct, out var heightPct ) )
+			{
+				rectText = $"left={leftPct:0.###}% top={topPct:0.###}% w={widthPct:0.###}% h={heightPct:0.###}%";
+			}
+
+			Log.Info( $"[HUD Layout Debug] {reason} key={key} name={GetElementName( key )} | saved: posN={savedPosN} preset={savedPreset} scale={savedScale:0.###} anchor={savedAnchor} | applied: {appliedText} | blueRect: {rectText} | mousePx={mouse} screenPx={screen}" );
+		}
+		catch ( System.Exception e )
+		{
+			Log.Warning( $"[HUD Layout Debug] log failed: {e.Message}" );
+		}
+	}
+
+	void LogSelectedDebug( string reason )
+	{
+		var key = SelectedElement;
+		LogKeyDebug( key, reason );
 	}
 }

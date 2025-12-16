@@ -35,6 +35,7 @@
 
 @code
 {
+	const bool DebugNet = true;
 	[Parameter] public VeggaInventory Inventory { get; set; }
 	[Parameter] public int SlotIndex { get; set; }
 	[Parameter] public bool IsSelected { get; set; }
@@ -42,6 +43,8 @@
 
 	Panel _ghost;
 	InventoryHudSlot _lastHover;
+	int _dragCount;
+	bool _dragSplit;
 
 	bool HasItem
 		=> Inventory != null
@@ -87,6 +90,23 @@
 	protected override void OnDragStart( DragEvent e )
 	{
 		if ( !HasItem ) return;
+		if ( DebugNet ) Log.Info( $"[InvUI] DragStart slot={SlotIndex} itemId={ItemId} count={ItemCount} invProxy={Inventory?.Network?.IsProxy} local={Connection.Local?.Id}" );
+
+		_dragSplit = false;
+		_dragCount = ItemCount;
+		// Shift-drag (Run) takes half the stack.
+		// We use "Run" because the project already binds Shift to sprint.
+		if ( (Input.Down( "Run" ) || Input.Down( "run" )) && ItemCount > 1 )
+		{
+			var def = VeggaItemRegistry.Get( ItemId );
+			int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+			if ( maxStack > 1 )
+			{
+				_dragSplit = true;
+				_dragCount = Math.Max( 1, ItemCount / 2 );
+			}
+		}
+
 		AddClass( "dragging" );
 
 		// Make a ghost panel (dragging this Panel itself can disturb layout).
@@ -175,9 +195,43 @@
 			.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( e.ScreenPosition ) );
 
 		if ( target == null )
+		{
+			// Only treat it as a "world drop" if the cursor is outside the inventory grid.
+			var grid = FindInventoryGridPanel();
+			bool insideGrid = grid != null && grid.IsValid() && grid.IsInside( e.ScreenPosition );
+			if ( insideGrid )
+			{
+				if ( DebugNet ) Log.Info( $"[InvUI] DragEnd slot={SlotIndex} -> no target (inside grid): no-op" );
+				return;
+			}
+
+			if ( DebugNet ) Log.Info( $"[InvUI] DragEnd slot={SlotIndex} -> world drop count={Math.Max( 1, _dragCount )}" );
+			Inventory.RequestDropFromSlot( SlotIndex, Math.Max( 1, _dragCount ) );
 			return;
+		}
+
+		if ( _dragSplit && target.ItemId <= 0 )
+		{
+			if ( DebugNet ) Log.Info( $"[InvUI] DragEnd split from={SlotIndex} to={target.SlotIndex} count={Math.Max( 1, _dragCount )}" );
+			Inventory.RequestSplitMoveSlot( SlotIndex, target.SlotIndex, Math.Max( 1, _dragCount ) );
+			return;
+		}
+
+		if ( DebugNet ) Log.Info( $"[InvUI] DragEnd move from={SlotIndex} to={target.SlotIndex}" );
 
 		Inventory.RequestMoveSlot( SlotIndex, target.SlotIndex );
+	}
+
+	Panel FindInventoryGridPanel()
+	{
+		var p = Parent;
+		while ( p != null )
+		{
+			if ( p.HasClass( "inventory-grid" ) )
+				return p;
+			p = p.Parent;
+		}
+		return null;
 	}
 
 	public static string ResolveCssUrl( string iconPath )

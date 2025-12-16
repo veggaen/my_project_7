@@ -14,6 +14,7 @@ public class ChatMessage
 	public Guid MessageId { get; set; } = Guid.NewGuid();
 	public string SenderName { get; set; }
 	public Guid SenderId { get; set; }
+	public ulong SenderSteamId { get; set; }
 	public string Text { get; set; }
 	public DateTime Time { get; set; }
 	public ChatMessageType Type { get; set; }
@@ -41,6 +42,11 @@ public sealed class VeggaChatManager : Component
 {
 	[Property] public int MaxMessages { get; set; } = 500;
 	[Property] public float MessageFadeTime { get; set; } = 8f;
+
+	// Pinned message (based on likes)
+	public Guid PinnedMessageId { get; private set; } = Guid.Empty;
+	public float PinnedUntilTime { get; private set; } = 0f;
+	public float PinnedResetTime { get; private set; } = 0f;
 
 	/// <summary>
 	/// All chat messages.
@@ -298,7 +304,7 @@ public sealed class VeggaChatManager : Component
 		// Connection.Local?.Id is Guid? so fall back to Guid.Empty instead of an int
 		// Use a stable message id so all clients can reference this message (eg. reactions)
 		var messageId = Guid.NewGuid();
-		BroadcastMessage( messageId, senderName, Connection.Local?.Id ?? Guid.Empty, text, ChatMessageType.Normal );
+		BroadcastMessage( messageId, senderName, Connection.Local?.Id ?? Guid.Empty, Connection.Local?.SteamId ?? 0UL, text, ChatMessageType.Normal );
 	}
 
 	void ProcessCommand( string input )
@@ -404,13 +410,14 @@ public sealed class VeggaChatManager : Component
 	}
 
 	[Rpc.Broadcast]
-	void BroadcastMessage( Guid messageId, string senderName, Guid senderId, string text, ChatMessageType type )
+	void BroadcastMessage( Guid messageId, string senderName, Guid senderId, ulong senderSteamId, string text, ChatMessageType type )
 	{
 		var msg = new ChatMessage
 		{
 			MessageId = messageId,
 			SenderName = senderName,
 			SenderId = senderId,
+			SenderSteamId = senderSteamId,
 			Text = text,
 			Time = DateTime.Now,
 			Type = type,
@@ -447,14 +454,14 @@ public sealed class VeggaChatManager : Component
 		var messageId = Guid.NewGuid();
 
 		// Send to target
-		SendPrivateMessageRpc( targetStats.Network.Owner.Id, messageId, senderName, message );
+		SendPrivateMessageRpc( targetStats.Network.Owner.Id, messageId, senderName, Connection.Local?.SteamId ?? 0UL, message );
 
 		// Show in our chat
 		AddLocalMessage( $"[PM to {targetStats.Network.Owner.DisplayName}] {message}", ChatMessageType.Private );
 	}
 
 	[Rpc.Broadcast]
-	void SendPrivateMessageRpc( Guid targetConnectionId, Guid messageId, string senderName, string message )
+	void SendPrivateMessageRpc( Guid targetConnectionId, Guid messageId, string senderName, ulong senderSteamId, string message )
 	{
 		// Only process if we're the target
 		if ( Connection.Local?.Id != targetConnectionId ) return;
@@ -463,6 +470,7 @@ public sealed class VeggaChatManager : Component
 		{
 			MessageId = messageId,
 			SenderName = senderName,
+			SenderSteamId = senderSteamId,
 			Text = message,
 			Time = DateTime.Now,
 			Type = ChatMessageType.Private,
@@ -487,7 +495,7 @@ public sealed class VeggaChatManager : Component
 		var messageId = Guid.NewGuid();
 
 		// Use Guid.Empty as fallback for missing connection id
-		BroadcastMessage( messageId, senderName, Connection.Local?.Id ?? Guid.Empty, $"* {senderName} {action}", ChatMessageType.Action );
+		BroadcastMessage( messageId, senderName, Connection.Local?.Id ?? Guid.Empty, Connection.Local?.SteamId ?? 0UL, $"* {senderName} {action}", ChatMessageType.Action );
 	}
 
 	/// <summary>
@@ -499,6 +507,7 @@ public sealed class VeggaChatManager : Component
 		{
 			MessageId = Guid.NewGuid(),
 			SenderName = "System",
+			SenderSteamId = 0UL,
 			Text = text,
 			Time = DateTime.Now,
 			Type = type
@@ -554,7 +563,63 @@ public sealed class VeggaChatManager : Component
 		}
 
 		msg.Reactions[reactionKey] = count + 1;
+		TryUpdatePinnedFromReaction( msg, reactionKey );
 		OnMessagesChanged?.Invoke( msg );
+	}
+
+	void TryUpdatePinnedFromReaction( ChatMessage updated, string reactionKey )
+	{
+		if ( updated == null ) return;
+		if ( !string.Equals( reactionKey, "like", StringComparison.OrdinalIgnoreCase ) ) return;
+
+		// Hard reset after 30 minutes.
+		float now = Time.Now;
+		if ( PinnedResetTime > 0f && now >= PinnedResetTime )
+		{
+			PinnedMessageId = Guid.Empty;
+			PinnedUntilTime = 0f;
+			PinnedResetTime = 0f;
+		}
+
+		int updatedLikes = 0;
+		updated.Reactions?.TryGetValue( "like", out updatedLikes );
+		if ( updatedLikes < 3 )
+			return;
+
+		// If pinned message got trimmed/removed, clear it.
+		ChatMessage currentPinned = null;
+		int pinnedLikes = 0;
+		if ( PinnedMessageId != Guid.Empty )
+		{
+			currentPinned = Messages.FirstOrDefault( m => m.MessageId == PinnedMessageId );
+			if ( currentPinned == null )
+			{
+				PinnedMessageId = Guid.Empty;
+				PinnedUntilTime = 0f;
+				PinnedResetTime = 0f;
+			}
+			else
+			{
+				currentPinned.Reactions?.TryGetValue( "like", out pinnedLikes );
+			}
+		}
+
+		bool isActive = PinnedMessageId != Guid.Empty && now < PinnedUntilTime && (PinnedResetTime <= 0f || now < PinnedResetTime);
+		if ( !isActive )
+		{
+			PinnedMessageId = updated.MessageId;
+			PinnedUntilTime = now + 300f;  // 5 minutes
+			PinnedResetTime = now + 1800f; // 30 minutes
+			return;
+		}
+
+		// Replace pinned when a message overtakes.
+		if ( updated.MessageId != PinnedMessageId && updatedLikes > pinnedLikes )
+		{
+			PinnedMessageId = updated.MessageId;
+			PinnedUntilTime = now + 300f;
+			PinnedResetTime = now + 1800f;
+		}
 	}
 
 	bool TryResolvePmTarget( string[] args, out string targetName, out string message )

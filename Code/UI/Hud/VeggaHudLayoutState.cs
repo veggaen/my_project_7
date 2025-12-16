@@ -171,6 +171,124 @@ public static class VeggaHudLayoutState
 	static bool _dirty;
 	static float _nextAutosaveTime;
 
+	const int MaxUndoSteps = 50;
+	static readonly Stack<LayoutSaveData> _undoStack = new();
+	static bool _suspendUndo;
+
+	public static bool CanUndo => _undoStack.Count > 0;
+
+	static LayoutSaveData CloneData( LayoutSaveData src )
+	{
+		if ( src == null ) return new LayoutSaveData();
+
+		var clone = new LayoutSaveData
+		{
+			Elements = new Dictionary<string, LayoutEntry>(),
+			ElementsByResolution = new Dictionary<string, Dictionary<string, LayoutEntry>>(),
+			SafeAreas = new Dictionary<string, SafeAreaEntry>()
+		};
+
+		if ( src.Elements != null )
+		{
+			foreach ( var kv in src.Elements )
+			{
+				var e = kv.Value;
+				if ( e == null ) continue;
+				clone.Elements[kv.Key] = new LayoutEntry
+				{
+					X = e.X,
+					Y = e.Y,
+					Preset = e.Preset,
+					Scale = e.Scale,
+					Anchor = e.Anchor
+				};
+			}
+		}
+
+		if ( src.ElementsByResolution != null )
+		{
+			foreach ( var resKv in src.ElementsByResolution )
+			{
+				var resDict = new Dictionary<string, LayoutEntry>();
+				if ( resKv.Value != null )
+				{
+					foreach ( var kv in resKv.Value )
+					{
+						var e = kv.Value;
+						if ( e == null ) continue;
+						resDict[kv.Key] = new LayoutEntry
+						{
+							X = e.X,
+							Y = e.Y,
+							Preset = e.Preset,
+							Scale = e.Scale,
+							Anchor = e.Anchor
+						};
+					}
+				}
+				clone.ElementsByResolution[resKv.Key] = resDict;
+			}
+		}
+
+		if ( src.SafeAreas != null )
+		{
+			foreach ( var kv in src.SafeAreas )
+			{
+				var s = kv.Value;
+				if ( s == null ) continue;
+				clone.SafeAreas[kv.Key] = new SafeAreaEntry
+				{
+					MinX = s.MinX,
+					MinY = s.MinY,
+					MaxX = s.MaxX,
+					MaxY = s.MaxY
+				};
+			}
+		}
+
+		return clone;
+	}
+
+	static void PushUndoState()
+	{
+		if ( _suspendUndo ) return;
+		EnsureLoaded();
+		_undoStack.Push( CloneData( _data ) );
+		while ( _undoStack.Count > MaxUndoSteps )
+		{
+			// Drop oldest by rebuilding stack.
+			var keep = _undoStack.ToArray();
+			System.Array.Reverse( keep );
+			_undoStack.Clear();
+			int start = System.Math.Max( 0, keep.Length - MaxUndoSteps );
+			for ( int i = keep.Length - 1; i >= start; i-- )
+				_undoStack.Push( keep[i] );
+			break;
+		}
+	}
+
+	public static void Undo()
+	{
+		EnsureLoaded();
+		if ( _undoStack.Count <= 0 )
+			return;
+
+		_suspendUndo = true;
+		try
+		{
+			_data = _undoStack.Pop() ?? new LayoutSaveData();
+			_loaded = true;
+			_dirty = false;
+			_nextAutosaveTime = 0f;
+			FileSystem.Data.WriteJson( LayoutFile, _data );
+		}
+		finally
+		{
+			_suspendUndo = false;
+		}
+		Log.Info( "[HUD Layout] Undo" );
+	}
+
 	static string CurrentResolutionKey()
 	{
 		var s = Screen.Size;
@@ -365,6 +483,17 @@ public static class VeggaHudLayoutState
 	public static string SelectedElement { get; set; } = null;
 
 	/// <summary>
+	/// When enabled, we render the "blue box" HUD surfaces.
+	/// This is intended to become the new visual HUD shell.
+	/// </summary>
+	public static bool BoxHudEnabled { get; set; } = false;
+
+	/// <summary>
+	/// When enabled (and layout mode is active), elements can be dragged.
+	/// </summary>
+	public static bool DragModeEnabled { get; set; } = true;
+
+	/// <summary>
 	/// Set layout mode for this client.
 	/// </summary>
 	public static void SetActive( bool active )
@@ -514,8 +643,19 @@ public static class VeggaHudLayoutState
 	/// </summary>
 	public static void SetPosition( string key, Vector2 pos )
 	{
+		SetPositionInternal( key, pos, pushUndo: true );
+	}
+
+	internal static void SetPositionNoUndo( string key, Vector2 pos )
+	{
+		SetPositionInternal( key, pos, pushUndo: false );
+	}
+
+	static void SetPositionInternal( string key, Vector2 pos, bool pushUndo )
+	{
 		EnsureLoaded();
 		pos = ClampToAllowedRange( pos );
+		if ( pushUndo ) PushUndoState();
 
 		var entry = GetOrCreateEntryForWrite( key );
 		if ( entry == null ) return;
@@ -582,6 +722,7 @@ public static class VeggaHudLayoutState
 	public static void SetPreset( string key, ScreenPosition preset )
 	{
 		EnsureLoaded();
+		PushUndoState();
 
 		var entry = GetOrCreateEntryForWrite( key );
 		if ( entry == null ) return;
@@ -609,6 +750,8 @@ public static class VeggaHudLayoutState
 	/// </summary>
 	public static void WipeAllSavedLayoutData()
 	{
+		EnsureLoaded();
+		PushUndoState();
 		_data = new LayoutSaveData();
 		_loaded = true;
 		_dirty = false;
@@ -618,11 +761,57 @@ public static class VeggaHudLayoutState
 	}
 
 	/// <summary>
+	/// Reset all HUD elements to true center immediately.
+	/// This matches the old layout-editor behavior where Reset All stacked everything in the middle.
+	/// </summary>
+	public static void ResetAllToCenter()
+	{
+		EnsureLoaded();
+		PushUndoState();
+
+		_suspendUndo = true;
+		try
+		{
+			// Start from a clean slate so old per-resolution overrides or safe-area entries
+			// can't keep pushing elements around.
+			_data = new LayoutSaveData();
+			_loaded = true;
+			_dirty = false;
+			_nextAutosaveTime = 0f;
+
+			foreach ( var key in GetAllElementKeys() )
+			{
+				if ( string.IsNullOrWhiteSpace( key ) )
+					continue;
+
+				var entry = GetOrCreateEntryForWrite( key );
+				if ( entry == null )
+					continue;
+
+				entry.X = 0.5f;
+				entry.Y = 0.5f;
+				entry.Preset = (int)ScreenPosition.MiddleCenter;
+				entry.Anchor = (int)HudAnchor.MiddleCenter;
+				entry.Scale = 1f;
+			}
+
+			FileSystem.Data.WriteJson( LayoutFile, _data );
+		}
+		finally
+		{
+			_suspendUndo = false;
+		}
+
+		Log.Info( "[HUD Layout] Reset all -> centered" );
+	}
+
+	/// <summary>
 	/// Set the scale for an element.
 	/// </summary>
 	public static void SetScale( string key, float scale )
 	{
 		EnsureLoaded();
+		PushUndoState();
 
 		var entry = GetOrCreateEntryForWrite( key );
 		if ( entry == null ) return;
@@ -719,6 +908,7 @@ public static class VeggaHudLayoutState
 		EnsureLoaded();
 		if ( string.IsNullOrWhiteSpace( key ) )
 			return;
+		PushUndoState();
 
 		key = key.Trim();
 
@@ -755,6 +945,7 @@ public static class VeggaHudLayoutState
 	public static void ResetAll()
 	{
 		EnsureLoaded();
+		PushUndoState();
 
 		// Full reset: layouts, per-screen overrides, and any saved safe-area calibration.
 		_data = new LayoutSaveData();

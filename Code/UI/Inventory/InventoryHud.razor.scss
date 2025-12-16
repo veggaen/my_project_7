@@ -148,7 +148,7 @@ InventoryHud root {
 	}
 
 	.item-details-icon.currency {
-		background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.0) 45%),
+		background: radial-gradient(rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.0) 45%),
 			linear-gradient(135deg, rgba(234, 179, 8, 0.95) 0%, rgba(202, 138, 4, 0.95) 100%);
 		border-color: rgba(234, 179, 8, 0.45);
 		color: rgba(15, 23, 42, 0.92);
@@ -228,7 +228,7 @@ InventoryHud root {
 		}
 
 		.item-icon.currency {
-			background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.0) 45%),
+			background: radial-gradient(rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.0) 45%),
 				linear-gradient(135deg, rgba(234, 179, 8, 0.95) 0%, rgba(202, 138, 4, 0.95) 100%);
 			border-radius: 999px;
 			border: 1px solid rgba(234, 179, 8, 0.45);
@@ -253,5 +253,12 @@ InventoryHud root {
 			pointer-events: none;
 		}
 	}
+}
+
+// Let the Razor <root> size the component panel.
+// If <root> is absolute, it can stop contributing to the parent size, which makes
+// Box.Rect.Size disagree with the menu's visible bounds.
+InventoryHud root {
+	position: relative;
 }
 

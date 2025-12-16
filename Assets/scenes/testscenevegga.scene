@@ -431,6 +431,7 @@
           "__type": "HUDManagerScene",
           "__guid": "5880b540-a939-4415-a82c-4e3cee70e814",
           "__enabled": true,
+          "BoxHudPanel": null,
           "ChatPanel": null,
           "CrosshairMenuPanel": null,
           "CrosshairPanel": null,
@@ -456,6 +457,7 @@
           "OnComponentUpdate": null,
           "PauseMenuPanel": null,
           "PickupHintPanel": null,
+          "SkillsPanel": null,
           "TradeWindowPanel": null
         },
         {
@@ -495,7 +497,7 @@
         {
           "__type": "Sandbox.UI.Player.PlayerHud",
           "__guid": "6517bf9a-d1f9-4518-a883-8974aed528d8",
-          "__enabled": true,
+          "__enabled": false,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -1251,38 +1253,17 @@
       }
     },
     {
-      "__guid": "1fc219a0-4032-4f3d-a486-f67f82ee2065",
+      "__guid": "466e8ce1-e822-404f-a707-de041165dc25",
       "__version": 1,
       "__Prefab": "saunalog.prefab",
       "__PrefabInstancePatch": {
         "AddedObjects": [],
         "RemovedObjects": [],
-        "PropertyOverrides": [
-          {
-            "Target": {
-              "Type": "GameObject",
-              "IdValue": "3175ce30-2eb8-4bff-b816-107e57e3636a"
-            },
-            "Property": "Name",
-            "Value": "logs"
-          },
-          {
-            "Target": {
-              "Type": "GameObject",
-              "IdValue": "3175ce30-2eb8-4bff-b816-107e57e3636a"
-            },
-            "Property": "Position",
-            "Value": "-112.3256,-211.5747,3.937"
-          }
-        ],
+        "PropertyOverrides": [],
         "MovedObjects": []
       },
       "__PrefabIdToInstanceId": {
-        "3175ce30-2eb8-4bff-b816-107e57e3636a": "1fc219a0-4032-4f3d-a486-f67f82ee2065",
-        "e7a27cdc-483e-4a35-bc4b-98620e53e5d6": "ce22bafd-8b0f-4e07-b850-5a20b4d7a42d",
-        "29014928-3551-44ce-9736-e20af47516a9": "58128c45-9b0c-4548-b6ad-71f504690501",
-        "fd1a07cb-adf3-48ab-81c5-6d81d03ce98b": "c2ba02ba-26fe-4d29-bdcb-468f0633a99b",
-        "c35b9808-0462-4967-a6d3-20bc969a48f1": "db69e84c-2c11-4527-9075-94a39d7cae2c"
+        "254d5651-49d9-43b5-bd73-fa03eb87d170": "a3a169e2-68a2-44a2-896e-2287c12fc248"
       }
     },
     {

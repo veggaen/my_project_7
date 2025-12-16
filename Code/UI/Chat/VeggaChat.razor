@@ -8,7 +8,28 @@
 @attribute [StyleSheet( "/code/ui/chat/veggachat.razor.scss" )]
 
 <root>
+	<div class="chat-container-outer">
 	<div class="chat-container @(_isOpen ? "open" : "closed") @(_isFocused ? "focused" : "")">
+		@* Pinned message *@
+		@if ( TryGetPinned( out var pinned, out var pinnedLikes ) )
+		{
+			<div class="pinned">
+				<div class="pinned-header">
+					<span class="pin-label">PINNED</span>
+					<span class="spacer"></span>
+					<span class="pin-likes">♥ @pinnedLikes</span>
+				</div>
+				<div class="pinned-body">
+					@if ( pinned.SenderSteamId != 0 )
+					{
+						<span class="avatar" style=@($"background-image: url(avatar:{pinned.SenderSteamId});")></span>
+					}
+					<span class="pinned-sender">@pinned.SenderName</span>
+					<span class="pinned-text">@pinned.Text</span>
+				</div>
+			</div>
+		}
+
 		@* Messages *@
 		<scrollpanel class="messages-container"
 					 @ref="_messagesPanel"
@@ -25,6 +46,10 @@
 						}
 						@if ( msg.Type == ChatMessageType.Normal || msg.Type == ChatMessageType.Private )
 						{
+							@if ( msg.SenderSteamId != 0 )
+							{
+								<span class="avatar" style=@($"background-image: url(avatar:{msg.SenderSteamId});")></span>
+							}
 							<span class="sender">@msg.SenderName</span>
 						}
 						<span class="spacer"></span>
@@ -48,6 +73,9 @@
 			}
 		</scrollpanel>
 
+		
+	</div>
+	<div class="chat-input-outer @(_isFocused ? "focused" : "")">
 		@* Footer *@
 		@if ( _isFocused )
 		{
@@ -69,7 +97,7 @@
 					</div>
 				}
 
-				<div class="input-container">
+				<div class="chat-input-row">
 					<span class="input-prefix">Say:</span>
 					<textentry class="input-entry" @ref="_textEntry" />
 				</div>
@@ -79,6 +107,7 @@
 		{
 			<div class="chat-hint">Press Enter to chat</div>
 		}
+	</div>
 	</div>
 </root>
 
@@ -163,6 +192,7 @@
 			if ( _chatManager != null )
 			{
 				_chatManager.OnMessageReceived += OnMessageReceived;
+				_chatManager.OnMessagesChanged += OnMessagesChanged;
 			}
 		}
 
@@ -742,5 +772,27 @@
 			_chatManager?.AddLocalMessage( $"Failed to react: {ex.Message}", ChatMessageType.Error );
 			Log.Warning( ex, "[VeggaChat] AddReaction failed" );
 		}
+	}
+
+	bool TryGetPinned( out ChatMessage pinned, out int likeCount )
+	{
+		pinned = null;
+		likeCount = 0;
+		if ( _chatManager == null ) return false;
+
+		var id = _chatManager.PinnedMessageId;
+		if ( id == Guid.Empty ) return false;
+
+		float now = Time.Now;
+		if ( _chatManager.PinnedUntilTime > 0f && now >= _chatManager.PinnedUntilTime )
+			return false;
+		if ( _chatManager.PinnedResetTime > 0f && now >= _chatManager.PinnedResetTime )
+			return false;
+
+		pinned = _chatManager.Messages.FirstOrDefault( m => m.MessageId == id );
+		if ( pinned == null ) return false;
+
+		likeCount = GetReactionCount( pinned, "like" );
+		return likeCount >= 3;
 	}
 }
