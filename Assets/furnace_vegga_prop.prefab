@@ -116,6 +116,19 @@
         "OverrideMassCenter": false,
         "RigidbodyFlags": 0,
         "StartAsleep": false
+      },
+      {
+        "__type": "Sandbox.PlayerForgeAura",
+        "__guid": "eba58cee-06de-4da2-a808-81767d81e700",
+        "__enabled": true,
+        "BaseForgeMultiplier": 100,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "Radius": 350
       }
     ],
     "Children": [
@@ -645,7 +658,7 @@
                             "TargetColor": "0,1,0,1",
                             "CacheToDisk": true
                           },
-                          "compiled": null
+                          "compiled": "textures/generated/imagefile/ecb7aafaf222aa30.vtex"
                         },
                         "BroadcastMessages": []
                       }

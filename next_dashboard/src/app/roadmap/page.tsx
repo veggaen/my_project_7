@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Reveal } from "../components/motion/Reveal";
-import { SplitText } from "../components/motion/SplitText";
-import { SiteNavbar } from "../components/SiteNavbar";
+import { motion, AnimatePresence } from "framer-motion";
+import { Reveal } from "@/app/components/motion/Reveal";
+import { SplitText } from "@/app/components/motion/SplitText";
+import { SiteNavbar } from "@/app/components/SiteNavbar";
 
 type Phase = {
   id: string;
@@ -100,18 +101,18 @@ const phases: Phase[] = [
 
 const StatusBadge = ({ status }: { status: string }) => {
   const colors = {
-    "completed": "bg-green-500/20 text-green-400 border-green-500/30",
-    "in-progress": "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    "planned": "bg-gray-500/20 text-gray-400 border-gray-500/30",
+    "completed": "bg-green-500/10 text-green-400 border-green-500/20",
+    "in-progress": "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    "planned": "bg-gray-500/10 text-gray-400 border-gray-500/20",
     "done": "bg-green-500",
     "wip": "bg-yellow-500",
-    "todo": "bg-gray-600"
+    "todo": "bg-gray-700"
   };
 
   const labels = {
-    "completed": "✅ Completed",
-    "in-progress": "🔄 In Progress",
-    "planned": "📋 Planned",
+    "completed": "Completed",
+    "in-progress": "In Progress",
+    "planned": "Planned",
     "done": "✓",
     "wip": "◐",
     "todo": "○"
@@ -119,14 +120,14 @@ const StatusBadge = ({ status }: { status: string }) => {
 
   if (status === "done" || status === "wip" || status === "todo") {
     return (
-      <span className={`w-5 h-5 rounded-full ${colors[status]} flex items-center justify-center text-xs text-white`}>
+      <span className={`w-6 h-6 rounded-full ${colors[status]} flex items-center justify-center text-xs text-white shadow-sm`}>
         {status === "done" ? "✓" : status === "wip" ? "◐" : ""}
       </span>
     );
   }
 
   return (
-    <span className={`px-3 py-1 rounded-full text-sm border ${colors[status as keyof typeof colors]}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${colors[status as keyof typeof colors]} uppercase tracking-wider`}>
       {labels[status as keyof typeof labels]}
     </span>
   );
@@ -144,123 +145,153 @@ export default function RoadmapPage() {
       <SiteNavbar />
 
       <div className="nav-spacer page-section">
-        <div className="page-container max-w-6xl">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <Reveal>
-              <SplitText
-                as="h1"
-                text="Development Roadmap"
-                className="text-5xl font-bold mb-4 gradient-text"
-                mode="words"
-                stagger={0.08}
-              />
-            </Reveal>
-            <Reveal delay={0.08}>
-              <p className="text-gray-400 text-xl">Track the progress of Vegga Roleplay</p>
-            </Reveal>
-          </div>
+        <div className="page-container">
+          
+          <div className="grid lg:grid-cols-12 gap-16 xl:gap-24 items-start">
+            {/* Left Column - Sticky Info */}
+            <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-32 space-y-10">
+              <Reveal>
+                <SplitText
+                  as="h1"
+                  text="Development Roadmap"
+                  className="text-5xl md:text-6xl font-bold mb-6 gradient-text leading-tight"
+                  mode="words"
+                  stagger={0.08}
+                />
+              </Reveal>
+              
+              <Reveal delay={0.1}>
+                <p className="text-gray-400 text-lg leading-relaxed">
+                  Track the progress of Vegga Roleplay as we build the ultimate s&box MMORPG experience.
+                </p>
+              </Reveal>
 
-          {/* Overall Progress */}
-          <div className="card mb-12">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">Overall Progress</h3>
-              <span className="text-2xl font-bold gradient-text">{progress}%</span>
-            </div>
-            <div className="h-4 bg-gray-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-linear-to-r from-purple-600 to-pink-600 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-2 text-sm text-gray-500">
-              <span>{doneItems} completed</span>
-              <span>{totalItems - doneItems} remaining</span>
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center justify-center gap-8 mb-8">
-            <div className="flex items-center gap-2">
-              <StatusBadge status="done" />
-              <span className="text-gray-400">Done</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <StatusBadge status="wip" />
-              <span className="text-gray-400">In Progress</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <StatusBadge status="todo" />
-              <span className="text-gray-400">Planned</span>
-            </div>
-          </div>
-
-          {/* Phases */}
-          <div className="space-y-4">
-            {phases.map((phase) => (
-              <div key={phase.id} className="card">
-                <button
-                  onClick={() => setExpandedPhase(expandedPhase === phase.id ? null : phase.id)}
-                  className="w-full flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <h3 className="text-xl font-semibold">{phase.title}</h3>
-                    <StatusBadge status={phase.status} />
+              <Reveal delay={0.2}>
+                <div className="card p-8 bg-linear-to-br from-[#111118] to-[#16161f] shadow-xl shadow-purple-900/5 border-purple-500/20">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-200">Overall Progress</h3>
+                    <span className="text-4xl font-bold gradient-text">{progress}%</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-500 text-sm">
-                      {phase.items.filter(i => i.status === "done").length}/{phase.items.length}
+                  <div className="h-4 bg-gray-800/50 rounded-full overflow-hidden mb-6 ring-1 ring-white/5">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                      className="h-full bg-linear-to-r from-purple-600 via-pink-600 to-purple-600 bg-size-[200%_100%] animate-shimmer rounded-full"
+                    />
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-400 font-medium">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      {doneItems} completed
                     </span>
-                    <span className={`transition-transform ${expandedPhase === phase.id ? "rotate-180" : ""}`}>
-                      ▼
+                    <span className="flex items-center gap-2">
+                      {totalItems - doneItems} remaining
+                      <span className="w-2 h-2 rounded-full bg-gray-600"></span>
                     </span>
                   </div>
-                </button>
+                </div>
+              </Reveal>
 
-                {expandedPhase === phase.id && (
-                  <div className="mt-6 space-y-3">
-                    {phase.items.map((item, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-center gap-4 p-3 rounded-lg transition-colors ${
-                          item.status === "done" ? "bg-green-500/5" :
-                          item.status === "wip" ? "bg-yellow-500/5" :
-                          "bg-gray-500/5"
-                        }`}
-                      >
-                        <StatusBadge status={item.status} />
-                        <div className="flex-1">
-                          <div className="font-medium">{item.name}</div>
-                          <div className="text-sm text-gray-500">{item.description}</div>
+              <Reveal delay={0.3}>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2 bg-gray-800/30 px-3 py-1.5 rounded-lg border border-gray-700/30">
+                    <StatusBadge status="done" />
+                    <span className="text-sm text-gray-400">Done</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-gray-800/30 px-3 py-1.5 rounded-lg border border-gray-700/30">
+                    <StatusBadge status="wip" />
+                    <span className="text-sm text-gray-400">In Progress</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-gray-800/30 px-3 py-1.5 rounded-lg border border-gray-700/30">
+                    <StatusBadge status="todo" />
+                    <span className="text-sm text-gray-400">Planned</span>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+
+            {/* Right Column - Phases List */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+              {phases.map((phase, index) => (
+                <Reveal key={phase.id} delay={0.1 + index * 0.05} width="100%">
+                  <motion.div 
+                    className={`card overflow-hidden border transition-all duration-300 ${
+                      expandedPhase === phase.id 
+                        ? "border-purple-500/30 bg-[#13131a] shadow-lg shadow-purple-900/10" 
+                        : "border-gray-800/50 hover:border-gray-700 bg-[#111118]"
+                    }`}
+                    layout
+                  >
+                    <motion.button
+                      onClick={() => setExpandedPhase(expandedPhase === phase.id ? null : phase.id)}
+                      className="w-full flex items-center justify-between p-6 text-left"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                        <h3 className={`text-xl font-bold transition-colors ${
+                          expandedPhase === phase.id ? "text-white" : "text-gray-300"
+                        }`}>
+                          {phase.title}
+                        </h3>
+                        <div className="scale-90 origin-left">
+                          <StatusBadge status={phase.status} />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-gray-500 text-sm font-mono hidden sm:block">
+                          {phase.items.filter(i => i.status === "done").length}/{phase.items.length}
+                        </span>
+                        <motion.span 
+                          animate={{ rotate: expandedPhase === phase.id ? 180 : 0 }}
+                          className="text-gray-400"
+                        >
+                          ▼
+                        </motion.span>
+                      </div>
+                    </motion.button>
 
-          {/* Timeline Visual */}
-          <div className="mt-16">
-            <h3 className="text-2xl font-bold text-center mb-8">Timeline</h3>
-            <div className="relative">
-              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-purple-500/30" />
-              {phases.map((phase, i) => (
-                <div key={phase.id} className={`relative flex items-center gap-8 mb-8 ${i % 2 === 0 ? "flex-row" : "flex-row-reverse"}`}>
-                  <div className={`flex-1 ${i % 2 === 0 ? "text-right" : "text-left"}`}>
-                    <div className="card inline-block">
-                      <h4 className="font-semibold">{phase.title}</h4>
-                      <StatusBadge status={phase.status} />
-                    </div>
-                  </div>
-                  <div className={`w-4 h-4 rounded-full ${
-                    phase.status === "completed" ? "bg-green-500" :
-                    phase.status === "in-progress" ? "bg-yellow-500" :
-                    "bg-gray-600"
-                  } ring-4 ring-[#0a0a0f] z-10`} />
-                  <div className="flex-1" />
-                </div>
+                    <AnimatePresence>
+                      {expandedPhase === phase.id && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                        >
+                          <div className="px-6 pb-8 space-y-4 border-t border-gray-800/50 pt-6">
+                            {phase.items.map((item, i) => (
+                              <motion.div
+                                key={i}
+                                initial={{ x: -10, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                transition={{ delay: i * 0.05 }}
+                                className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-300 hover:translate-x-1 ${
+                                  item.status === "done" ? "bg-green-500/5 border border-green-500/10 hover:bg-green-500/10" :
+                                  item.status === "wip" ? "bg-yellow-500/5 border border-yellow-500/10 hover:bg-yellow-500/10" :
+                                  "bg-gray-800/20 border border-transparent hover:bg-gray-800/30"
+                                }`}
+                              >
+                                <div className="mt-0.5">
+                                  <StatusBadge status={item.status} />
+                                </div>
+                                <div className="flex-1">
+                                  <div className={`font-medium ${
+                                    item.status === "done" ? "text-gray-200" : "text-gray-400"
+                                  }`}>
+                                    {item.name}
+                                  </div>
+                                  <div className="text-sm text-gray-500 mt-0.5 leading-relaxed">
+                                    {item.description}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                </Reveal>
               ))}
             </div>
           </div>

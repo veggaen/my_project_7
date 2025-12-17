@@ -86,53 +86,83 @@ export function SiteNavbar() {
 
   return (
     <motion.nav
-      className={`fixed left-0 w-full z-50 transition-all duration-500 ${hidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.25 }}
-      style={{ top: scrolled ? 0 : 40 }}
+      className={`fixed z-50 transition-all duration-500 ${
+        scrolled ? "left-0 w-full" : "left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-5xl"
+      } ${hidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      style={{ top: scrolled ? 0 : 24 }}
     >
-      <div
-        className={`border-b backdrop-blur-xl ${
+      <motion.div
+        layout
+        transition={{ type: "spring", stiffness: 220, damping: 28, mass: 0.8 }}
+        className={`w-full transition-all duration-500 ease-in-out backdrop-blur-xl border border-white/5 ${
           scrolled
-            ? "w-full rounded-none border-x-0"
-            : "w-[calc(100%-2.5rem)] max-w-440 mx-auto rounded-2xl border shadow-xl"
+            ? "w-full rounded-none bg-[#0a0a0f]/80 border-x-0 border-t-0 border-b-white/10 py-3"
+            : "rounded-full bg-[#111118]/60 shadow-lg shadow-purple-900/5 py-3"
         }`}
-        style={{
-          backgroundColor: "rgba(10, 10, 15, 0.70)",
-          borderColor: "rgba(139, 92, 246, 0.20)",
-        }}
       >
-        <div className="px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3 min-w-fit">
-            <Image src="/hexagon_logo.png" alt="Vegga Roleplay" width={34} height={34} priority />
-            <span className="text-lg font-semibold gradient-text">Vegga Roleplay</span>
+        <div className={`relative px-6 md:px-8 flex items-center justify-center md:justify-between ${scrolled ? "max-w-7xl mx-auto" : ""}`}>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative w-8 h-8 md:w-9 md:h-9 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+              <Image
+                src="/hexagon_logo.png"
+                alt="Vegga Roleplay"
+                fill
+                className="object-contain drop-shadow-[0_0_10px_rgba(139,92,246,0.3)]"
+              />
+            </div>
+            <span className="font-bold text-lg md:text-xl tracking-tight bg-linear-to-r from-white via-purple-200 to-gray-400 bg-clip-text text-transparent group-hover:to-white transition-all duration-300">
+              Vegga Roleplay
+            </span>
           </Link>
 
-          <div className="flex items-center gap-2 flex-wrap justify-center md:justify-end w-full md:w-auto">
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-2">
             {items.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`btn px-4 py-2 text-sm md:text-base ${
+                className={`relative px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300 group overflow-hidden ${
                   item.active
-                    ? "bg-purple-500/15 text-white border-purple-500/30"
-                    : "bg-white/0 text-gray-300 border-white/0 hover:bg-white/5 hover:border-white/10"
+                    ? "text-white bg-white/10 shadow-[0_0_15px_rgba(139,92,246,0.1)]"
+                    : "text-gray-400 hover:text-white"
                 }`}
               >
-                {item.label}
+                <span className="relative z-10">{item.label}</span>
+                {!item.active && (
+                  <span className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
+                )}
+                {item.active && (
+                  <motion.div
+                    layoutId="navbar-indicator"
+                    className="absolute inset-0 rounded-full border border-white/10 bg-white/5"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
               </Link>
             ))}
             <a
               href="https://sbox.game"
               target="_blank"
-              className="btn btn-primary text-sm md:text-base"
+              className="ml-6 btn btn-primary text-base px-6 py-2.5 glow-purple hover:scale-105 transition-transform shadow-lg shadow-purple-500/20"
             >
-              Play on s&box
+              Play Now
             </a>
           </div>
+
+          {/* Mobile Menu Button (Placeholder) */}
+          <button className="md:hidden p-2 text-gray-400 hover:text-white absolute right-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
         </div>
-      </div>
+      </motion.div>
     </motion.nav>
   );
 }

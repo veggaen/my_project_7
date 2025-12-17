@@ -13,6 +13,12 @@ public class VeggaItemDef
 	public string Description { get; set; }
 	public string IconPath { get; set; }
 	public string ModelPath { get; set; }
+	/// <summary>
+	/// Optional: Prefab to use when dropping this item into the world.
+	/// If set, drops should clone the prefab instance (preserves __Prefab).
+	/// Use a project-relative prefab name like "goldbar_200g.prefab".
+	/// </summary>
+	public string PrefabPath { get; set; }
 	public int Value { get; set; } = 0; // Base sell value
 	public int MaxStack { get; set; } = 1;
 	public bool Tradeable { get; set; } = true;
@@ -78,8 +84,7 @@ public static class VeggaItemRegistry
 			Id = 1,
 			Name = "Money",
 			Description = "Fiat currency. Stackable.",
-			IconPath = "ui/items/icon_money_batch_used.png",
-			ModelPath = "models/items/money.vmdl",
+			ModelPath = "models/money/single_clean.vmdl",
 			Value = 1,
 			MaxStack = int.MaxValue,
 			Category = ItemCategory.Currency,
@@ -91,7 +96,6 @@ public static class VeggaItemRegistry
 			Id = 2,
 			Name = "Gold Coin",
 			Description = "Gold currency. Value: $140 each. Stackable.",
-			IconPath = "ui/items/icon_gold_coin.png",
 			ModelPath = "models/items/gold_coin.vmdl",
 			Value = 140,
 			MaxStack = int.MaxValue,
@@ -105,8 +109,8 @@ public static class VeggaItemRegistry
 			Id = 100,
 			Name = "200g Gold Bar",
 			Description = "A 200g gold bar. Smelt at a furnace into 200 gold coins.",
-			IconPath = "ui/items/icon_gold_bar.png",
 			ModelPath = "goldbar/gold_bar.vmdl",
+			PrefabPath = "goldbar_200g.prefab",
 			Value = 28000,
 			MaxStack = 1,
 			Category = ItemCategory.Material,

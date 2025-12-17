@@ -15,6 +15,7 @@
 					<span class="inventory-title">BAG</span>
 					<span class="inventory-slots">@_usedSlots / @_totalSlots</span>
 				</div>
+				<div class="inventory-selected">Total Value: @_totalValueText</div>
 				@if ( !string.IsNullOrWhiteSpace( GetSelectedItemName() ) )
 				{
 					<div class="inventory-selected">Selected: @GetSelectedItemName()</div>
@@ -22,7 +23,7 @@
 
 				<div class="inventory-body">
 					<div class="inventory-grid">
-						@for ( int i = 0; i < _totalSlots; i++ )
+						@for ( int i = 9; i < _totalSlots; i++ )
 						{
 							int slotIndex = i;
 							bool isSelected = slotIndex == _selectedSlotIndex && _inventory != null && _inventory.IsValid() && _inventory.GetSlotItemId( slotIndex ) > 0;
@@ -42,18 +43,13 @@
 							</div>
 							@if ( _selectedItemDef != null )
 							{
-								var selUrl = InventoryHudSlot.ResolveCssUrl( _selectedItemDef.IconPath );
-								bool selIsCash = _selectedItemId == VeggaCurrency.CashItemId;
-								@if ( !string.IsNullOrWhiteSpace( selUrl ) )
-								{
-									<div class="item-details-icon" style="background-image: url('@selUrl');"></div>
-								}
-								else if ( selIsCash )
-								{
-									<div class="item-details-icon currency">$</div>
-								}
-								<div class="item-details-name">@_selectedItemDef.Name</div>
-								<div class="item-details-qty">Quantity: @(selIsCash ? VeggaCurrency.FormatCompact( _selectedItemCount ) : _selectedItemCount.ToString())</div>
+								<div class="item-details-top">
+									<div @ref="_selectedIconPanel" class="item-details-icon">@_selectedIconText</div>
+									<div class="item-details-meta">
+										<div class="item-details-name">@_selectedItemDef.Name</div>
+										<div class="item-details-qty">Quantity: @(selIsCash ? VeggaCurrency.FormatCompact( _selectedItemCount ) : _selectedItemCount.ToString())</div>
+									</div>
+								</div>
 								@if ( !string.IsNullOrWhiteSpace( _selectedItemDef.Description ) )
 								{
 									<div class="item-details-desc">@_selectedItemDef.Description</div>
@@ -86,12 +82,18 @@
 	int _rows = 8;
 	int _totalSlots = 96;
 	int _usedSlots = 0;
-	VeggaInventory _inventory;
+	long _totalValue = 0;
+	string _totalValueText = "$0";
+	global::Sandbox.VeggaInventory _inventory;
 	int _selectedSlotIndex = -1;
 	int _selectedItemId = 0;
 	int _selectedItemCount = 0;
 	VeggaItemDef _selectedItemDef;
 	bool _showItemDetails = false;
+	Panel _selectedIconPanel;
+	string _selectedIconText = "";
+	string _selectedIconKey;
+	bool selIsCash => _selectedItemId == VeggaCurrency.CashItemId;
 
 	Vector2 _layoutPos = new Vector2( 0.5f, 0.6f );
 	float _layoutScale = 1f;
@@ -104,8 +106,20 @@
 	protected override void OnStart()
 	{
 		_instance = this;
+		// Statics can survive hot reloads; ensure we start from a sane state.
+		IsOpenGlobal = _isOpen;
 		_layoutPos = VeggaHudLayoutState.GetPosition( InventoryKey, _layoutPos );
 		_layoutScale = VeggaHudLayoutState.GetScale( InventoryKey, 1f );
+	}
+
+	protected override void OnDestroy()
+	{
+		base.OnDestroy();
+		if ( _instance == this )
+			_instance = null;
+		IsOpenGlobal = false;
+		_isOpen = false;
+		_showItemDetails = false;
 	}
 
 	public static void ForceClose()
@@ -119,6 +133,9 @@
 
 	protected override void OnUpdate()
 	{
+		// Keep the global flag in sync every frame (prevents "stuck UI mouse" after hot reload).
+		IsOpenGlobal = _isOpen;
+
 		// 🎯 MULTIPLAYER FIX: Only process input for local player's UI
 		if ( PlayerStats != null && PlayerStats.Network.IsProxy ) return;
 
@@ -127,10 +144,39 @@
 		{
 			_isOpen = !_isOpen;
 			IsOpenGlobal = _isOpen;
+			if ( !_isOpen )
+			{
+				_showItemDetails = false;
+				InventoryHudSlot.CancelHeld();
+			}
 
 			// Pointer-events are updated each frame below.
 
 			StateHasChanged();
+		}
+
+		// ESC closes inventory/menus
+		if ( _isOpen && !IsLayoutActive && Input.Pressed( "InventoryClose" ) )
+		{
+			_isOpen = false;
+			IsOpenGlobal = false;
+			_showItemDetails = false;
+			InventoryHudSlot.CancelHeld();
+			StateHasChanged();
+		}
+
+		// Hotkey drops while inventory is open.
+		// Use Input actions so users can rebind in ProjectSettings/Input.config.
+		if ( _isOpen && !IsLayoutActive && !VeggaChat.IsChatInputOpenGlobal )
+		{
+			if ( Input.Pressed( "InventoryDropStack" ) )	// default: O
+			{
+				TryHotkeyDrop( single: false );
+			}
+			else if ( Input.Pressed( "InventoryDropSingle" ) )
+			{
+				TryHotkeyDrop( single: true );
+			}
 		}
 
 		// Apply layout to the component panel so absolute positioning is relative to the HUD root.
@@ -142,15 +188,17 @@
 		ApplyLayoutPosition();
 
 		// Get inventory data
-		if ( _inventory == null )
-		{
+		if ( _inventory == null
+			|| !_inventory.IsValid()
+			|| _inventory.Network?.IsProxy == true
+			|| _inventory.Network?.Owner != Connection.Local )
 			_inventory = VeggaInventory.Local;
-		}
 
 		if ( _inventory != null && _inventory.IsValid() )
 		{
 			_totalSlots = _inventory.TotalSlots;
 			_usedSlots = _inventory.UsedSlots;
+			ComputeTotalValue();
 
 			// Keep selection safe if slot becomes empty or inventory shrinks.
 			if ( _selectedSlotIndex < 0
@@ -171,17 +219,153 @@
 			}
 
 		}
+
+		UpdateSelectedIconVisual();
+	}
+
+	void ComputeTotalValue()
+	{
+		_totalValue = 0;
+		if ( _inventory == null || !_inventory.IsValid() )
+		{
+			_totalValueText = "$0";
+			return;
+		}
+
+		int total = _inventory.TotalSlots;
+		for ( int i = 0; i < total; i++ )
+		{
+			int itemId = _inventory.GetSlotItemId( i );
+			if ( itemId <= 0 ) continue;
+			int count = _inventory.GetSlotCount( i );
+			if ( count <= 0 ) continue;
+			var def = VeggaItemRegistry.Get( itemId );
+			int valueEach = def?.Value ?? 0;
+			if ( valueEach <= 0 ) continue;
+			_totalValue += (long)valueEach * (long)count;
+		}
+
+		if ( _totalValue <= int.MaxValue )
+			_totalValueText = "$" + VeggaCurrency.FormatCompact( (int)_totalValue );
+		else
+			_totalValueText = "$" + _totalValue.ToString( "N0" );
+	}
+
+	void TryHotkeyDrop( bool single )
+	{
+		var inv = global::Sandbox.VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
+			return;
+
+		// Only allow hotkey drops for the slot the user is actually hovering.
+		if ( InventoryHudSlot.HoveredInventory != inv )
+			return;
+
+		int slot = InventoryHudSlot.HoveredSlotIndex;
+		if ( slot < 0 || slot >= inv.TotalSlots )
+			return;
+		int itemId = inv.GetSlotItemId( slot );
+		if ( itemId <= 0 )
+			return;
+
+		int count = single ? 1 : inv.GetSlotCount( slot );
+		count = Math.Max( 1, count );
+		inv.RequestDropFromSlot( slot, count );
+	}
+
+	void UpdateSelectedIconVisual()
+	{
+		if ( !_showItemDetails || _selectedItemDef == null || !_selectedIconPanel.IsValid() )
+			return;
+
+		string modelPath = GetSelectedModelPath();
+
+		// Only re-evaluate when selection changes.
+		var key = $"{_selectedItemId}:{_selectedItemDef.IconPath}:{modelPath}";
+		if ( key == _selectedIconKey )
+			return;
+		_selectedIconKey = key;
+
+		_selectedIconPanel.Style.Set( "background-image", "none" );
+		_selectedIconPanel.Style.Dirty();
+
+		var url = InventoryHudSlot.ResolveCssUrl( _selectedItemDef.IconPath );
+		if ( !string.IsNullOrWhiteSpace( url ) )
+		{
+			_selectedIconPanel.Style.Set( "background-image", $"url('{url}')" );
+			_selectedIconPanel.Style.Set( "background-size", "contain" );
+			_selectedIconPanel.Style.Set( "background-repeat", "no-repeat" );
+			_selectedIconPanel.Style.Set( "background-position", "center" );
+			_selectedIconText = "";
+			_selectedIconPanel.SetClass( "currency", false );
+			return;
+		}
+
+		var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( modelPath, 256 );
+		if ( tex is not null )
+		{
+			_selectedIconPanel.Style.SetBackgroundImage( tex );
+			_selectedIconPanel.Style.Set( "background-size", "contain" );
+			_selectedIconPanel.Style.Set( "background-repeat", "no-repeat" );
+			_selectedIconPanel.Style.Set( "background-position", "center" );
+			_selectedIconPanel.Style.Dirty();
+			_selectedIconText = "";
+			_selectedIconPanel.SetClass( "currency", false );
+			return;
+		}
+
+		bool isCash = _selectedItemId == VeggaCurrency.CashItemId;
+		_selectedIconText = isCash ? "$" : "?";
+		_selectedIconPanel.SetClass( "currency", isCash );
+	}
+
+	string GetSelectedModelPath()
+	{
+		if ( _selectedItemDef == null )
+			return null;
+
+		if ( _selectedItemId == VeggaCurrency.CashItemId )
+		{
+			int amount = Math.Max( 1, _selectedItemCount );
+			return amount switch
+			{
+				<= 100 => "models/money/single_clean_bended.vmdl",
+				<= 10_000 => "models/money/single_clean.vmdl",
+				<= 1_000_000 => "models/money/batch_clean.vmdl",
+				_ => "models/money/box.vmdl"
+			};
+		}
+
+		return _selectedItemDef.ModelPath;
 	}
 
 	void SelectSlot( int slotIndex )
 	{
 		if ( _inventory == null || !_inventory.IsValid() )
 			return;
-		if ( slotIndex < 0 || slotIndex >= _totalSlots )
+		if ( slotIndex < 0 )
+		{
+			_selectedSlotIndex = -1;
+			_selectedItemId = 0;
+			_selectedItemCount = 0;
+			_selectedItemDef = null;
+			_showItemDetails = false;
+			StateHasChanged();
+			return;
+		}
+		if ( slotIndex >= _totalSlots )
 			return;
 		int itemId = _inventory.GetSlotItemId( slotIndex );
 		if ( itemId <= 0 )
+		{
+			_selectedSlotIndex = -1;
+			_selectedItemId = 0;
+			_selectedItemCount = 0;
+			_selectedItemDef = null;
+			_showItemDetails = false;
+			StateHasChanged();
 			return;
+		}
 
 		_selectedSlotIndex = slotIndex;
 		_selectedItemId = itemId;
@@ -214,7 +398,7 @@
 
 	protected override int BuildHash()
 	{
-		return System.HashCode.Combine( _isOpen, _usedSlots, _totalSlots, _inventory?.Revision ?? 0, _selectedSlotIndex, _showItemDetails );
+		return System.HashCode.Combine( _isOpen, _usedSlots, _totalSlots, _inventory?.Revision ?? 0, _selectedSlotIndex, _showItemDetails, InventoryHudSlot.HeldUiRevision );
 	}
 }
 

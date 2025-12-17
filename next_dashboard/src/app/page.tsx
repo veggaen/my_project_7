@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { Reveal } from "./components/motion/Reveal";
 import { SplitText } from "./components/motion/SplitText";
 import { SiteNavbar } from "./components/SiteNavbar";
@@ -20,56 +21,73 @@ export default function Home() {
       <SiteNavbar />
 
       {/* Hero Section */}
-      <section className="nav-spacer hero-section">
-        <div className="page-container text-center">
-          <Reveal className="inline-flex justify-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-full mb-8">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            <span className="text-sm text-purple-300">Built on s&box</span>
-            </div>
-          </Reveal>
-          
-          <Reveal delay={0.05}>
-            <SplitText
-              as="h1"
-              text="Vegga Roleplay"
-              className="text-6xl md:text-7xl font-bold mb-6 gradient-text"
-              mode="chars"
-              stagger={0.02}
-            />
-          </Reveal>
-          
-          <Reveal delay={0.15}>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-12">
-            A modern MMORPG roleplay experience built on s&box.
-            Featuring 23 skills, custom UI, multiplayer networking, and endless possibilities.
-          </p>
-          </Reveal>
+      <section className="nav-spacer hero-section min-h-[110vh] flex items-center relative overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-linear-to-l from-purple-900/10 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-full h-1/2 bg-linear-to-t from-[#0a0a0f] to-transparent pointer-events-none" />
 
-          <Reveal delay={0.22}>
-          <div className="flex items-center justify-center gap-3 mb-16 flex-wrap">
-            <Link 
-              href="/whitepaper"
-              className="btn btn-primary text-base md:text-lg glow-purple"
-            >
-              Read Whitepaper
-            </Link>
-            <Link 
-              href="/roadmap"
-              className="btn btn-secondary text-base md:text-lg"
-            >
-              View Roadmap
-            </Link>
+        <div className="page-container grid lg:grid-cols-2 gap-16 items-center relative z-10">
+          {/* Left Column: Content */}
+          <div className="text-left">
+            <Reveal className="inline-flex">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-full mb-8 backdrop-blur-sm">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span className="text-sm text-purple-300 font-medium">Built on s&box</span>
+              </div>
+            </Reveal>
+            
+            <Reveal delay={0.05}>
+              <div className="min-w-150"> {/* Prevent wrapping */}
+                <SplitText
+                  as="h1"
+                  text="Vegga Roleplay"
+                  className="text-6xl md:text-8xl font-bold mb-6 gradient-text leading-tight tracking-tight whitespace-nowrap"
+                  mode="chars"
+                  stagger={0.03}
+                />
+              </div>
+            </Reveal>
+            
+            <Reveal delay={0.15}>
+              <SplitText
+                as="p"
+                text="A modern MMORPG roleplay experience. Featuring 23 skills, custom UI, multiplayer networking, and endless possibilities."
+                className="text-xl text-gray-400 max-w-xl mb-10 leading-relaxed"
+                mode="words"
+                stagger={0.012}
+              />
+            </Reveal>
+
+            <Reveal delay={0.22}>
+              <div className="flex items-center gap-4 flex-wrap">
+                <Link 
+                  href="/whitepaper"
+                  className="btn btn-primary text-lg px-8 py-4 glow-purple hover:scale-105 transition-transform"
+                >
+                  Read Whitepaper
+                </Link>
+                <Link 
+                  href="/roadmap"
+                  className="btn btn-secondary text-lg px-8 py-4 hover:bg-white/5 transition-colors"
+                >
+                  View Roadmap
+                </Link>
+              </div>
+            </Reveal>
           </div>
-          </Reveal>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+          {/* Right Column: Stats Grid */}
+          <div className="grid grid-cols-2 gap-6">
             {stats.map((stat, i) => (
-              <Reveal key={i} delay={0.1 + i * 0.05}>
-                <div className="card text-center">
-                  <div className="text-3xl font-bold gradient-text">{stat.value}</div>
-                  <div className="text-sm text-gray-500">{stat.label}{stat.suffix}</div>
+              <Reveal key={i} delay={0.3 + i * 0.1} width="100%">
+                <div className="card p-8 text-center hover:border-purple-500/30 transition-colors group bg-linear-to-br from-[#111118] to-[#16161f]">
+                  <div className="text-4xl md:text-5xl font-bold gradient-text mb-2 group-hover:scale-110 transition-transform duration-300 inline-block">
+                    {stat.value}
+                  </div>
+                  <div className="text-sm text-gray-500 font-medium uppercase tracking-wider">
+                    {stat.label}
+                    {stat.suffix && <span className="text-gray-600 normal-case ml-1">{stat.suffix}</span>}
+                  </div>
                 </div>
               </Reveal>
             ))}
@@ -111,23 +129,38 @@ export default function Home() {
       {/* Skills Preview */}
       <section className="page-section">
         <div className="page-container">
-          <Reveal>
+          <Reveal width="100%">
             <h2 className="text-4xl font-bold text-center mb-4">23 Skills to Master</h2>
           </Reveal>
-          <Reveal delay={0.05}>
+          <Reveal delay={0.05} width="100%">
             <p className="text-gray-400 text-center mb-14">Progression with authentic XP tables</p>
           </Reveal>
 
-          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
             {SKILLS.map((skill, i) => (
-              <Reveal key={i} delay={i * 0.015}>
+              <Reveal key={i} delay={i * 0.015} width="100%">
                 <Link
                   href={`/skills/${skill.slug}`}
-                  className="card text-center p-4 hover:scale-105 transition-transform cursor-pointer block"
-                  style={{ borderColor: skill.color + "40" }}
+                  className="card card-skill w-full aspect-square flex flex-col items-center justify-center p-6 hover:scale-105 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+                  style={{ "--skill-color": skill.color } as CSSProperties}
                 >
-                  <div className="text-2xl mb-2">{skill.icon}</div>
-                  <div className="text-xs text-gray-400 truncate">{skill.name}</div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+                    style={{ backgroundColor: "var(--skill-color)" }}
+                  />
+                  <div 
+                    className="text-3xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1"
+                    style={{ color: "var(--skill-color)" }}
+                  >
+                    {skill.icon}
+                  </div>
+                  <div className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors truncate w-full text-center">
+                    {skill.name}
+                  </div>
+                  <div 
+                    className="absolute bottom-0 left-0 w-full h-1 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"
+                    style={{ backgroundColor: "var(--skill-color)" }}
+                  />
                 </Link>
               </Reveal>
             ))}
@@ -138,36 +171,35 @@ export default function Home() {
       {/* CTA Section */}
       <section className="page-section">
         <div className="page-container">
-          <Reveal>
-          <div className="max-w-6xl mx-auto text-center">
-          <div className="card p-10 md:p-14 bg-linear-to-r from-purple-900/30 to-pink-900/30 border-purple-500/30">
-            <SplitText as="h2" text="Ready to Begin?" className="text-4xl font-bold mb-4" mode="words" stagger={0.06} />
-            <p className="text-gray-400 mb-8 max-w-xl mx-auto">
-              Dive into the whitepaper to learn about the complete system architecture, 
-              or check the roadmap to see what&apos;s coming next.
-            </p>
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <Link 
-                href="/whitepaper"
-                className="btn btn-secondary"
-              >
-                Whitepaper
-              </Link>
-              <Link 
-                href="/roadmap"
-                className="btn btn-primary"
-              >
-                Roadmap
-              </Link>
-              <Link 
-                href="/stats"
-                className="btn btn-outline"
-              >
-                Stats
-              </Link>
+          <Reveal width="100%">
+            <div className="flex justify-center">
+              <div className="w-full max-w-5xl text-center">
+                <div className="card w-full p-12 md:p-16 bg-linear-to-br from-purple-900/20 via-[#111118] to-pink-900/20 border-purple-500/20 relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+                  <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-colors duration-500" />
+                  <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-pink-500/20 rounded-full blur-3xl group-hover:bg-pink-500/30 transition-colors duration-500" />
+
+                  <div className="relative z-10 flex flex-col items-center">
+                    <SplitText as="h2" text="Ready to Begin?" className="text-4xl md:text-5xl font-bold mb-6" mode="words" stagger={0.06} />
+                    <p className="text-gray-400 text-lg mb-12 max-w-2xl mx-auto leading-relaxed">
+                      Dive into the whitepaper to learn about the complete system architecture,
+                      or check the roadmap to see what&apos;s coming next.
+                    </p>
+                    <div className="flex items-center justify-center gap-4 flex-wrap">
+                      <Link href="/whitepaper" className="btn btn-secondary min-w-35">
+                        Whitepaper
+                      </Link>
+                      <Link href="/roadmap" className="btn btn-primary min-w-35 glow-purple">
+                        Roadmap
+                      </Link>
+                      <Link href="/stats" className="btn btn-outline min-w-35">
+                        Stats
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          </div>
           </Reveal>
         </div>
       </section>

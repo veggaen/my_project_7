@@ -5,6 +5,8 @@ VeggaBoxHud root {
 	top: 0;
 	right: 0;
 	bottom: 0;
+	// Keep box overlay above regular HUD panels while editing.
+	z-index: 8500;
 	// Pointer events are controlled by code (enabled only in layout mode).
 	pointer-events: all;
 

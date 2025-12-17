@@ -37,7 +37,7 @@ export const SKILLS: Skill[] = [
   { slug: "runecraft", name: "Runecraft", icon: "🔮", color: "#fbbf24", tagline: "Runes and magical fuel." },
   { slug: "hunter", name: "Hunter", icon: "🎯", color: "#78716c", tagline: "Traps, tracking, and loot." },
   { slug: "construction", name: "Construction", icon: "🏠", color: "#78716c", tagline: "Building, upgrades, and housing." },
-  { slug: "fletching", name: "Fletching", icon: "🏹", color: "#84cc16", tagline: "Bows, arrows, and ranged gear." },
+  { slug: "fletching", name: "Fletching", icon: "🪶", color: "#84cc16", tagline: "Bows, arrows, and ranged gear." },
 ];
 
 export const CORE_FEATURES: CoreFeature[] = [

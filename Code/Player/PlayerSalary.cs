@@ -1,4 +1,5 @@
 using Sandbox;
+using System.Linq;
 
 /// <summary>
 /// Simple job salary system:
@@ -51,6 +52,21 @@ public sealed class PlayerSalary : Component
 
 		Stats.AddMoney( amount );
 		Log.Info( $"💰 Salary: paid ${amount} to {Stats.Network.Owner.DisplayName} ({Stats.JobName})" );
+
+		// Client feedback
+		var ownerId = Stats.Network.Owner.Id;
+		var mgr = FindChatManagerForOwner( ownerId );
+		mgr?.RpcSendSystemMessage( ownerId, $"Salary paid: ${amount}.", ChatMessageType.System );
+		if ( VeggaSfxSettings.Enabled && VeggaSfxSettings.SalaryEnabled )
+			mgr?.RpcPlayUiSound( ownerId, VeggaSfxSettings.CoinSound );
+	}
+
+	VeggaChatManager FindChatManagerForOwner( Guid ownerId )
+	{
+		var scene = Scene ?? Game.ActiveScene;
+		if ( scene == null ) return null;
+		return scene.GetAllComponents<VeggaChatManager>()
+			.FirstOrDefault( m => m != null && m.IsValid() && m.Network?.Owner?.Id == ownerId );
 	}
 
 	int GetSalaryForJob( string job )

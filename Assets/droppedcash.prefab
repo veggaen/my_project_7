@@ -1,11 +1,11 @@
 {
   "RootObject": {
-    "__guid": "a60897c4-4e3f-4bd9-9550-71bcef729351",
+    "__guid": "bffc1051-fbae-46ec-b81f-bdc51fc379f6",
     "__version": 1,
     "Flags": 0,
-    "Name": "goldbar_200g",
+    "Name": "droppedcash",
     "Position": "0,0,0",
-    "Rotation": "0,0,0,1",
+    "Rotation": "-0.009050452,0.08453142,0.1058833,0.9907377",
     "Scale": "1,1,1",
     "Tags": "",
     "Enabled": true,
@@ -17,7 +17,7 @@
     "Components": [
       {
         "__type": "Sandbox.ModelRenderer",
-        "__guid": "1206e36a-e07c-457a-b453-b8b601996954",
+        "__guid": "387fb427-b1df-4b01-9613-76f6c55a8979",
         "__enabled": true,
         "BodyGroups": 18446744073709551615,
         "CreateAttachments": false,
@@ -25,7 +25,7 @@
         "MaterialGroup": null,
         "MaterialOverride": null,
         "Materials": null,
-        "Model": "goldbar/gold_bar.vmdl",
+        "Model": "models/money/single_clean.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -42,14 +42,46 @@
         "Tint": "1,1,1,1"
       },
       {
+        "__type": "Sandbox.Money.CashMoneyVeggaSystem",
+        "__guid": "8ce821cf-2878-437a-9053-0d26493be49e",
+        "__enabled": true,
+        "Amount": 1000,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
+        "__type": "Sandbox.VeggaPickupItem",
+        "__guid": "8a0fbe31-de82-44d7-b129-d9c94735f8ad",
+        "__enabled": true,
+        "AutoLootRange": 150,
+        "DroppedAtTime": 0,
+        "DroppedById": "00000000-0000-0000-0000-000000000000",
+        "InteractRange": 100,
+        "ItemId": 1,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "OwnDropAutoLootDelay": 300,
+        "PickupDelay": 0.25,
+        "Quantity": 1000,
+        "ShowFloatingName": true
+      },
+      {
         "__type": "Sandbox.ModelCollider",
-        "__guid": "0c88af7c-799b-4da0-999f-948fb9042199",
+        "__guid": "77a7404a-574e-4669-9ed1-c88c9461e044",
         "__enabled": true,
         "ColliderFlags": 0,
         "Elasticity": null,
         "Friction": null,
         "IsTrigger": false,
-        "Model": "goldbar/gold_bar.vmdl",
+        "Model": "models/money/single_clean.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -67,14 +99,14 @@
       },
       {
         "__type": "Sandbox.Rigidbody",
-        "__guid": "e30268ea-c554-4261-b147-a69f0cd9b3b1",
+        "__guid": "9d648dde-e54b-489a-96f1-9c76ff137b6d",
         "__enabled": true,
         "AngularDamping": 1,
         "EnableImpactDamage": true,
         "Gravity": true,
         "GravityScale": 1,
         "ImpactDamage": 0,
-        "LinearDamping": 0.25,
+        "LinearDamping": 0.5,
         "Locking": {
           "X": false,
           "Y": false,
@@ -84,7 +116,7 @@
           "Roll": false
         },
         "MassCenterOverride": "0,0,0",
-        "MassOverride": 25,
+        "MassOverride": 0.5,
         "MinImpactDamageSpeed": 500,
         "MotionEnabled": true,
         "OnComponentDestroy": null,
@@ -96,23 +128,6 @@
         "OverrideMassCenter": false,
         "RigidbodyFlags": 0,
         "StartAsleep": false
-      },
-      {
-        "__type": "Sandbox.VeggaPickupItem",
-        "__guid": "d1be29c1-ffac-4b05-aff2-b81885c7a7d6",
-        "__enabled": true,
-        "AutoLootRange": 150,
-        "InteractRange": 50,
-        "ItemId": 100,
-        "OnComponentDestroy": null,
-        "OnComponentDisabled": null,
-        "OnComponentEnabled": null,
-        "OnComponentFixedUpdate": null,
-        "OnComponentStart": null,
-        "OnComponentUpdate": null,
-        "PickupDelay": 0,
-        "Quantity": 1,
-        "ShowFloatingName": true
       }
     ],
     "Children": [],
@@ -142,7 +157,7 @@
   "MenuIcon": null,
   "DontBreakAsTemplate": false,
   "__references": [
-    "master.goldbar#95106"
+    "opengameartcco.moneysingleclean#95930"
   ],
   "__version": 2
 }

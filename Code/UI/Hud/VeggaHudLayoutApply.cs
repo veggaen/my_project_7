@@ -25,6 +25,8 @@ public static class VeggaHudLayoutApply
 			VeggaHudLayoutState.KeyChat => new Vector2( 720f, 360f ),
 			// Inventory: grid (520w) + details (240w) ≈ 760w, height varies.
 			VeggaHudLayoutState.KeyInventory => new Vector2( 780f, 460f ),
+			// Hotbar: 9 slots + padding/gap.
+			VeggaHudLayoutState.KeyHotbar => new Vector2( 520f, 80f ),
 			// Skills: min-width 480; height varies with list.
 			VeggaHudLayoutState.KeySkillsPanel => new Vector2( 560f, 420f ),
 			// Player modular HUD is relatively small.

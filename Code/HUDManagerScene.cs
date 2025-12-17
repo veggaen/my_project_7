@@ -28,6 +28,12 @@ public sealed class HUDManagerScene : Component
 	public InventoryHud InventoryPanel { get; set; }
 
 	/// <summary>
+	/// Link to the HotbarHud component.
+	/// </summary>
+	[Property, Group( "Links" )]
+	public HotbarHud HotbarPanel { get; set; }
+
+	/// <summary>
 	/// Link to the XPBar component. Set this in the inspector!
 	/// </summary>
 	[Property, Group( "Links" )]
@@ -139,6 +145,21 @@ public sealed class HUDManagerScene : Component
 					Log.Info( "[HUDManagerScene] Disabled external InventoryHud (different GameObject)." );
 				}
 				InventoryPanel = Components.Create<InventoryHud>();
+			}
+		}
+
+		if ( HotbarPanel == null )
+		{
+			HotbarPanel = Components.Get<HotbarHud>();
+			if ( HotbarPanel == null )
+			{
+				var existing = Scene.GetAllComponents<HotbarHud>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					existing.Enabled = false;
+					Log.Info( "[HUDManagerScene] Disabled external HotbarHud (different GameObject)." );
+				}
+				HotbarPanel = Components.Create<HotbarHud>();
 			}
 		}
 

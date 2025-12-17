@@ -114,7 +114,8 @@
 
 			@* Actions *@
 			<div class="layout-actions">
-				<button class="action-btn reset" onclick="@ResetLayout" title="Reset all HUD elements to defaults">Reset All</button>
+				<button class="action-btn reset" onclick="@ResetHard" title="Reset hard: wipe layout and center all HUD elements">Reset Hard</button>
+				<button class="action-btn reset-selected" onclick="@ResetSoft" title="Reset soft: apply default placements (with small 4px offsets)">Reset Soft</button>
 				<button class="action-btn reset-selected" onclick="@ResetSelected" disabled="@(SelectedElement == null)" title="Reset only the selected element">Reset Selected</button>
 				<button class="action-btn reset-selected" onclick="@UndoLast" disabled="@(_isDragging || !VeggaHudLayoutState.CanUndo)" title="Undo last layout change">Undo</button>
 				<button class="action-btn reset-selected @( VeggaHudLayoutState.DragModeEnabled ? "active" : "" )" onclick="@ToggleDragMode" title="Toggle drag mode for moving elements">Drag: @(VeggaHudLayoutState.DragModeEnabled ? "On" : "Off")</button>
@@ -124,7 +125,7 @@
 		</div>
 
 		@* Visual guides showing current positions *@
-		<div class="position-guides">
+		<div class="position-guides" onmousemove="@OnGlobalMouseMove" onmouseup="@OnGlobalMouseUp">
 			@foreach ( var key in GetElementKeys() )
 			{
 				if ( VeggaHudLayoutState.DragModeEnabled && TryGetElementRectPercent( key, out var left, out var top, out var width, out var height ) )
@@ -250,6 +251,7 @@
 		{
 			VeggaHudLayoutState.KeyPlayerHud => "HP",
 			VeggaHudLayoutState.KeyXpBar => "XP",
+			VeggaHudLayoutState.KeyHotbar => "HB",
 			VeggaHudLayoutState.KeySkillsPanel => "Sk",
 			VeggaHudLayoutState.KeyChat => "Chat",
 			VeggaHudLayoutState.KeyMinimap => "Map",
@@ -456,6 +458,7 @@
 			mouse = new Vector2( mouse.x * screen.x / screenForMouse.x, mouse.y * screen.y / screenForMouse.y );
 
 		_dragGrabOffsetPx = mouse - anchorPx;
+		_dragLastPosN = anchorN;
 
 		// Make dragging a single undo step.
 		VeggaHudLayoutState.SetPosition( key, anchorN );
@@ -467,13 +470,6 @@
 	void UpdateDrag()
 	{
 		if ( string.IsNullOrWhiteSpace( _dragKey ) )
-		{
-			StopDrag();
-			return;
-		}
-
-		// Stop dragging when mouse button released.
-		if ( !Input.Down( "attack1" ) )
 		{
 			StopDrag();
 			return;
@@ -502,6 +498,19 @@
 
 		// Debounced write to avoid hammering disk while dragging.
 		VeggaHudLayoutState.UpdatePositionClamped( _dragKey, nextN );
+	}
+
+	void OnGlobalMouseMove()
+	{
+		if ( !IsLayoutActive || !VeggaHudLayoutState.DragModeEnabled || !_isDragging )
+			return;
+		UpdateDrag();
+	}
+
+	void OnGlobalMouseUp()
+	{
+		if ( _isDragging )
+			StopDrag();
 	}
 
 	void StopDrag()
@@ -577,11 +586,17 @@
 		RequestDeferredLog( $"scale -> {scale:0.###}" );
 	}
 
-	void ResetLayout()
+	void ResetHard()
 	{
 		// Old behavior: stack everything in the center so it's easy to find.
 		VeggaHudLayoutState.ResetAllToCenter();
 		Log.Info( "[HUD Layout] Reset all -> centered" );
+	}
+
+	void ResetSoft()
+	{
+		VeggaHudLayoutState.ResetSoft();
+		Log.Info( "[HUD Layout] Reset soft" );
 	}
 
 	void ResetSelected()

@@ -72,6 +72,7 @@ A **professional, exploit-safe death and respawn system** with:
 - ✅ Countdown timer
 - ✅ Camera orbits ragdoll
 - ✅ Player respawns after 5 seconds
+- corpse should be left behind for 30min with the loot that was left on the player(opens inventory by pressing e on it), if not loot then no corpse and if someone takes out the loot corpse will be removed with a effect etc or something like that
 
 ---
 

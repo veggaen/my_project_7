@@ -7,53 +7,575 @@
 @inherits Panel
 
 <root>
-	@if ( HasItem )
-	{
-		@if ( !string.IsNullOrWhiteSpace( CssIconUrl ) )
-		{
-			<div class="item-icon" style="background-image: url('@CssIconUrl');"></div>
-		}
-		else if ( IsCash )
-		{
-			<div class="item-icon currency">$</div>
-		}
-		else
-		{
-			<div class="item-icon">?</div>
-		}
-
-		@if ( IsCash )
-		{
-			<div class="item-count">@VeggaCurrency.FormatCompact( ItemCount )</div>
-		}
-		else if ( ItemCount > 1 )
-		{
-			<div class="item-count">@ItemCount</div>
-		}
-	}
+	<label @ref="_iconPanel" class="item-icon"></label>
+	<label @ref="_countPanel" class="item-count"></label>
 </root>
 
 @code
 {
-	const bool DebugNet = true;
-	[Parameter] public VeggaInventory Inventory { get; set; }
+	static bool DebugNet => false;
+	public static bool DebugInput { get; set; } = false;
+
+	[ConCmd( "vegga_inv_debug", Help = "Toggle/Set inventory UI debug. Usage: vegga_inv_debug [0/1]" )]
+	public static void CmdInvDebug( int enabled = -1 )
+	{
+		if ( enabled < 0 )
+			DebugInput = !DebugInput;
+		else
+			DebugInput = enabled != 0;
+		Log.Info( $"[InvUI] DebugInput={(DebugInput ? 1 : 0)}" );
+	}
+	public static int HoveredSlotIndex { get; private set; } = -1;
+	public static global::Sandbox.VeggaInventory HoveredInventory { get; private set; }
+	public static bool HasHoveredItem => HoveredInventory != null && HoveredInventory.IsValid() && HoveredSlotIndex >= 0 && HoveredSlotIndex < HoveredInventory.TotalSlots && HoveredInventory.GetSlotItemId( HoveredSlotIndex ) > 0;
+
+	public static int HeldUiRevision { get; private set; } = 0;
+
+	static Panel _activeGhost;
+	static InventoryHudSlot _activeGhostOwner;
+	static Panel _dragCapture;
+	static InventoryHudSlot _dragCaptureOwner;
+
+	class DragCaptureOverlay : Panel
+	{
+		protected override void OnMouseUp( MousePanelEvent e )
+		{
+			base.OnMouseUp( e );
+			InventoryHudSlot.FinalizeAnyActiveManualDrag();
+		}
+	}
+
+	static void EnsureDragCaptureOverlay( Panel root, InventoryHudSlot owner )
+	{
+		if ( _dragCapture.IsValid() )
+		{
+			_dragCaptureOwner = owner;
+			return;
+		}
+
+		if ( root == null || !root.IsValid() )
+			return;
+
+		var p = new DragCaptureOverlay();
+		p.Style.Position = PositionMode.Absolute;
+		p.Style.Left = 0;
+		p.Style.Top = 0;
+		p.Style.Width = Length.Percent( 100 );
+		p.Style.Height = Length.Percent( 100 );
+		p.Style.PointerEvents = PointerEvents.All;
+		p.Style.BackgroundColor = new Color( 0, 0, 0, 0 );
+		p.Style.ZIndex = 3500;
+		root.AddChild( p );
+		_dragCapture = p;
+		_dragCaptureOwner = owner;
+	}
+
+	static void ClearDragCaptureOverlay()
+	{
+		if ( _dragCapture.IsValid() )
+			_dragCapture.Delete();
+		_dragCapture = null;
+		_dragCaptureOwner = null;
+	}
+
+	static void FinalizeAnyActiveManualDrag()
+	{
+		// End active drags (preferred) or clear armed states (fallback).
+		if ( _manualSplitOwner != null && _manualSplitOwner.IsValid() )
+		{
+			if ( _manualSplitOwner._manualSplitDragging )
+				_manualSplitOwner.EndManualSplitDrag();
+			else if ( _manualSplitOwner._manualSplitArmed )
+			{
+				_manualSplitOwner._manualSplitArmed = false;
+				_manualSplitOwner = null;
+			}
+		}
+
+		if ( _manualRightOwner != null && _manualRightOwner.IsValid() )
+		{
+			if ( _manualRightOwner._manualRightDragging )
+				_manualRightOwner.EndManualRightDrag();
+			else if ( _manualRightOwner._manualRightArmed )
+			{
+				_manualRightOwner._manualRightArmed = false;
+				_manualRightOwner = null;
+			}
+		}
+
+		if ( _manualLeftOwner != null && _manualLeftOwner.IsValid() )
+		{
+			if ( _manualLeftOwner._manualLeftDragging )
+				_manualLeftOwner.EndManualLeftDrag();
+			else if ( _manualLeftOwner._manualLeftArmed )
+			{
+				_manualLeftOwner._manualLeftArmed = false;
+				_manualLeftOwner = null;
+			}
+		}
+
+		ClearDragCaptureOverlay();
+	}
+
+	// Client-side prediction overlay for inventory moves.
+	// We keep a snapshot and apply predicted operations to it so the UI updates instantly,
+	// then drop prediction as soon as the replicated inventory Revision changes.
+	static global::Sandbox.VeggaInventory _predInv;
+	static int _predBaseRevision;
+	static int _predTotalSlots;
+	static int[] _predItemIds;
+	static int[] _predItemCounts;
+	static bool _predActive;
+
+	static InventoryHudSlot _manualSplitOwner;
+	static InventoryHudSlot _manualRightOwner;
+	static InventoryHudSlot _manualLeftOwner;
+	static float _lastManualDragEndAt;
+	static MouseButtonKind _lastManualDragEndButton;
+
+	Label _countPanel;
+
+	static void ClearActiveGhost()
+	{
+		if ( _activeGhost.IsValid() )
+			_activeGhost.Delete();
+		_activeGhost = null;
+		_activeGhostOwner = null;
+	}
+
+	static void ClearPrediction()
+	{
+		_predInv = null;
+		_predBaseRevision = 0;
+		_predTotalSlots = 0;
+		_predItemIds = null;
+		_predItemCounts = null;
+		_predActive = false;
+	}
+
+	static void EnsurePredictionSnapshot( global::Sandbox.VeggaInventory inv )
+	{
+		if ( inv == null || !inv.IsValid() )
+		{
+			ClearPrediction();
+			return;
+		}
+
+		int total = inv.TotalSlots;
+		if ( total <= 0 )
+		{
+			ClearPrediction();
+			return;
+		}
+
+		bool needNew = !_predActive
+			|| _predInv != inv
+			|| _predItemIds == null
+			|| _predItemCounts == null
+			|| _predTotalSlots != total
+			|| _predBaseRevision != inv.Revision;
+
+		if ( !needNew )
+			return;
+
+		_predInv = inv;
+		_predBaseRevision = inv.Revision;
+		_predTotalSlots = total;
+		_predItemIds = new int[total];
+		_predItemCounts = new int[total];
+		for ( int i = 0; i < total; i++ )
+		{
+			_predItemIds[i] = inv.GetSlotItemId( i );
+			_predItemCounts[i] = inv.GetSlotCount( i );
+		}
+		_predActive = true;
+	}
+
+	static void EnsurePredictionValid( global::Sandbox.VeggaInventory inv )
+	{
+		if ( !_predActive )
+			return;
+		if ( inv == null || !inv.IsValid() || _predInv != inv )
+		{
+			ClearPrediction();
+			return;
+		}
+
+		// As soon as authoritative state advances, stop predicting.
+		if ( inv.Revision != _predBaseRevision )
+			ClearPrediction();
+	}
+
+	static int GetEffectiveItemId( global::Sandbox.VeggaInventory inv, int slot )
+	{
+		if ( _predActive && inv == _predInv && slot >= 0 && slot < _predTotalSlots )
+			return _predItemIds[slot];
+		return inv.GetSlotItemId( slot );
+	}
+
+	static int GetEffectiveCount( global::Sandbox.VeggaInventory inv, int slot )
+	{
+		if ( _predActive && inv == _predInv && slot >= 0 && slot < _predTotalSlots )
+			return _predItemCounts[slot];
+		return inv.GetSlotCount( slot );
+	}
+
+	static void SetPredSlot( int slot, int itemId, int count )
+	{
+		if ( slot < 0 || slot >= _predTotalSlots ) return;
+		if ( itemId <= 0 || count <= 0 )
+		{
+			_predItemIds[slot] = 0;
+			_predItemCounts[slot] = 0;
+			return;
+		}
+		_predItemIds[slot] = itemId;
+		_predItemCounts[slot] = count;
+	}
+
+	static bool PredictMoveSlot( global::Sandbox.VeggaInventory inv, int fromIndex, int toIndex )
+	{
+		if ( fromIndex == toIndex ) return false;
+		EnsurePredictionSnapshot( inv );
+		if ( !_predActive ) return false;
+		if ( fromIndex < 0 || fromIndex >= _predTotalSlots ) return false;
+		if ( toIndex < 0 || toIndex >= _predTotalSlots ) return false;
+
+		int fromItem = _predItemIds[fromIndex];
+		int fromCount = _predItemCounts[fromIndex];
+		if ( fromItem <= 0 || fromCount <= 0 ) return false;
+
+		int toItem = _predItemIds[toIndex];
+		int toCount = _predItemCounts[toIndex];
+
+		// Match VeggaInventory.MoveSlotInternal: merge when same item.
+		if ( toItem > 0 && toItem == fromItem && toCount > 0 )
+		{
+			var def = VeggaItemRegistry.Get( fromItem );
+			int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+			if ( maxStack <= 0 ) maxStack = 1;
+			if ( maxStack > 1 )
+			{
+				long space = (long)maxStack - (long)toCount;
+				if ( space > 0 )
+				{
+					int move = (int)Math.Min( space, (long)fromCount );
+					SetPredSlot( toIndex, toItem, toCount + move );
+					SetPredSlot( fromIndex, fromItem, fromCount - move );
+					return true;
+				}
+			}
+		}
+
+		// Swap.
+		SetPredSlot( fromIndex, toItem, toCount );
+		SetPredSlot( toIndex, fromItem, fromCount );
+		return true;
+	}
+
+	static bool PredictMoveCount( global::Sandbox.VeggaInventory inv, int fromIndex, int toIndex, int count )
+	{
+		if ( fromIndex == toIndex ) return false;
+		if ( count <= 0 ) return false;
+		EnsurePredictionSnapshot( inv );
+		if ( !_predActive ) return false;
+		if ( fromIndex < 0 || fromIndex >= _predTotalSlots ) return false;
+		if ( toIndex < 0 || toIndex >= _predTotalSlots ) return false;
+
+		int fromItem = _predItemIds[fromIndex];
+		int fromCount = _predItemCounts[fromIndex];
+		if ( fromItem <= 0 || fromCount <= 0 ) return false;
+		if ( count > fromCount ) count = fromCount;
+		if ( count >= fromCount )
+			return PredictMoveSlot( inv, fromIndex, toIndex );
+
+		int toItem = _predItemIds[toIndex];
+		int toCount = _predItemCounts[toIndex];
+
+		var def = VeggaItemRegistry.Get( fromItem );
+		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+		if ( maxStack <= 1 ) return false;
+
+		// Empty target: create new partial stack.
+		if ( toItem <= 0 || toCount <= 0 )
+		{
+			SetPredSlot( fromIndex, fromItem, fromCount - count );
+			SetPredSlot( toIndex, fromItem, count );
+			return true;
+		}
+
+		// Same-item merge.
+		if ( toItem == fromItem )
+		{
+			int space = Math.Max( 0, maxStack - toCount );
+			if ( space <= 0 ) return false;
+			int move = Math.Min( space, count );
+			SetPredSlot( fromIndex, fromItem, fromCount - move );
+			SetPredSlot( toIndex, toItem, toCount + move );
+			return true;
+		}
+
+		return false;
+	}
+
+	static void RequestMoveSlotPredicted( global::Sandbox.VeggaInventory inv, int fromIndex, int toIndex )
+	{
+		if ( inv == null || !inv.IsValid() ) return;
+		if ( fromIndex == toIndex ) return;
+		if ( IsHotbarBlockedMove( inv, fromIndex, toIndex ) )
+			return;
+		if ( DebugInput ) Log.Info( $"[InvUI] ReqMoveSlot from={fromIndex} to={toIndex} rev={inv.Revision} predActive={_predActive}" );
+		_ = PredictMoveSlot( inv, fromIndex, toIndex );
+		HeldUiRevision++;
+		inv.RequestMoveSlot( fromIndex, toIndex );
+	}
+
+	static void RequestMoveCountPredicted( global::Sandbox.VeggaInventory inv, int fromIndex, int toIndex, int count )
+	{
+		if ( inv == null || !inv.IsValid() ) return;
+		if ( fromIndex == toIndex ) return;
+		if ( IsHotbarBlockedMove( inv, fromIndex, toIndex ) )
+			return;
+		if ( DebugInput ) Log.Info( $"[InvUI] ReqMoveCount from={fromIndex} to={toIndex} count={count} rev={inv.Revision} predActive={_predActive}" );
+		_ = PredictMoveCount( inv, fromIndex, toIndex, count );
+		HeldUiRevision++;
+		inv.RequestMoveCount( fromIndex, toIndex, count );
+	}
+
+	static bool IsHotbarBlockedMove( global::Sandbox.VeggaInventory inv, int fromIndex, int toIndex )
+	{
+		const int hotbarCount = 9;
+		if ( toIndex < 0 || toIndex >= hotbarCount )
+			return false;
+
+		int itemId = GetEffectiveItemId( inv, fromIndex );
+		if ( itemId <= 0 )
+			return false;
+
+		if ( itemId == VeggaCurrency.CashItemId )
+		{
+			VeggaChatManager.Local?.AddLocalMessage( "Money can't be placed on the action bar.", ChatMessageType.Error );
+			return true;
+		}
+
+		var def = VeggaItemRegistry.Get( itemId );
+		if ( def != null && (def.Category == ItemCategory.Currency || def.Category == ItemCategory.Quest) )
+		{
+			VeggaChatManager.Local?.AddLocalMessage( $"{def.Name} can't be placed on the action bar.", ChatMessageType.Error );
+			return true;
+		}
+
+		return false;
+	}
+
+	static global::Sandbox.VeggaInventory _heldInventory;
+	static int _heldSourceSlotIndex = -1;
+	static int _heldItemId = 0;
+	static int _heldCount = 0;
+	static RealTimeSince _lastClickTime;
+	static global::Sandbox.VeggaInventory _lastClickInventory;
+	static int _lastClickSlotIndex = -1;
+	static int _lastClickItemId = 0;
+
+	static bool HasHeld
+		=> _heldInventory != null
+		&& _heldInventory.IsValid()
+		&& _heldSourceSlotIndex >= 0
+		&& _heldCount > 0
+		&& _heldItemId > 0;
+
+	static void ClearHeld()
+	{
+		_heldInventory = null;
+		_heldSourceSlotIndex = -1;
+		_heldItemId = 0;
+		_heldCount = 0;
+		HeldUiRevision++;
+	}
+
+	public static void CancelHeld()
+	{
+		if ( !HasHeld ) return;
+		ClearHeld();
+	}
+
+	static void SetHeld( global::Sandbox.VeggaInventory inv, int sourceSlot, int itemId, int count )
+	{
+		if ( inv == null || !inv.IsValid() ) return;
+		if ( sourceSlot < 0 || sourceSlot >= inv.TotalSlots ) return;
+		if ( itemId <= 0 || count <= 0 ) return;
+		_heldInventory = inv;
+		_heldSourceSlotIndex = sourceSlot;
+		_heldItemId = itemId;
+		_heldCount = count;
+		HeldUiRevision++;
+	}
+
+	enum MouseButtonKind
+	{
+		Left,
+		Right,
+		Middle,
+		Other
+	}
+
+	static bool IsButtonStillDown( MouseButtonKind button )
+	{
+		// IMPORTANT: We use Input actions here only as a release-detection fallback.
+		// Mouse-up events can be lost when releasing outside the UI, which makes drops feel "unstable".
+		return button switch
+		{
+			MouseButtonKind.Left => Input.Down( "Attack1" ) || Input.Down( "attack1" ),
+			MouseButtonKind.Right => Input.Down( "Attack2" ) || Input.Down( "attack2" ),
+			MouseButtonKind.Middle => Input.Down( "InventorySplit" ) || Input.Down( "inventorysplit" ),
+			_ => false
+		};
+	}
+
+	static Panel FindFirstPanelByClass( Panel root, string className )
+	{
+		if ( root == null || string.IsNullOrWhiteSpace( className ) )
+			return null;
+
+		return root.Descendants.FirstOrDefault( p => p != null && p.IsValid() && p.HasClass( className ) );
+	}
+
+	static bool IsInsidePanelByClass( Panel root, string className, Vector2 screenPos )
+	{
+		var p = FindFirstPanelByClass( root, className );
+		return p != null && p.IsValid() && p.IsInside( screenPos );
+	}
+
+	static InventoryHudSlot FindSlotUnderCursorInDropZones( Panel root, Vector2 screenPos )
+	{
+		if ( root == null )
+			return null;
+
+		var hotbar = FindFirstPanelByClass( root, "hotbar-root" );
+		if ( hotbar != null && hotbar.IsValid() && hotbar.IsInside( screenPos ) )
+		{
+			return hotbar.Descendants.OfType<InventoryHudSlot>()
+				.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( screenPos ) );
+		}
+
+		var grid = FindFirstPanelByClass( root, "inventory-grid" );
+		if ( grid != null && grid.IsValid() && grid.IsInside( screenPos ) )
+		{
+			return grid.Descendants.OfType<InventoryHudSlot>()
+				.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( screenPos ) );
+		}
+
+		return null;
+	}
+
+	static MouseButtonKind GetMouseButtonKind( MousePanelEvent e )
+	{
+		if ( e == null ) return MouseButtonKind.Left;
+
+		// MousePanelEvent exposes a whitelist-safe Button field/property.
+		// We avoid System.Reflection here because it is blocked by the sandbox whitelist.
+		try
+		{
+			var rawString = (e.Button?.ToString() ?? "").Trim();
+			var rawLower = rawString.ToLowerInvariant().Trim( '\'', '"' );
+
+			// Name-based mapping (covers enum names like Left/Right/Middle, Primary/Secondary, Mouse1/Mouse2, etc.)
+			// NOTE: s&box often reports strings like "mouseleft"/"mouseright"/"mousemiddle".
+			if ( rawLower is "left" or "primary" or "mouse1" or "mouse0" or "button0" or "mouseleft" )
+				return MouseButtonKind.Left;
+			if ( rawLower is "right" or "secondary" or "mouse2" or "button2" or "mouseright" )
+				return MouseButtonKind.Right;
+			if ( rawLower is "middle" or "wheel" or "mouse3" or "button1" or "mousemiddle" )
+				return MouseButtonKind.Middle;
+
+			// Some drivers / UI layers include extra suffix/prefix text.
+			// Prefer a permissive contains-based mapping over falling back to "Left".
+			if ( rawLower.Contains( "right", StringComparison.Ordinal ) )
+				return MouseButtonKind.Right;
+			if ( rawLower.Contains( "middle", StringComparison.Ordinal ) )
+				return MouseButtonKind.Middle;
+			if ( rawLower.Contains( "left", StringComparison.Ordinal ) )
+				return MouseButtonKind.Left;
+
+			// Fallback: try numeric enum value (common in engine enums)
+			// Many systems use 0=Left, 1=Right, 2=Middle.
+			// (DOM uses 0=Left, 1=Middle, 2=Right, but e.Button here is typically an engine enum.)
+			int i = Convert.ToInt32( e.Button );
+			return i switch
+			{
+				0 => MouseButtonKind.Left,
+				1 => MouseButtonKind.Right,
+				2 => MouseButtonKind.Middle,
+				_ => MouseButtonKind.Other
+			};
+		}
+		catch
+		{
+			// fall through
+		}
+
+		return MouseButtonKind.Left;
+	}
+
+	enum DragMode
+	{
+		Full,
+		SplitHalf,
+		SplitThird,
+		Single
+	}
+
+	[Parameter] public global::Sandbox.VeggaInventory Inventory { get; set; }
 	[Parameter] public int SlotIndex { get; set; }
 	[Parameter] public bool IsSelected { get; set; }
 	[Parameter] public Action<int> OnSelected { get; set; }
 
 	Panel _ghost;
+	Label _iconPanel;
 	InventoryHudSlot _lastHover;
 	int _dragCount;
 	bool _dragSplit;
+	string _lastVisualKey;
+	bool _hasRenderedThumb;
+	DragMode _dragMode;
 
-	bool HasItem
+	bool _manualSplitArmed;
+	bool _manualSplitDragging;
+	Vector2 _manualSplitStartScreen;
+	bool _manualSplitShift;
+	int _manualSplitCount;
+
+	bool _manualRightArmed;
+	bool _manualRightDragging;
+	Vector2 _manualRightStartScreen;
+
+	bool _manualLeftArmed;
+	bool _manualLeftDragging;
+	Vector2 _manualLeftStartScreen;
+
+	bool HasSlotItem
 		=> Inventory != null
 		&& Inventory.IsValid()
 		&& SlotIndex >= 0
 		&& SlotIndex < Inventory.TotalSlots
-		&& Inventory.GetSlotItemId( SlotIndex ) > 0;
-	int ItemId => HasItem ? Inventory.GetSlotItemId( SlotIndex ) : 0;
-	int ItemCount => HasItem ? Inventory.GetSlotCount( SlotIndex ) : 0;
+		&& GetEffectiveItemId( Inventory, SlotIndex ) > 0;
+	int SlotItemId => HasSlotItem ? GetEffectiveItemId( Inventory, SlotIndex ) : 0;
+	int SlotItemCount => HasSlotItem ? GetEffectiveCount( Inventory, SlotIndex ) : 0;
+	int HeldReservedCount
+	{
+		get
+		{
+			if ( !HasHeld ) return 0;
+			if ( Inventory != _heldInventory ) return 0;
+			if ( SlotIndex != _heldSourceSlotIndex ) return 0;
+			if ( SlotItemId != _heldItemId ) return 0;
+			return Math.Clamp( _heldCount, 0, SlotItemCount );
+		}
+	}
+	int VisibleCount => HasSlotItem ? Math.Max( 0, SlotItemCount - HeldReservedCount ) : 0;
+	bool HasItem => VisibleCount > 0;
+	int ItemId => HasItem ? SlotItemId : 0;
+	int ItemCount => HasItem ? VisibleCount : 0;
 	bool IsCash => ItemId == VeggaCurrency.CashItemId;
 	string CssIconUrl
 	{
@@ -64,8 +586,551 @@
 			return ResolveCssUrl( def?.IconPath );
 		}
 	}
+	string ModelPath
+	{
+		get
+		{
+			if ( !HasItem ) return null;
 
-	public override bool WantsDrag => HasItem;
+			// Cash uses tiered visual models (same as world drops) so its thumbnail
+			// looks like an actual bill/stack/box.
+			if ( IsCash )
+			{
+				// Use the underlying slot count so the visual doesn't flicker due to held-reserve math.
+				int amount = Math.Max( 1, SlotItemCount );
+				return amount switch
+				{
+					<= 100 => "models/money/single_clean_bended.vmdl",  // moneysingleused
+					<= 10_000 => "models/money/single_clean.vmdl",        // moneysingleclean
+					<= 1_000_000 => "models/money/batch_clean.vmdl",       // moneybatchclean
+					_ => "models/money/box.vmdl"                            // money_stack_box
+				};
+			}
+
+			var def = VeggaItemRegistry.Get( ItemId );
+			return def?.ModelPath;
+		}
+	}
+
+	string IconText
+	{
+		get
+		{
+			// Only show text if we don't have an icon OR a rendered thumbnail.
+			if ( !string.IsNullOrWhiteSpace( CssIconUrl ) ) return string.Empty;
+			if ( _hasRenderedThumb ) return string.Empty;
+
+			if ( IsCash ) return "$";
+			return "?";
+		}
+	}
+
+	// Disable the built-in drag system entirely.
+	// We rely on our manual drag paths so RMB/MMB can never fall through to native drag
+	// (which always behaves like full-stack and was causing the "RMB drag takes whole stack" UX).
+	public override bool WantsDrag => false;
+
+	public override void Tick()
+	{
+		base.Tick();
+		EnsurePredictionValid( Inventory );
+		TickManualSplitDrag();
+		TickManualRightDrag();
+		TickManualLeftDrag();
+
+		// Keep visuals in sync with replicated inventory state.
+		// (Slots are Panels, not PanelComponents; relying on Razor re-render alone can be stale.)
+		SetClass( "inventory-slot", true );
+		SetClass( "has-item", HasItem );
+		SetClass( "selected", HasItem && IsSelected );
+		UpdateIconVisual();
+	}
+
+	void TickManualLeftDrag()
+	{
+		// Manual left-drag: move/swap the full stack.
+		if ( _manualLeftOwner != this )
+			return;
+		if ( !_manualLeftArmed && !_manualLeftDragging )
+			return;
+
+		var mouse = Mouse.Position;
+		var delta = mouse - _manualLeftStartScreen;
+		float dist2 = delta.LengthSquared;
+		const float startThreshold2 = 6f * 6f;
+
+		if ( !_manualLeftDragging )
+		{
+			if ( dist2 < startThreshold2 )
+				return;
+
+			StartManualLeftDrag();
+		}
+
+		if ( _ghost.IsValid() )
+		{
+			_ghost.Style.Left = (mouse.x - 24f) * ScaleFromScreen;
+			_ghost.Style.Top = (mouse.y - 24f) * ScaleFromScreen;
+			_ghost.Style.Dirty();
+		}
+
+		var root = FindRootPanel();
+		if ( root == null )
+			return;
+
+		var hover = root.Descendants.OfType<InventoryHudSlot>()
+			.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( mouse ) );
+
+		if ( hover != _lastHover )
+		{
+			_lastHover?.RemoveClass( "moving-to" );
+			hover?.AddClass( "moving-to" );
+			_lastHover = hover;
+		}
+	}
+
+	void StartManualLeftDrag()
+	{
+		_manualLeftDragging = true;
+		AddClass( "dragging" );
+
+		var root = FindRootPanel();
+		EnsureDragCaptureOverlay( root, this );
+
+		ClearActiveGhost();
+
+		_ghost = new Panel();
+		_ghost.Style.Position = PositionMode.Absolute;
+		_ghost.Style.Width = 48;
+		_ghost.Style.Height = 48;
+		_ghost.Style.ZIndex = 4000;
+		_ghost.Style.BackgroundColor = new Color( 0, 0, 0, 0.0f );
+		_ghost.Style.PointerEvents = PointerEvents.None;
+
+		var iconUrl = CssIconUrl;
+		if ( !string.IsNullOrWhiteSpace( iconUrl ) )
+		{
+			var icon = new Panel();
+			icon.Style.Width = 48;
+			icon.Style.Height = 48;
+			icon.Style.PointerEvents = PointerEvents.None;
+			icon.Style.Set( "background-image", $"url('{iconUrl}')" );
+			icon.Style.Set( "background-size", "contain" );
+			icon.Style.Set( "background-repeat", "no-repeat" );
+			icon.Style.Set( "background-position", "center" );
+			_ghost.AddChild( icon );
+		}
+		else
+		{
+			var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( ModelPath );
+			if ( tex is not null )
+			{
+				var icon = new Panel();
+				icon.Style.Width = 48;
+				icon.Style.Height = 48;
+				icon.Style.PointerEvents = PointerEvents.None;
+				icon.Style.SetBackgroundImage( tex );
+				icon.Style.Set( "background-size", "contain" );
+				icon.Style.Set( "background-repeat", "no-repeat" );
+				icon.Style.Set( "background-position", "center" );
+				_ghost.AddChild( icon );
+			}
+			else
+			{
+				var label = new Label( IsCash ? "$" : "?" );
+				label.Style.FontSize = 28;
+				label.Style.FontWeight = 900;
+				label.Style.FontColor = IsCash ? new Color( 0.9f, 0.75f, 0.15f, 1f ) : new Color( 1f, 1f, 1f, 1f );
+				label.Style.AlignSelf = Align.Center;
+				label.Style.PointerEvents = PointerEvents.None;
+				_ghost.AddChild( label );
+			}
+		}
+
+		FindRootPanel()?.AddChild( _ghost );
+		_activeGhost = _ghost;
+		_activeGhostOwner = this;
+	}
+
+	void EndManualLeftDrag()
+	{
+		_lastManualDragEndAt = Time.Now;
+		_lastManualDragEndButton = MouseButtonKind.Left;
+
+		_manualLeftDragging = false;
+		_manualLeftArmed = false;
+		_manualLeftOwner = null;
+		RemoveClass( "dragging" );
+		ClearDragCaptureOverlay();
+
+		_lastHover?.RemoveClass( "moving-to" );
+		_lastHover = null;
+
+		if ( _activeGhostOwner == this )
+			ClearActiveGhost();
+		else if ( _ghost.IsValid() )
+		{
+			_ghost.Delete();
+			_ghost = null;
+		}
+
+		var inv = Inventory;
+		if ( inv == null || !inv.IsValid() || inv.Network?.IsProxy == true || inv.Network?.Owner != Connection.Local )
+			inv = global::Sandbox.VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
+			return;
+
+		var mouse = Mouse.Position;
+		var root = FindRootPanel();
+		var target = FindSlotUnderCursorInDropZones( root, mouse );
+		bool insideInv = IsInsidePanelByClass( root, "inventory-container", mouse );
+		bool insideHotbar = IsInsidePanelByClass( root, "hotbar-root", mouse );
+		bool outsideAll = !insideInv && !insideHotbar;
+
+		if ( target == null )
+		{
+			// Only world-drop when released outside both containers.
+			if ( outsideAll )
+				inv.RequestDropFromSlot( SlotIndex, SlotItemCount );
+			return;
+		}
+
+		if ( target.SlotIndex == SlotIndex )
+			return;
+
+		RequestMoveSlotPredicted( inv, SlotIndex, target.SlotIndex );
+	}
+
+	void TickManualSplitDrag()
+	{
+		// s&box's built-in UI drag events generally start on LMB.
+		// Mouse3 (wheel click) won't fire OnDragStart reliably, so we implement a manual drag path.
+		// Arm via OnMouseDown (not Input actions), since some setups don't set Input.Down/Pressed reliably while UI is open.
+
+		if ( _manualSplitOwner != this )
+			return;
+
+		if ( !_manualSplitArmed && !_manualSplitDragging )
+			return;
+
+		var mouse = Mouse.Position;
+		var delta = mouse - _manualSplitStartScreen;
+		float dist2 = delta.LengthSquared;
+		const float startThreshold2 = 6f * 6f;
+
+		if ( !_manualSplitDragging )
+		{
+			if ( dist2 < startThreshold2 )
+				return;
+
+			StartManualSplitDrag();
+		}
+
+		// Update ghost position + hover highlight.
+		if ( _ghost.IsValid() )
+		{
+			_ghost.Style.Left = (mouse.x - 24f) * ScaleFromScreen;
+			_ghost.Style.Top = (mouse.y - 24f) * ScaleFromScreen;
+			_ghost.Style.Dirty();
+		}
+
+		var root = FindRootPanel();
+		if ( root == null )
+			return;
+
+		var hover = root.Descendants.OfType<InventoryHudSlot>()
+			.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( mouse ) );
+
+		if ( hover != _lastHover )
+		{
+			_lastHover?.RemoveClass( "moving-to" );
+			hover?.AddClass( "moving-to" );
+			_lastHover = hover;
+		}
+	}
+
+	void TickManualRightDrag()
+	{
+		// Manual right-drag: Rust-like "move 1" dragging.
+		// Some setups never start DragEvent for RMB, so we implement our own.
+		if ( _manualRightOwner != this )
+			return;
+		if ( !_manualRightArmed && !_manualRightDragging )
+			return;
+
+		var mouse = Mouse.Position;
+		var delta = mouse - _manualRightStartScreen;
+		float dist2 = delta.LengthSquared;
+		const float startThreshold2 = 6f * 6f;
+
+		if ( !_manualRightDragging )
+		{
+			if ( dist2 < startThreshold2 )
+				return;
+
+			StartManualRightDrag();
+		}
+
+		// Update ghost position + hover highlight.
+		if ( _ghost.IsValid() )
+		{
+			_ghost.Style.Left = (mouse.x - 24f) * ScaleFromScreen;
+			_ghost.Style.Top = (mouse.y - 24f) * ScaleFromScreen;
+			_ghost.Style.Dirty();
+		}
+
+		var root = FindRootPanel();
+		if ( root == null )
+			return;
+
+		var hover = root.Descendants.OfType<InventoryHudSlot>()
+			.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( mouse ) );
+
+		if ( hover != _lastHover )
+		{
+			_lastHover?.RemoveClass( "moving-to" );
+			hover?.AddClass( "moving-to" );
+			_lastHover = hover;
+		}
+	}
+
+	void StartManualRightDrag()
+	{
+		_manualRightDragging = true;
+		AddClass( "dragging" );
+
+		var root = FindRootPanel();
+		EnsureDragCaptureOverlay( root, this );
+
+		ClearActiveGhost();
+
+		// IMPORTANT: do NOT mutate the held-stack model here.
+		// We want RMB drag to be a pure "move 1" gesture without making the source stack
+		// visually flicker (held reserve) or interfering with normal RMB click pickup.
+
+		// Reuse the same ghost visuals as manual split.
+		_ghost = new Panel();
+		_ghost.Style.Position = PositionMode.Absolute;
+		_ghost.Style.Width = 48;
+		_ghost.Style.Height = 48;
+		_ghost.Style.ZIndex = 4000;
+		_ghost.Style.BackgroundColor = new Color( 0, 0, 0, 0.0f );
+		_ghost.Style.PointerEvents = PointerEvents.None;
+
+		var iconUrl = CssIconUrl;
+		if ( !string.IsNullOrWhiteSpace( iconUrl ) )
+		{
+			var icon = new Panel();
+			icon.Style.Width = 48;
+			icon.Style.Height = 48;
+			icon.Style.PointerEvents = PointerEvents.None;
+			icon.Style.Set( "background-image", $"url('{iconUrl}')" );
+			icon.Style.Set( "background-size", "contain" );
+			icon.Style.Set( "background-repeat", "no-repeat" );
+			icon.Style.Set( "background-position", "center" );
+			_ghost.AddChild( icon );
+		}
+		else
+		{
+			var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( ModelPath );
+			if ( tex is not null )
+			{
+				var icon = new Panel();
+				icon.Style.Width = 48;
+				icon.Style.Height = 48;
+				icon.Style.PointerEvents = PointerEvents.None;
+				icon.Style.SetBackgroundImage( tex );
+				icon.Style.Set( "background-size", "contain" );
+				icon.Style.Set( "background-repeat", "no-repeat" );
+				icon.Style.Set( "background-position", "center" );
+				_ghost.AddChild( icon );
+			}
+			else
+			{
+				var label = new Label( IsCash ? "$" : "?" );
+				label.Style.FontSize = 28;
+				label.Style.FontWeight = 900;
+				label.Style.FontColor = IsCash ? new Color( 0.9f, 0.75f, 0.15f, 1f ) : new Color( 1f, 1f, 1f, 1f );
+				label.Style.AlignSelf = Align.Center;
+				label.Style.PointerEvents = PointerEvents.None;
+				_ghost.AddChild( label );
+			}
+		}
+
+		FindRootPanel()?.AddChild( _ghost );
+		_activeGhost = _ghost;
+		_activeGhostOwner = this;
+	}
+
+	void EndManualRightDrag()
+	{
+		_lastManualDragEndAt = Time.Now;
+		_lastManualDragEndButton = MouseButtonKind.Right;
+
+		_manualRightDragging = false;
+		_manualRightArmed = false;
+		_manualRightOwner = null;
+		RemoveClass( "dragging" );
+		ClearDragCaptureOverlay();
+
+		_lastHover?.RemoveClass( "moving-to" );
+		_lastHover = null;
+
+		if ( _activeGhostOwner == this )
+			ClearActiveGhost();
+		else if ( _ghost.IsValid() )
+		{
+			_ghost.Delete();
+			_ghost = null;
+		}
+
+		var inv = Inventory;
+		if ( inv == null || !inv.IsValid() || inv.Network?.IsProxy == true || inv.Network?.Owner != Connection.Local )
+			inv = global::Sandbox.VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
+			return;
+
+		var mouse = Mouse.Position;
+		var root = FindRootPanel();
+		var target = FindSlotUnderCursorInDropZones( root, mouse );
+		bool insideInv = IsInsidePanelByClass( root, "inventory-container", mouse );
+		bool insideHotbar = IsInsidePanelByClass( root, "hotbar-root", mouse );
+		bool outsideAll = !insideInv && !insideHotbar;
+
+		if ( target == null )
+		{
+			// Only world-drop when released outside both containers.
+			if ( outsideAll )
+				inv.RequestDropFromSlot( SlotIndex, 1 );
+			return;
+		}
+
+		if ( target.SlotIndex == SlotIndex )
+			return;
+
+		// Move exactly 1 when the source is a stack; otherwise swap/move the single item.
+		if ( SlotItemCount > 1 )
+			RequestMoveCountPredicted( inv, SlotIndex, target.SlotIndex, 1 );
+		else
+			RequestMoveSlotPredicted( inv, SlotIndex, target.SlotIndex );
+	}
+
+	void StartManualSplitDrag()
+	{
+		_manualSplitDragging = true;
+		AddClass( "dragging" );
+
+		var root = FindRootPanel();
+		EnsureDragCaptureOverlay( root, this );
+
+		// Ensure we never accumulate multiple ghosts.
+		ClearActiveGhost();
+
+		// Reuse the same ghost visuals as normal drag.
+		_ghost = new Panel();
+		_ghost.Style.Position = PositionMode.Absolute;
+		_ghost.Style.Width = 48;
+		_ghost.Style.Height = 48;
+		_ghost.Style.ZIndex = 4000;
+		_ghost.Style.BackgroundColor = new Color( 0, 0, 0, 0.0f );
+		_ghost.Style.PointerEvents = PointerEvents.None;
+
+		var iconUrl = CssIconUrl;
+		if ( !string.IsNullOrWhiteSpace( iconUrl ) )
+		{
+			var icon = new Panel();
+			icon.Style.Width = 48;
+			icon.Style.Height = 48;
+			icon.Style.PointerEvents = PointerEvents.None;
+			icon.Style.Set( "background-image", $"url('{iconUrl}')" );
+			icon.Style.Set( "background-size", "contain" );
+			icon.Style.Set( "background-repeat", "no-repeat" );
+			icon.Style.Set( "background-position", "center" );
+			_ghost.AddChild( icon );
+		}
+		else
+		{
+			var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( ModelPath );
+			if ( tex is not null )
+			{
+				var icon = new Panel();
+				icon.Style.Width = 48;
+				icon.Style.Height = 48;
+				icon.Style.PointerEvents = PointerEvents.None;
+				icon.Style.SetBackgroundImage( tex );
+				icon.Style.Set( "background-size", "contain" );
+				icon.Style.Set( "background-repeat", "no-repeat" );
+				icon.Style.Set( "background-position", "center" );
+				_ghost.AddChild( icon );
+			}
+			else
+			{
+				var label = new Label( IsCash ? "$" : "?" );
+				label.Style.FontSize = 28;
+				label.Style.FontWeight = 900;
+				label.Style.FontColor = IsCash ? new Color( 0.9f, 0.75f, 0.15f, 1f ) : new Color( 1f, 1f, 1f, 1f );
+				label.Style.AlignSelf = Align.Center;
+				label.Style.PointerEvents = PointerEvents.None;
+				_ghost.AddChild( label );
+			}
+		}
+
+		FindRootPanel()?.AddChild( _ghost );
+		_activeGhost = _ghost;
+		_activeGhostOwner = this;
+	}
+
+	void EndManualSplitDrag()
+	{
+		_lastManualDragEndAt = Time.Now;
+		_lastManualDragEndButton = MouseButtonKind.Middle;
+
+		_manualSplitDragging = false;
+		_manualSplitArmed = false;
+		_manualSplitOwner = null;
+		RemoveClass( "dragging" );
+		ClearDragCaptureOverlay();
+
+		_lastHover?.RemoveClass( "moving-to" );
+		_lastHover = null;
+
+		if ( _activeGhostOwner == this )
+			ClearActiveGhost();
+		else if ( _ghost.IsValid() )
+		{
+			_ghost.Delete();
+			_ghost = null;
+		}
+
+		var inv = Inventory;
+		if ( inv == null || !inv.IsValid() || inv.Network?.IsProxy == true || inv.Network?.Owner != Connection.Local )
+			inv = global::Sandbox.VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
+			return;
+
+		var mouse = Mouse.Position;
+		var root = FindRootPanel();
+		var target = FindSlotUnderCursorInDropZones( root, mouse );
+		bool insideInv = IsInsidePanelByClass( root, "inventory-container", mouse );
+		bool insideHotbar = IsInsidePanelByClass( root, "hotbar-root", mouse );
+		bool outsideAll = !insideInv && !insideHotbar;
+
+		if ( target == null )
+		{
+			if ( outsideAll )
+			{
+				int dropCount = Math.Max( 1, _manualSplitCount );
+				inv.RequestDropFromSlot( SlotIndex, dropCount );
+			}
+			return;
+		}
+
+		int moveCount = Math.Max( 1, _manualSplitCount );
+		if ( moveCount > 1 )
+			RequestMoveCountPredicted( inv, SlotIndex, target.SlotIndex, moveCount );
+		else
+			RequestMoveSlotPredicted( inv, SlotIndex, target.SlotIndex );
+	}
 
 	protected override void OnAfterTreeRender( bool firstTime )
 	{
@@ -76,38 +1141,700 @@
 		SetClass( "inventory-slot", true );
 		SetClass( "has-item", HasItem );
 		SetClass( "selected", HasItem && IsSelected );
+
+		UpdateIconVisual();
+	}
+
+	void UpdateIconVisual()
+	{
+		if ( !_iconPanel.IsValid() || !_countPanel.IsValid() )
+			return;
+
+		// Always drive visuals from Tick (do not rely on Razor re-render) to avoid ghosting.
+		_countPanel.Style.Set( "display", "none" );
+		_countPanel.Text = "";
+
+		bool hasUrl = !string.IsNullOrWhiteSpace( CssIconUrl );
+		_hasRenderedThumb = false;
+
+		// Empty slot: ensure any previous runtime thumbnail is cleared.
+		if ( !HasItem )
+		{
+			_iconPanel.Style.Set( "background-image", "none" );
+			_iconPanel.Style.Dirty();
+			_iconPanel.Text = "";
+			_iconPanel.SetClass( "rendered-thumb", false );
+			_iconPanel.SetClass( "currency", false );
+			_lastVisualKey = null;
+			return;
+		}
+
+		// Count overlay.
+		if ( IsCash )
+		{
+			_countPanel.Text = VeggaCurrency.FormatCompact( ItemCount );
+			_countPanel.Style.Set( "display", "flex" );
+		}
+		else if ( ItemCount > 1 )
+		{
+			_countPanel.Text = ItemCount.ToString();
+			_countPanel.Style.Set( "display", "flex" );
+		}
+
+		// IconPath exists: let the Razor inline style drive the icon.
+		// Only clear runtime background if we previously rendered a thumbnail (to avoid clobbering valid PNG icons).
+		if ( hasUrl )
+		{
+			// Drive icon URL directly (we no longer use inline Razor style for this).
+			_iconPanel.Style.Set( "background-image", $"url('{CssIconUrl}')" );
+			_iconPanel.Style.Set( "background-size", "contain" );
+			_iconPanel.Style.Set( "background-repeat", "no-repeat" );
+			_iconPanel.Style.Set( "background-position", "center" );
+			_iconPanel.Style.Dirty();
+			_iconPanel.Text = "";
+			_iconPanel.SetClass( "rendered-thumb", false );
+			_iconPanel.SetClass( "currency", false );
+			_lastVisualKey = null;
+			return;
+		}
+
+		var modelPath = ModelPath;
+		var key = string.IsNullOrWhiteSpace( modelPath ) ? "no-model" : $"model:{modelPath}";
+		if ( key == _lastVisualKey )
+			return;
+
+		_lastVisualKey = key;
+
+		var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( modelPath );
+		if ( tex is null )
+		{
+			_iconPanel.Style.Set( "background-image", "none" );
+			_iconPanel.Style.Dirty();
+			_iconPanel.SetClass( "rendered-thumb", false );
+			_iconPanel.SetClass( "currency", IsCash );
+			_iconPanel.Text = IconText;
+			return;
+		}
+
+		_iconPanel.Style.SetBackgroundImage( tex );
+		_iconPanel.Style.Dirty();
+		_iconPanel.SetClass( "rendered-thumb", true );
+		_iconPanel.SetClass( "currency", false );
+		_iconPanel.Text = "";
+		_hasRenderedThumb = true;
+	}
+
+	protected override void OnMouseOver( MousePanelEvent e )
+	{
+		base.OnMouseOver( e );
+		HoveredSlotIndex = SlotIndex;
+		HoveredInventory = Inventory;
+	}
+
+	protected override void OnMouseOut( MousePanelEvent e )
+	{
+		base.OnMouseOut( e );
+		if ( HoveredSlotIndex == SlotIndex && HoveredInventory == Inventory )
+		{
+			HoveredSlotIndex = -1;
+			HoveredInventory = null;
+		}
 	}
 
 	protected override void OnClick( MousePanelEvent e )
 	{
 		base.OnClick( e );
-		if ( HasItem )
+
+		// s&box can invoke OnClick for non-left buttons.
+		// If we treat every click as LMB, RMB dragging/pickup will also toggle selection/details.
+		var btn = GetMouseButtonKind( e );
+		if ( btn != MouseButtonKind.Left )
+			return;
+		if ( _lastManualDragEndButton == MouseButtonKind.Left && (Time.Now - _lastManualDragEndAt) < 0.2f )
+			return;
+
+		var inv = Inventory;
+		if ( inv == null || !inv.IsValid() || inv.Network?.IsProxy == true || inv.Network?.Owner != Connection.Local )
+			inv = global::Sandbox.VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
+			return;
+
+		bool shiftDown = Input.Down( "Run" ) || Input.Down( "run" );
+		bool ctrlDown = false;
+		HandleSlotClick( inv, SlotIndex, MouseButtonKind.Left, shiftDown, ctrlDown );
+	}
+
+	protected override void OnRightClick( MousePanelEvent e )
+	{
+		base.OnRightClick( e );
+		if ( _lastManualDragEndButton == MouseButtonKind.Right && (Time.Now - _lastManualDragEndAt) < 0.2f )
+			return;
+
+		// If a manual RMB drag is active anywhere, consume this release to finalize the drag.
+		if ( _manualRightOwner != null && _manualRightOwner.IsValid() && _manualRightOwner._manualRightDragging )
 		{
-			OnSelected?.Invoke( SlotIndex );
+			_manualRightOwner.EndManualRightDrag();
+			return;
 		}
+		// If we armed RMB on this slot but didn't drag, clear arm state and treat as a normal click.
+		if ( _manualRightOwner == this )
+		{
+			_manualRightOwner = null;
+			_manualRightArmed = false;
+			_manualRightDragging = false;
+		}
+
+		var inv = Inventory;
+		if ( inv == null || !inv.IsValid() || inv.Network?.IsProxy == true || inv.Network?.Owner != Connection.Local )
+			inv = global::Sandbox.VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
+			return;
+
+		bool shiftDown = Input.Down( "Run" ) || Input.Down( "run" );
+		bool ctrlDown = false;
+		if ( DebugInput ) Log.Info( $"[InvUI] OnRightClick slot={SlotIndex} shift={shiftDown} hasItem={HasItem} hasHeld={HasHeld}" );
+		HandleSlotClick( inv, SlotIndex, MouseButtonKind.Right, shiftDown, ctrlDown );
+	}
+
+	protected override void OnMiddleClick( MousePanelEvent e )
+	{
+		base.OnMiddleClick( e );
+		if ( _lastManualDragEndButton == MouseButtonKind.Middle && (Time.Now - _lastManualDragEndAt) < 0.2f )
+			return;
+
+		// If a manual MMB drag is active anywhere, consume this release to finalize the drag.
+		if ( _manualSplitOwner != null && _manualSplitOwner.IsValid() && _manualSplitOwner._manualSplitDragging )
+		{
+			_manualSplitOwner.EndManualSplitDrag();
+			return;
+		}
+		// If we armed MMB on this slot but didn't drag, clear arm state and treat as a normal click.
+		if ( _manualSplitOwner == this )
+		{
+			_manualSplitOwner = null;
+			_manualSplitArmed = false;
+			_manualSplitDragging = false;
+		}
+
+		var inv = Inventory;
+		if ( inv == null || !inv.IsValid() || inv.Network?.IsProxy == true || inv.Network?.Owner != Connection.Local )
+			inv = global::Sandbox.VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
+			return;
+
+		bool shiftDown = Input.Down( "Run" ) || Input.Down( "run" );
+		bool ctrlDown = false;
+		if ( DebugInput ) Log.Info( $"[InvUI] OnMiddleClick slot={SlotIndex} shift={shiftDown} hasItem={HasItem} hasHeld={HasHeld}" );
+		HandleSlotClick( inv, SlotIndex, MouseButtonKind.Middle, shiftDown, ctrlDown );
+	}
+
+	protected override void OnMouseDown( MousePanelEvent e )
+	{
+		base.OnMouseDown( e );
+
+		// IMPORTANT UX:
+		// We do NOT perform pickup/place on mouse-down anymore.
+		// s&box fires OnDragStart after mouse-down+move; if we mutate state here (HeldStack),
+		// dragging becomes impossible and the details panel flickers while attempting to drag.
+		var btn = GetMouseButtonKind( e );
+		// NOTE: Avoid using Input actions to reinterpret mouse buttons.
+		// In some setups while UI is open, Attack1/Attack2/InventorySplit report false even when
+		// the mouse is pressed, which causes LMB clicks to be misclassified as RMB/MMB.
+		bool attack1Down = Input.Down( "Attack1" ) || Input.Down( "attack1" );
+		bool attack2Down = Input.Down( "Attack2" ) || Input.Down( "attack2" );
+		bool splitDown = Input.Down( "InventorySplit" ) || Input.Down( "inventorysplit" );
+		bool attack2Pressed = Input.Pressed( "Attack2" ) || Input.Pressed( "attack2" );
+		bool splitPressed = Input.Pressed( "InventorySplit" ) || Input.Pressed( "inventorysplit" );
+		if ( DebugInput && btn == MouseButtonKind.Other )
+		{
+			try
+			{
+				Log.Info( $"[InvUI] Unmapped mouse button raw='{e.Button}' int={Convert.ToInt32( e.Button )}" );
+			}
+			catch
+			{
+				Log.Info( $"[InvUI] Unmapped mouse button raw='{e.Button}'" );
+			}
+		}
+		var shiftDown = Input.Down( "Run" ) || Input.Down( "run" );
+		var ctrlDown = false;
+
+		if ( DebugInput )
+		{
+			string rawBtn = "";
+			string rawInt = "";
+			try { rawBtn = (e?.Button?.ToString() ?? "").Trim(); } catch { rawBtn = ""; }
+			try { rawInt = Convert.ToInt32( e?.Button ).ToString(); } catch { rawInt = ""; }
+			Log.Info( $"[InvUI] MouseDown slot={SlotIndex} btn={btn} raw='{rawBtn}' rawInt={rawInt} shift={shiftDown} ctrl={ctrlDown} a1={attack1Down} a2={attack2Down}/{attack2Pressed} split={splitDown}/{splitPressed} hasItem={HasItem} item={SlotItemId}x{SlotItemCount}" );
+		}
+
+		// Arm manual split-drag from MMB down (works even when Input actions report false).
+		if ( btn == MouseButtonKind.Middle && HasItem && !_manualSplitDragging )
+		{
+			_manualSplitOwner = this;
+			_manualSplitArmed = true;
+			_manualSplitDragging = false;
+			_manualSplitStartScreen = Mouse.Position;
+			_manualSplitShift = shiftDown;
+			_manualSplitCount = 1;
+
+			int available = SlotItemCount;
+			int itemId = SlotItemId;
+			if ( itemId > 0 && available > 1 )
+			{
+				var def = VeggaItemRegistry.Get( itemId );
+				int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+				if ( maxStack > 1 )
+					_manualSplitCount = _manualSplitShift ? Math.Max( 1, (available + 2) / 3 ) : Math.Max( 1, (available + 1) / 2 );
+			}
+
+			if ( DebugInput ) Log.Info( $"[InvUI] ManualSplit armed slot={SlotIndex} count={_manualSplitCount} shift={_manualSplitShift}" );
+
+		}
+
+		// Arm manual right-drag (Rust-like move-1 dragging).
+		if ( btn == MouseButtonKind.Right && HasItem && !_manualRightDragging )
+		{
+			_manualRightOwner = this;
+			_manualRightArmed = true;
+			_manualRightDragging = false;
+			_manualRightStartScreen = Mouse.Position;
+		}
+
+		// Arm manual left-drag (move/swap full stack).
+		// Only when not using the held-stack model.
+		if ( btn == MouseButtonKind.Left && HasItem && !_manualLeftDragging && !HasHeld )
+		{
+			_manualLeftOwner = this;
+			_manualLeftArmed = true;
+			_manualLeftDragging = false;
+			_manualLeftStartScreen = Mouse.Position;
+		}
+
+		// Click behavior is handled in OnClick/OnRightClick/OnMiddleClick.
+		// InventorySplit manual drag is armed in TickManualSplitDrag().
+	}
+
+	protected override void OnMouseUp( MousePanelEvent e )
+	{
+		base.OnMouseUp( e );
+
+		// End manual drags on mouse-up regardless of the reported button.
+		// Some setups misreport button-up, which previously left the manual drag active
+		// and allowed other handlers to run, resulting in full-stack moves.
+		if ( _manualSplitOwner != null && _manualSplitOwner.IsValid() && _manualSplitOwner._manualSplitDragging )
+			_manualSplitOwner.EndManualSplitDrag();
+		if ( _manualRightOwner != null && _manualRightOwner.IsValid() && _manualRightOwner._manualRightDragging )
+			_manualRightOwner.EndManualRightDrag();
+		if ( _manualLeftOwner != null && _manualLeftOwner.IsValid() && _manualLeftOwner._manualLeftDragging )
+			_manualLeftOwner.EndManualLeftDrag();
+
+		// If any manual drag was armed but never dragged, clear it.
+		// MouseUp can be delivered to a different panel than MouseDown, so this must be global.
+		if ( _manualSplitOwner != null && _manualSplitOwner.IsValid() && _manualSplitOwner._manualSplitArmed && !_manualSplitOwner._manualSplitDragging )
+		{
+			_manualSplitOwner._manualSplitArmed = false;
+			_manualSplitOwner._manualSplitDragging = false;
+			_manualSplitOwner = null;
+		}
+		if ( _manualRightOwner != null && _manualRightOwner.IsValid() && _manualRightOwner._manualRightArmed && !_manualRightOwner._manualRightDragging )
+		{
+			_manualRightOwner._manualRightArmed = false;
+			_manualRightOwner._manualRightDragging = false;
+			_manualRightOwner = null;
+		}
+		if ( _manualLeftOwner != null && _manualLeftOwner.IsValid() && _manualLeftOwner._manualLeftArmed && !_manualLeftOwner._manualLeftDragging )
+		{
+			_manualLeftOwner._manualLeftArmed = false;
+			_manualLeftOwner._manualLeftDragging = false;
+			_manualLeftOwner = null;
+		}
+
+		// Always clear the drag-capture overlay on mouse-up.
+		ClearDragCaptureOverlay();
+	}
+
+	void HandleSlotClick( global::Sandbox.VeggaInventory inv, int slotIndex, MouseButtonKind button, bool shiftDown, bool ctrlDown )
+	{
+
+		// Ctrl-transfer requires a second inventory (container) which isn't wired up yet.
+		if ( ctrlDown )
+			return;
+
+		// Shift+click should not do special inventory actions (Rust-like).
+		// We keep shift reserved for mouse3 half/third behavior and shift+RMB send-to-hotbar.
+
+		// Shift+RMB: quick-move between main inventory and hotbar.
+		if ( button == MouseButtonKind.Right && shiftDown && HasSlotItem )
+		{
+			bool moved = SlotIndex >= 0 && SlotIndex < 9 ? TrySendToMainInventory( inv ) : TrySendToHotbar( inv );
+			if ( moved )
+			{
+				return;
+			}
+
+			// Give feedback when shift+RMB does nothing.
+			var def = VeggaItemRegistry.Get( SlotItemId );
+			string name = def?.Name ?? $"Item {SlotItemId}";
+			bool isDisallowed = def != null && def.Category is not ItemCategory.Consumable and not ItemCategory.Equipment;
+			if ( !isDisallowed )
+				VeggaChatManager.Local?.AddLocalMessage( $"Can't move {name} to action bar (no valid slot).", ChatMessageType.Error );
+			if ( DebugInput ) Log.Info( $"[InvUI] Shift+RMB failed slot={SlotIndex} item={SlotItemId}x{SlotItemCount}" );
+		}
+
+		// If we're holding something, clicking a slot attempts to place it.
+		if ( HasHeld && inv == _heldInventory )
+		{
+			if ( slotIndex == _heldSourceSlotIndex )
+			{
+				ClearHeld();
+				return;
+			}
+			TryPlaceHeld( inv, slotIndex, button );
+			return;
+		}
+
+		if ( !HasSlotItem )
+		{
+			// Clicking empty space should hide details.
+			if ( button == MouseButtonKind.Left )
+				OnSelected?.Invoke( -1 );
+			return;
+		}
+
+		int itemId = SlotItemId;
+		int available = SlotItemCount;
+		if ( itemId <= 0 || available <= 0 )
+			return;
+
+		// Left-click is selection/details (NOT pickup). Drag handles moving.
+		// Double-left-click: fill this stack toward max by pulling from other matching stacks.
+		if ( button == MouseButtonKind.Left )
+		{
+			bool isDouble = _lastClickInventory == inv
+				&& _lastClickSlotIndex == slotIndex
+				&& _lastClickItemId == itemId
+				&& _lastClickTime < 0.25f;
+
+			_lastClickInventory = inv;
+			_lastClickSlotIndex = slotIndex;
+			_lastClickItemId = itemId;
+			_lastClickTime = 0;
+
+			if ( isDouble )
+			{
+				FillSlotToMaxFromOtherStacks( inv, slotIndex );
+				available = inv.GetSlotCount( slotIndex );
+			}
+
+			OnSelected?.Invoke( slotIndex );
+			return;
+		}
+
+		// RMB/MMB use the held-stack pickup model for moving/splitting.
+		int takeCount = available;
+		if ( button == MouseButtonKind.Right )		// pickup 1
+			takeCount = 1;
+		else if ( button == MouseButtonKind.Middle )	// pickup half / third
+			takeCount = shiftDown ? Math.Max( 1, available / 3 ) : Math.Max( 1, available / 2 );
+
+		takeCount = Math.Clamp( takeCount, 1, available );
+		SetHeld( inv, slotIndex, itemId, takeCount );
+	}
+
+	bool TrySendToHotbar( global::Sandbox.VeggaInventory inv )
+	{
+		if ( inv == null || !inv.IsValid() )
+			return false;
+		if ( !HasSlotItem )
+			return false;
+
+		const int hotbarCount = 9;
+		int itemId = inv.GetSlotItemId( SlotIndex );
+		int count = inv.GetSlotCount( SlotIndex );
+		if ( itemId <= 0 || count <= 0 )
+			return false;
+
+		// If it's already in the hotbar, no-op.
+		if ( SlotIndex >= 0 && SlotIndex < hotbarCount )
+			return false;
+
+		var def = VeggaItemRegistry.Get( itemId );
+		// Only allow action-bar items that are directly usable (consumables/equipment).
+		if ( def != null && def.Category is not ItemCategory.Consumable and not ItemCategory.Equipment )
+		{
+			VeggaChatManager.Local?.AddLocalMessage( $"{def.Name} can't be placed on the action bar.", ChatMessageType.Error );
+			return false;
+		}
+		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+
+		int hotbarEnd = Math.Min( inv.TotalSlots - 1, hotbarCount - 1 );
+		if ( hotbarEnd < 0 )
+			return false;
+
+		bool didMove = false;
+
+		// 1) Prefer first empty hotbar slot (slot 1, then 2, etc.).
+		for ( int i = 0; i <= hotbarEnd; i++ )
+		{
+			if ( i == SlotIndex ) continue;
+			if ( inv.GetSlotItemId( i ) != 0 ) continue;
+			RequestMoveSlotPredicted( inv, SlotIndex, i );
+			return true;
+		}
+
+		// 2) Hotbar full: merge into existing stacks.
+		if ( maxStack > 1 )
+		{
+			for ( int i = 0; i <= hotbarEnd; i++ )
+			{
+				if ( i == SlotIndex ) continue;
+				if ( inv.GetSlotItemId( i ) != itemId ) continue;
+				int c = inv.GetSlotCount( i );
+				if ( c <= 0 || c >= maxStack ) continue;
+				int canTake = Math.Max( 0, maxStack - c );
+				int want = Math.Min( inv.GetSlotCount( SlotIndex ), canTake );
+				if ( want <= 0 )
+					continue;
+				RequestMoveCountPredicted( inv, SlotIndex, i, want );
+				didMove = true;
+				break;
+			}
+		}
+
+		return didMove;
+	}
+
+	bool TrySendToMainInventory( global::Sandbox.VeggaInventory inv )
+	{
+		if ( inv == null || !inv.IsValid() )
+			return false;
+		if ( !HasSlotItem )
+			return false;
+
+		const int hotbarCount = 9;
+		const int mainStart = 9;
+		if ( SlotIndex < 0 || SlotIndex >= hotbarCount )
+			return false;
+		if ( mainStart >= inv.TotalSlots )
+			return false;
+
+		int itemId = inv.GetSlotItemId( SlotIndex );
+		int count = inv.GetSlotCount( SlotIndex );
+		if ( itemId <= 0 || count <= 0 )
+			return false;
+
+		var def = VeggaItemRegistry.Get( itemId );
+		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+
+		// 1) Prefer first empty main slot.
+		for ( int i = mainStart; i < inv.TotalSlots; i++ )
+		{
+			if ( inv.GetSlotItemId( i ) != 0 ) continue;
+			RequestMoveSlotPredicted( inv, SlotIndex, i );
+			return true;
+		}
+
+		// 2) If no empty slots, try merging.
+		if ( maxStack > 1 )
+		{
+			for ( int i = mainStart; i < inv.TotalSlots; i++ )
+			{
+				if ( inv.GetSlotItemId( i ) != itemId ) continue;
+				int c = inv.GetSlotCount( i );
+				if ( c <= 0 || c >= maxStack ) continue;
+				int canTake = Math.Max( 0, maxStack - c );
+				int want = Math.Min( inv.GetSlotCount( SlotIndex ), canTake );
+				if ( want <= 0 )
+					continue;
+				RequestMoveCountPredicted( inv, SlotIndex, i, want );
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool TryShiftQuickMove( global::Sandbox.VeggaInventory inv )
+	{
+		const int hotbarCount = 9;
+		const int mainStart = 9;
+		const int mainCount = 27;
+
+		int itemId = inv.GetSlotItemId( SlotIndex );
+		int count = inv.GetSlotCount( SlotIndex );
+		if ( itemId <= 0 || count <= 0 )
+			return false;
+
+		var def = VeggaItemRegistry.Get( itemId );
+		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+
+		bool fromHotbar = SlotIndex >= 0 && SlotIndex < hotbarCount;
+		bool fromMain = SlotIndex >= mainStart && SlotIndex < (mainStart + mainCount);
+		if ( !fromHotbar && !fromMain )
+			return false;
+
+		int destStart = fromHotbar ? mainStart : 0;
+		int destCount = fromHotbar ? mainCount : hotbarCount;
+		int destEnd = Math.Min( inv.TotalSlots - 1, destStart + destCount - 1 );
+		if ( destStart < 0 || destStart >= inv.TotalSlots )
+			return false;
+		if ( destEnd < destStart )
+			return false;
+
+		// 1) Fill existing stacks.
+		if ( maxStack > 1 )
+		{
+			for ( int i = destStart; i <= destEnd; i++ )
+			{
+				if ( i == SlotIndex ) continue;
+				if ( inv.GetSlotItemId( i ) != itemId ) continue;
+				int c = inv.GetSlotCount( i );
+				if ( c <= 0 || c >= maxStack ) continue;
+				inv.RequestMoveCount( SlotIndex, i, inv.GetSlotCount( SlotIndex ) );
+				if ( inv.GetSlotItemId( SlotIndex ) != itemId )
+					break;
+				if ( inv.GetSlotCount( SlotIndex ) <= 0 )
+					break;
+			}
+		}
+
+		// 2) If there's still something left, move it to first empty dest slot.
+		if ( inv.GetSlotItemId( SlotIndex ) == itemId && inv.GetSlotCount( SlotIndex ) > 0 )
+		{
+			for ( int i = destStart; i <= destEnd; i++ )
+			{
+				if ( i == SlotIndex ) continue;
+				if ( inv.GetSlotItemId( i ) != 0 ) continue;
+				inv.RequestMoveSlot( SlotIndex, i );
+				return true;
+			}
+			return false;
+		}
+
+		return true;
+	}
+
+	static void FillSlotToMaxFromOtherStacks( global::Sandbox.VeggaInventory inv, int targetSlot )
+	{
+		if ( inv == null || !inv.IsValid() ) return;
+		int itemId = inv.GetSlotItemId( targetSlot );
+		if ( itemId <= 0 ) return;
+		var def = VeggaItemRegistry.Get( itemId );
+		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+		if ( maxStack <= 1 ) return;
+
+		int current = inv.GetSlotCount( targetSlot );
+		int need = maxStack - current;
+		if ( need <= 0 ) return;
+
+		for ( int i = 0; i < inv.TotalSlots && need > 0; i++ )
+		{
+			if ( i == targetSlot ) continue;
+			if ( inv.GetSlotItemId( i ) != itemId ) continue;
+			int fromCount = inv.GetSlotCount( i );
+			if ( fromCount <= 0 ) continue;
+			int move = Math.Min( need, fromCount );
+			if ( move <= 0 ) continue;
+			inv.RequestMoveCount( i, targetSlot, move );
+			need = maxStack - inv.GetSlotCount( targetSlot );
+		}
+	}
+
+	static void TryPlaceHeld( global::Sandbox.VeggaInventory inv, int targetSlot, MouseButtonKind button )
+	{
+		if ( !HasHeld ) return;
+		if ( inv != _heldInventory ) return;
+		if ( targetSlot < 0 || targetSlot >= inv.TotalSlots ) return;
+		if ( _heldSourceSlotIndex < 0 || _heldSourceSlotIndex >= inv.TotalSlots ) { ClearHeld(); return; }
+
+		int src = _heldSourceSlotIndex;
+		int itemId = _heldItemId;
+		if ( inv.GetSlotItemId( src ) != itemId || inv.GetSlotCount( src ) <= 0 ) { ClearHeld(); return; }
+
+		int available = inv.GetSlotCount( src );
+		int holding = Math.Clamp( _heldCount, 1, available );
+		int want = holding;
+		if ( button == MouseButtonKind.Right ) want = 1;
+
+		int beforeCount = inv.GetSlotCount( src );
+		int beforeItem = inv.GetSlotItemId( src );
+
+		if ( want >= beforeCount && button == MouseButtonKind.Left )
+		{
+			RequestMoveSlotPredicted( inv, src, targetSlot );
+			// Swaps can invalidate the held source immediately.
+			ClearHeld();
+			return;
+		}
+
+		RequestMoveCountPredicted( inv, src, targetSlot, want );
+
+		int afterItem = inv.GetSlotItemId( src );
+		int afterCount = afterItem == beforeItem ? inv.GetSlotCount( src ) : 0;
+		int moved = Math.Max( 0, beforeCount - afterCount );
+		_heldCount = Math.Max( 0, holding - moved );
+		if ( _heldCount <= 0 )
+			ClearHeld();
+		else
+			HeldUiRevision++;
 	}
 
 	protected override void OnDragStart( DragEvent e )
 	{
+		// If we're doing a manual RMB/MMB drag, suppress the native drag system.
+		// Otherwise RMB-drag will behave like LMB and move the whole stack.
+		if ( _manualRightOwner == this && _manualRightArmed ) return;
+		if ( _manualSplitOwner == this && _manualSplitArmed ) return;
+
+		if ( HasHeld ) return;
 		if ( !HasItem ) return;
 		if ( DebugNet ) Log.Info( $"[InvUI] DragStart slot={SlotIndex} itemId={ItemId} count={ItemCount} invProxy={Inventory?.Network?.IsProxy} local={Connection.Local?.Id}" );
 
 		_dragSplit = false;
 		_dragCount = ItemCount;
-		// Shift-drag (Run) takes half the stack.
-		// We use "Run" because the project already binds Shift to sprint.
-		if ( (Input.Down( "Run" ) || Input.Down( "run" )) && ItemCount > 1 )
+		_dragMode = DragMode.Full;
+
+		// Right click drag: move/drop a single item from a stack.
+		// (Depends on s&box drag system supporting mouse2 drags; if not, this will simply not trigger.)
+		bool wantSingle = Input.Down( "Attack2" ) || Input.Down( "attack2" )
+			|| Input.Down( "Crouch" ) || Input.Down( "crouch" );
+		bool wantSplit = Input.Down( "InventorySplit" ) || Input.Down( "inventorysplit" );
+		bool shiftDown = Input.Down( "Run" ) || Input.Down( "run" );
+		bool wantSplitThird = wantSplit && shiftDown;
+		bool wantSplitHalf = wantSplit && !shiftDown;
+
+		if ( ItemCount > 1 )
 		{
 			var def = VeggaItemRegistry.Get( ItemId );
 			int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
 			if ( maxStack > 1 )
 			{
-				_dragSplit = true;
-				_dragCount = Math.Max( 1, ItemCount / 2 );
+				if ( wantSingle )
+				{
+					_dragMode = DragMode.Single;
+					_dragSplit = true;
+					_dragCount = 1;
+				}
+				else if ( wantSplitHalf )
+				{
+					_dragMode = DragMode.SplitHalf;
+					_dragSplit = true;
+					_dragCount = Math.Max( 1, (ItemCount + 1) / 2 );
+				}
+				else if ( wantSplitThird )
+				{
+					_dragMode = DragMode.SplitThird;
+					_dragSplit = true;
+					_dragCount = Math.Max( 1, (ItemCount + 2) / 3 );
+				}
 			}
 		}
 
 		AddClass( "dragging" );
+
+		// Ensure we never accumulate multiple drag ghosts.
+		ClearActiveGhost();
 
 		// Make a ghost panel (dragging this Panel itself can disturb layout).
 		_ghost = new Panel();
@@ -133,17 +1860,35 @@
 		}
 		else
 		{
-			// Fallback: simple "$" for cash or "?" for unknown.
-			var label = new Label( IsCash ? "$" : "?" );
-			label.Style.FontSize = 28;
-			label.Style.FontWeight = 900;
-			label.Style.FontColor = IsCash ? new Color( 0.9f, 0.75f, 0.15f, 1f ) : new Color( 1f, 1f, 1f, 1f );
-			label.Style.AlignSelf = Align.Center;
-			label.Style.PointerEvents = PointerEvents.None;
-			_ghost.AddChild( label );
+			var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( ModelPath );
+			if ( tex is not null )
+			{
+				var icon = new Panel();
+				icon.Style.Width = 48;
+				icon.Style.Height = 48;
+				icon.Style.PointerEvents = PointerEvents.None;
+				icon.Style.SetBackgroundImage( tex );
+				icon.Style.Set( "background-size", "contain" );
+				icon.Style.Set( "background-repeat", "no-repeat" );
+				icon.Style.Set( "background-position", "center" );
+				_ghost.AddChild( icon );
+			}
+			else
+			{
+				// Fallback: simple "$" for cash or "?" for unknown.
+				var label = new Label( IsCash ? "$" : "?" );
+				label.Style.FontSize = 28;
+				label.Style.FontWeight = 900;
+				label.Style.FontColor = IsCash ? new Color( 0.9f, 0.75f, 0.15f, 1f ) : new Color( 1f, 1f, 1f, 1f );
+				label.Style.AlignSelf = Align.Center;
+				label.Style.PointerEvents = PointerEvents.None;
+				_ghost.AddChild( label );
+			}
 		}
 
 		FindRootPanel()?.AddChild( _ghost );
+		_activeGhost = _ghost;
+		_activeGhostOwner = this;
 	}
 
 	protected override void OnDrag( DragEvent e )
@@ -178,48 +1923,51 @@
 		_lastHover?.RemoveClass( "moving-to" );
 		_lastHover = null;
 
-		if ( _ghost.IsValid() )
+		if ( _activeGhostOwner == this )
+			ClearActiveGhost();
+		else if ( _ghost.IsValid() )
 		{
 			_ghost.Delete();
 			_ghost = null;
 		}
 
-		if ( Inventory == null || !Inventory.IsValid() )
+		var inv = Inventory;
+		if ( inv == null || !inv.IsValid() || inv.Network?.IsProxy == true || inv.Network?.Owner != Connection.Local )
+			inv = global::Sandbox.VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
 			return;
 
 		// Drop target detection: find the slot under the cursor.
 		var root = FindRootPanel();
 		if ( root == null ) return;
-
-		var target = root.Descendants.OfType<InventoryHudSlot>()
-			.FirstOrDefault( x => x != null && x.IsValid() && x.IsInside( e.ScreenPosition ) );
+		var target = FindSlotUnderCursorInDropZones( root, e.ScreenPosition );
+		bool insideInv = IsInsidePanelByClass( root, "inventory-container", e.ScreenPosition );
+		bool insideHotbar = IsInsidePanelByClass( root, "hotbar-root", e.ScreenPosition );
+		bool outsideAll = !insideInv && !insideHotbar;
 
 		if ( target == null )
 		{
-			// Only treat it as a "world drop" if the cursor is outside the inventory grid.
-			var grid = FindInventoryGridPanel();
-			bool insideGrid = grid != null && grid.IsValid() && grid.IsInside( e.ScreenPosition );
-			if ( insideGrid )
+			// Only world-drop when released outside both containers.
+			if ( outsideAll )
 			{
-				if ( DebugNet ) Log.Info( $"[InvUI] DragEnd slot={SlotIndex} -> no target (inside grid): no-op" );
-				return;
+				var dropCount = Math.Max( 1, _dragCount );
+				if ( DebugNet ) Log.Info( $"[InvUI] DragEnd slot={SlotIndex} -> world drop count={dropCount} mode={_dragMode}" );
+				inv.RequestDropFromSlot( SlotIndex, dropCount );
 			}
-
-			if ( DebugNet ) Log.Info( $"[InvUI] DragEnd slot={SlotIndex} -> world drop count={Math.Max( 1, _dragCount )}" );
-			Inventory.RequestDropFromSlot( SlotIndex, Math.Max( 1, _dragCount ) );
 			return;
 		}
 
-		if ( _dragSplit && target.ItemId <= 0 )
+		// Split/single drags: allow moving count into empty slot OR merging into same-item stack.
+		if ( _dragSplit )
 		{
-			if ( DebugNet ) Log.Info( $"[InvUI] DragEnd split from={SlotIndex} to={target.SlotIndex} count={Math.Max( 1, _dragCount )}" );
-			Inventory.RequestSplitMoveSlot( SlotIndex, target.SlotIndex, Math.Max( 1, _dragCount ) );
+			int moveCount = Math.Max( 1, _dragCount );
+			if ( DebugNet ) Log.Info( $"[InvUI] DragEnd move-count from={SlotIndex} to={target.SlotIndex} count={moveCount} mode={_dragMode}" );
+			RequestMoveCountPredicted( inv, SlotIndex, target.SlotIndex, moveCount );
 			return;
 		}
 
 		if ( DebugNet ) Log.Info( $"[InvUI] DragEnd move from={SlotIndex} to={target.SlotIndex}" );
-
-		Inventory.RequestMoveSlot( SlotIndex, target.SlotIndex );
+		RequestMoveSlotPredicted( inv, SlotIndex, target.SlotIndex );
 	}
 
 	Panel FindInventoryGridPanel()
@@ -234,6 +1982,7 @@
 		return null;
 	}
 
+
 	public static string ResolveCssUrl( string iconPath )
 	{
 		if ( string.IsNullOrWhiteSpace( iconPath ) )
@@ -247,12 +1996,23 @@
 		}
 
 		// For packaged content, s&box resolves paths like "ui/...".
-		// Guard with FileExists so we don't spam Image.Load when a file isn't mounted.
+		// Don't hard-fail on FileExists here: in some editor/package states the
+		// mounted filesystem can lag behind and we'd incorrectly hide valid icons.
 		var normalized = iconPath.TrimStart( '/' );
+		if ( string.IsNullOrWhiteSpace( normalized ) )
+			return null;
+		if ( normalized.EndsWith( "/" ) )
+			return null;
+		// Basic sanity: require a file extension (eg .png/.jpg/.svg) to avoid engine spam.
+		int lastSlash = normalized.LastIndexOf( '/' );
+		int lastDot = normalized.LastIndexOf( '.' );
+		if ( lastDot <= lastSlash )
+			return null;
 		try
 		{
-			if ( !FileSystem.Mounted.FileExists( normalized ) )
-				return null;
+			// Keep the check only as a soft hint.
+			// If it's missing, still return the path and let the UI attempt to load it.
+			_ = FileSystem.Mounted.FileExists( normalized );
 		}
 		catch
 		{
@@ -264,11 +2024,16 @@
 	public override void OnDeleted()
 	{
 		base.OnDeleted();
-		if ( _ghost.IsValid() )
+		if ( _activeGhostOwner == this )
+			ClearActiveGhost();
+		else if ( _ghost.IsValid() )
 		{
 			_ghost.Delete();
 			_ghost = null;
 		}
+		if ( _dragCaptureOwner == this )
+			ClearDragCaptureOverlay();
 		_lastHover = null;
+		_iconPanel = null;
 	}
 }

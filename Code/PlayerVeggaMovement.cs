@@ -92,6 +92,9 @@ public sealed class PlayerVeggaMovement : Component
 	[Sync] public bool IsCrouching { get; private set; } = false;
 	[Sync] public bool IsSprinting { get; private set; } = false;
 
+	// Synced movement velocity so the host can apply inertia to dropped items.
+	[Sync] public Vector3 SyncedVelocity { get; private set; } = Vector3.Zero;
+
 	// 🎯 MULTIPLAYER: Sync body AND head rotation so other clients see where you're facing
 	[Sync] public Angles TargetBodyAngle { get; private set; } = Angles.Zero;
 	[Sync] public Angles TargetHeadAngle { get; set; } = Angles.Zero; // Public set needed for CameraVeggaMovement
@@ -237,6 +240,7 @@ public sealed class PlayerVeggaMovement : Component
 
 		BuildWishVelocity();
 		Move();
+		SyncedVelocity = characterController.Velocity;
 	}
 
 	void BuildWishVelocity()

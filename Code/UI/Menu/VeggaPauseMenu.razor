@@ -285,6 +285,9 @@
 			Log.Info( "[VeggaPauseMenu] OnUpdate started (menu component is running)." );
 		}
 
+		// Keep the global flag in sync every frame (prevents "stuck UI mouse" after hot reload).
+		IsOpenGlobal = _isOpen;
+
 		if ( Input.EscapePressed )
 		{
 			Input.EscapePressed = false;
@@ -321,6 +324,16 @@
 
 			StateHasChanged();
 		}
+	}
+
+	protected override void OnDestroy()
+	{
+		base.OnDestroy();
+		if ( _instance == this )
+			_instance = null;
+		IsOpenGlobal = false;
+		_isOpen = false;
+		_currentView = MenuView.Main;
 	}
 
 	public static void ForceClose()

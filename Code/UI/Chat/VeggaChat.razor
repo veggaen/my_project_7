@@ -157,6 +157,8 @@
 	protected override void OnStart()
 	{
 		_instance = this;
+		// Statics can survive hot reloads; ensure we start from a sane state.
+		IsChatInputOpenGlobal = _isFocused;
 		_chatManager = VeggaChatManager.Local;
 		if ( _chatManager != null )
 		{
@@ -183,8 +185,21 @@
 		_instance.StateHasChanged();
 	}
 
+	protected override void OnDestroy()
+	{
+		base.OnDestroy();
+		if ( _instance == this )
+			_instance = null;
+		IsChatInputOpenGlobal = false;
+		_isFocused = false;
+		_wantFocusEntry = false;
+	}
+
 	protected override void OnUpdate()
 	{
+		// Keep the global flag in sync every frame (prevents "stuck UI mouse" after hot reload).
+		IsChatInputOpenGlobal = _isFocused;
+
 		// Find chat manager if not yet found
 		if ( _chatManager == null )
 		{
@@ -237,14 +252,17 @@
 			// Submit on Enter (or accept suggestion)
 			if ( ChatPressed() )
 			{
-				if ( _suggestions.Count > 0 )
-				{
+				var current = (_inputText ?? "").Trim();
+				bool allowSubmitEvenWithSuggestions =
+					current.Equals( "!hex", StringComparison.OrdinalIgnoreCase )
+					|| current.Equals( "/hex", StringComparison.OrdinalIgnoreCase )
+					|| (current.StartsWith( "!", StringComparison.Ordinal ) || current.StartsWith( "/", StringComparison.Ordinal ))
+						&& current.Contains( ' ' );
+
+				if ( _suggestions.Count > 0 && !allowSubmitEvenWithSuggestions )
 					AcceptSuggestion( _selectedSuggestionIndex );
-				}
 				else
-				{
 					SubmitMessage();
-				}
 			}
 
 			// Cancel on Escape

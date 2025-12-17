@@ -144,31 +144,31 @@ export default function AdminPage() {
       <div className="nav-spacer page-section">
         <div className="page-container max-w-6xl">
           {/* Header */}
-          <div className="mb-8">
+          <div className="mb-12">
             <Reveal>
               <SplitText
                 as="h1"
                 text="Admin Dashboard"
-                className="text-4xl font-bold gradient-text"
+                className="text-4xl font-bold gradient-text mb-2"
                 mode="words"
                 stagger={0.08}
               />
             </Reveal>
             <Reveal delay={0.08}>
-              <p className="text-gray-400">Manage players, view activity, and monitor server stats</p>
+              <p className="text-gray-400 text-lg">Manage players, view activity, and monitor server stats</p>
             </Reveal>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-6 flex-wrap">
+          <div className="flex gap-4 mb-10 flex-wrap">
             {["players", "activity", "stats"].map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t as typeof tab)}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-colors whitespace-nowrap ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 whitespace-nowrap ${
                   tab === t
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20 scale-105"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
                 {t === "players" && "👥 Players"}
@@ -180,32 +180,32 @@ export default function AdminPage() {
 
           {/* Players Tab */}
           {tab === "players" && (
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid lg:grid-cols-3 gap-8">
               {/* Player List */}
-              <div className="lg:col-span-1 card max-h-150 overflow-y-auto">
-                <h3 className="text-xl font-semibold mb-4">
-                  Players ({players.length})
+              <div className="lg:col-span-1 card max-h-150 overflow-y-auto p-6">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  Players <span className="text-sm font-normal text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full">{players.length}</span>
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {players.map((player) => (
                     <div
                       key={player.steamId}
                       onClick={() => fetchPlayerDetails(player.steamId)}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      className={`p-4 rounded-xl cursor-pointer transition-all duration-200 ${
                         selectedPlayer?.steamId === player.steamId
-                          ? "bg-purple-600/20 border border-purple-500"
-                          : "bg-gray-800/50 hover:bg-gray-800"
+                          ? "bg-purple-600/20 border border-purple-500 shadow-md shadow-purple-900/20"
+                          : "bg-gray-800/50 hover:bg-gray-800 border border-transparent hover:border-gray-700"
                       }`}
                     >
-                      <div className="font-medium">{player.preferredUsername}</div>
-                      <div className="text-sm text-gray-500 flex justify-between">
-                        <span>{player.rank}</span>
-                        <span className="text-green-400">${player.money?.toLocaleString()}</span>
+                      <div className="font-bold text-gray-200 mb-1">{player.preferredUsername}</div>
+                      <div className="text-sm text-gray-500 flex justify-between items-center">
+                        <span className="px-2 py-0.5 bg-gray-700/50 rounded text-xs">{player.rank}</span>
+                        <span className="text-green-400 font-mono">${player.money?.toLocaleString()}</span>
                       </div>
                     </div>
                   ))}
                   {players.length === 0 && (
-                    <div className="text-gray-500 text-center py-8">
+                    <div className="text-gray-500 text-center py-12 bg-gray-800/30 rounded-xl border border-dashed border-gray-700">
                       No players found
                     </div>
                   )}
@@ -213,23 +213,25 @@ export default function AdminPage() {
               </div>
 
               {/* Player Details */}
-              <div className="lg:col-span-2 card">
+              <div className="lg:col-span-2 card p-8">
                 {selectedPlayer ? (
                   <>
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-semibold">Player Details</h3>
-                      <div className="flex gap-2 flex-wrap justify-end">
+                    <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-800">
+                      <h3 className="text-2xl font-bold flex items-center gap-3">
+                        <span className="text-3xl">👤</span> Player Details
+                      </h3>
+                      <div className="flex gap-3 flex-wrap justify-end">
                         <button
                           onClick={() => setEditMode(!editMode)}
-                          className="btn btn-info"
+                          className="btn btn-info px-6 py-2.5 shadow-lg shadow-blue-500/10"
                         >
-                          {editMode ? "Cancel" : "✏️ Edit"}
+                          {editMode ? "Cancel" : "✏️ Edit Profile"}
                         </button>
                         <button
                           onClick={() => deletePlayer(selectedPlayer.steamId)}
-                          className="btn btn-danger"
+                          className="btn btn-danger px-6 py-2.5 shadow-lg shadow-red-500/10"
                         >
-                          🗑️ Delete
+                          🗑️ Delete User
                         </button>
                       </div>
                     </div>

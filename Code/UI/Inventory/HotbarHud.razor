@@ -1,0 +1,52 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+
+<root>
+	<div class="hotbar-root">
+		@for ( int i = 0; i < 9; i++ )
+		{
+			int slotIndex = i;
+			<InventoryHudSlot Inventory="@_inventory"
+						 SlotIndex="@slotIndex"
+						 IsSelected="@false"
+						 OnSelected="@((Action<int>)null)" />
+		}
+	</div>
+</root>
+
+@code
+{
+	global::Sandbox.VeggaInventory _inventory;
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine( _inventory?.Revision ?? 0, InventoryHudSlot.HeldUiRevision, InventoryHud.IsOpenGlobal );
+	}
+
+	protected override void OnUpdate()
+	{
+		// Only show/interact for the local player.
+		if ( Connection.Local == null )
+			return;
+
+		if ( Panel != null )
+		{
+			// Keep the hotbar non-interactive unless the inventory UI is open.
+			Panel.Style.PointerEvents = InventoryHud.IsOpenGlobal ? PointerEvents.All : PointerEvents.None;
+			Panel.Style.Opacity = 1;
+
+			// Make hotbar layout-managed (so it shows in the layout editor and can be dragged).
+			var key = VeggaHudLayoutState.KeyHotbar;
+			VeggaHudLayoutApply.Apply( Panel, key, VeggaHudLayoutState.GetDefaultPosition( key ), 1f );
+
+			// Mirror other HUD panels: bump above others when selected in layout mode.
+			Panel.Style.ZIndex = VeggaHudLayoutState.IsActive && VeggaHudLayoutState.SelectedElement == key ? 2601 : 0;
+		}
+
+		if ( _inventory == null || !_inventory.IsValid() || _inventory.Network?.Owner != Connection.Local || _inventory.Network?.IsProxy == true )
+			_inventory = VeggaInventory.Local;
+	}
+}

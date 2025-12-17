@@ -1,5 +1,7 @@
 using Sandbox;
 using System;
+using System.Linq;
+using Sandbox.Money;
 
 namespace Sandbox;
 
@@ -10,6 +12,27 @@ namespace Sandbox;
 public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 {
 	const bool DebugNet = true;
+	const float DefaultOwnDropAutoLootDelaySeconds = 300f;
+
+	/// <summary>
+	/// If this pickup was spawned by a player dropping an inventory item, this is their Connection.Id.
+	/// Used to prevent auto-loot vacuuming your own drops for a short time.
+	/// </summary>
+	[Property, Sync]
+	public Guid DroppedById { get; set; } = Guid.Empty;
+
+	/// <summary>
+	/// Host time (Time.Now) when this pickup was dropped.
+	/// </summary>
+	[Property, Sync]
+	public float DroppedAtTime { get; set; } = 0f;
+
+	/// <summary>
+	/// How long the dropper's auto-loot should ignore this item.
+	/// Manual pickup (E) is still allowed.
+	/// </summary>
+	[Property]
+	public float OwnDropAutoLootDelay { get; set; } = DefaultOwnDropAutoLootDelaySeconds;
 	/// <summary>
 	/// The item ID from VeggaItemRegistry.
 	/// </summary>
@@ -181,6 +204,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		_consumed = true;
 		if ( DebugNet ) Log.Info( $"[Pickup] Granting itemId={ItemId} qty={Quantity} to requesterId={requesterId}" );
 		inventory.RpcGiveItemToOwner( requesterId, ItemId, Quantity );
+		TryPlayPickupSfxFor( requesterId );
 		GameObject.Destroy();
 	}
 
@@ -201,6 +225,17 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 
 		// Check if auto-loot is enabled
 		if ( !collector.AutoLootEnabled ) return;
+
+		// Prevent vacuuming your own drops for a short time.
+		var stats = collector.PlayerStats;
+		var ownerId = stats?.Network?.Owner?.Id ?? Guid.Empty;
+		if ( ownerId != Guid.Empty && DroppedById != Guid.Empty && ownerId == DroppedById )
+		{
+			float delay = OwnDropAutoLootDelay;
+			if ( delay <= 0 ) delay = DefaultOwnDropAutoLootDelaySeconds;
+			if ( Time.Now - DroppedAtTime < delay )
+				return;
+		}
 
 		// Start vacuuming to player
 		var player = collector.GetPlayerOwner();
@@ -289,6 +324,12 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		if ( inventory.AddItem( ItemId, Quantity ) )
 		{
 			if ( DebugNet ) Log.Info( $"[Pickup] Host/local pickup success itemId={ItemId} qty={Quantity}" );
+
+			var stats = player.Components.Get<PlayerVeggaStats>();
+			var ownerId = stats?.Network?.Owner?.Id ?? Guid.Empty;
+			if ( ownerId != Guid.Empty )
+				TryPlayPickupSfxFor( ownerId );
+
 			_consumed = true;
 			GameObject.Destroy();
 		}
@@ -298,6 +339,24 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			Log.Warning( "❌ Inventory add failed - cannot pickup!" );
 			IsBeingLooted = false;
 		}
+	}
+
+	void TryPlayPickupSfxFor( Guid ownerId )
+	{
+		if ( !VeggaSfxSettings.Enabled || !VeggaSfxSettings.PickupEnabled )
+			return;
+
+		// Only play the coin sound for currency pickups (cash, etc).
+		var def = ItemDef;
+		bool isCurrency = ItemId == VeggaCurrency.CashItemId || def?.Category == ItemCategory.Currency;
+		if ( !isCurrency )
+			return;
+
+		var scene = Scene ?? Game.ActiveScene;
+		if ( scene == null ) return;
+		var mgr = scene.GetAllComponents<VeggaChatManager>()
+			.FirstOrDefault( m => m != null && m.IsValid() && m.Network?.Owner?.Id == ownerId );
+		mgr?.RpcPlayUiSound( ownerId, VeggaSfxSettings.CoinSound );
 	}
 
 	/// <summary>

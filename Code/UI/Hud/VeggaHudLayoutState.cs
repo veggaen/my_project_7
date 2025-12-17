@@ -40,6 +40,8 @@ public static class VeggaHudLayoutState
 		{ KeyChat, HudAnchor.BottomLeft },
 		// XP bar sits on the bottom edge and grows upward.
 		{ KeyXpBar, HudAnchor.BottomCenter },
+		// Hotbar sits on the bottom edge.
+		{ KeyHotbar, HudAnchor.BottomCenter },
 		// Player HUD sits on the bottom-left.
 		{ KeyPlayerHud, HudAnchor.BottomLeft },
 		// Inventory should behave OSRS-like: anchored bottom-right.
@@ -65,6 +67,7 @@ public static class VeggaHudLayoutState
 	/// </summary>
 	public const string KeyXpBar = "xp_bar";
 	public const string KeyPlayerHud = "player_hud";
+	public const string KeyHotbar = "hotbar";
 	public const string KeyMinimap = "minimap";
 	public const string KeyChat = "chat";
 	public const string KeyInventory = "inventory";
@@ -112,6 +115,8 @@ public static class VeggaHudLayoutState
 		// Kept away from dead-center to avoid markers/panels stacking.
 		{ KeyPlayerHud, new Vector2( 0.04f, 0.96f ) },
 		{ KeyXpBar, new Vector2( 0.50f, 0.96f ) },
+		// Hotbar sits above the XP bar by default.
+		{ KeyHotbar, new Vector2( 0.50f, 0.90f ) },
 		// Chat shares the bottom-left anchor with the Player HUD, so default it higher to avoid overlap.
 		{ KeyChat, new Vector2( 0.04f, 0.78f ) },
 		{ KeyMinimap, new Vector2( 0.96f, 0.04f ) },
@@ -171,7 +176,7 @@ public static class VeggaHudLayoutState
 	static bool _dirty;
 	static float _nextAutosaveTime;
 
-	const int MaxUndoSteps = 50;
+	const int MaxUndoSteps = 10;
 	static readonly Stack<LayoutSaveData> _undoStack = new();
 	static bool _suspendUndo;
 
@@ -853,6 +858,7 @@ public static class VeggaHudLayoutState
 		{
 			KeyPlayerHud,
 			KeyXpBar,
+			KeyHotbar,
 			KeyChat,
 			KeyMinimap,
 			KeyInventory,
@@ -892,6 +898,7 @@ public static class VeggaHudLayoutState
 		{
 			KeyPlayerHud => "Player Stats (HP/Armor)",
 			KeyXpBar => "XP Bar",
+			KeyHotbar => "Hotbar",
 			KeyChat => "Chat Box",
 			KeyMinimap => "Minimap",
 			KeyInventory => "Inventory",
@@ -940,6 +947,90 @@ public static class VeggaHudLayoutState
 	public static void ResetChatLayoutCommand()
 	{
 		ResetElement( KeyChat );
+	}
+
+	static Vector2 PixelOffsetToNormalized( Vector2 px )
+	{
+		var screen = Screen.Size;
+		float sx = screen.x > 0 ? screen.x : 1920f;
+		float sy = screen.y > 0 ? screen.y : 1080f;
+		return new Vector2( px.x / sx, px.y / sy );
+	}
+
+	static Vector2 InwardOffsetPxForAnchor( HudAnchor anchor, float px )
+	{
+		return anchor switch
+		{
+			HudAnchor.TopLeft => new Vector2( px, px ),
+			HudAnchor.TopCenter => new Vector2( 0f, px ),
+			HudAnchor.TopRight => new Vector2( -px, px ),
+			HudAnchor.MiddleLeft => new Vector2( px, 0f ),
+			HudAnchor.MiddleCenter => new Vector2( 0f, 0f ),
+			HudAnchor.MiddleRight => new Vector2( -px, 0f ),
+			HudAnchor.BottomLeft => new Vector2( px, -px ),
+			HudAnchor.BottomCenter => new Vector2( 0f, -px ),
+			HudAnchor.BottomRight => new Vector2( -px, -px ),
+			_ => new Vector2( 0f, 0f )
+		};
+	}
+
+	/// <summary>
+	/// Soft reset: applies preferred default placements for key HUD panels
+	/// with a small 4px inward offset. Does not wipe unrelated elements.
+	/// </summary>
+	public static void ResetSoft()
+	{
+		EnsureLoaded();
+		PushUndoState();
+
+		_suspendUndo = true;
+		try
+		{
+			var keys = new[]
+			{
+				KeyChat,
+				KeyInventory,
+				KeyXpBar,
+				KeySkillsPanel,
+				KeyPlayerHud
+			};
+
+			// Remove per-resolution overrides for the current screen for these keys.
+			var per = GetElementsForCurrentScreen( create: false );
+			if ( per != null )
+			{
+				foreach ( var k in keys )
+					per.Remove( k );
+			}
+
+			if ( _data.Elements == null )
+				_data.Elements = new Dictionary<string, LayoutEntry>();
+
+			foreach ( var k in keys )
+			{
+				var basePos = GetDefaultPosition( k );
+				var anchor = AnchorByKey.TryGetValue( k, out var a ) ? a : HudAnchor.MiddleCenter;
+				var offsetPx = InwardOffsetPxForAnchor( anchor, 4f );
+				var pos = ClampToAllowedRange( basePos + PixelOffsetToNormalized( offsetPx ) );
+
+				_data.Elements[k] = new LayoutEntry
+				{
+					X = pos.x,
+					Y = pos.y,
+					Preset = -1,
+					Scale = 1f,
+					Anchor = (int)anchor
+				};
+			}
+
+			FileSystem.Data.WriteJson( LayoutFile, _data );
+		}
+		finally
+		{
+			_suspendUndo = false;
+		}
+
+		Log.Info( "[HUD Layout] Reset soft" );
 	}
 
 	public static void ResetAll()

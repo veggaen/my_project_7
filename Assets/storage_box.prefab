@@ -1,9 +1,9 @@
 {
   "RootObject": {
-    "__guid": "a60897c4-4e3f-4bd9-9550-71bcef729351",
+    "__guid": "c49ed43e-535c-4b02-8249-620ea79d37ea",
     "__version": 1,
     "Flags": 0,
-    "Name": "goldbar_200g",
+    "Name": "storage_box",
     "Position": "0,0,0",
     "Rotation": "0,0,0,1",
     "Scale": "1,1,1",
@@ -16,8 +16,28 @@
     "OwnerTransfer": 1,
     "Components": [
       {
+        "__type": "Sandbox.Prop",
+        "__guid": "6ac524e5-213d-4414-96e6-c3bb01d5d621",
+        "__enabled": true,
+        "BodyGroups": 18446744073709551615,
+        "Health": 0,
+        "IsStatic": false,
+        "MaterialGroup": null,
+        "Model": "models/reizer_props/srsp/random_stuff/wood_box/01a/wood_box_01a.vmdl",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "OnPropBreak": null,
+        "OnPropTakeDamage": null,
+        "StartAsleep": false,
+        "Tint": "1,1,1,1"
+      },
+      {
         "__type": "Sandbox.ModelRenderer",
-        "__guid": "1206e36a-e07c-457a-b453-b8b601996954",
+        "__guid": "2f6daaec-62f6-447e-9700-b19cbba033cd",
         "__enabled": true,
         "BodyGroups": 18446744073709551615,
         "CreateAttachments": false,
@@ -25,7 +45,7 @@
         "MaterialGroup": null,
         "MaterialOverride": null,
         "Materials": null,
-        "Model": "goldbar/gold_bar.vmdl",
+        "Model": "models/reizer_props/srsp/random_stuff/wood_box/01a/wood_box_01a.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -43,13 +63,13 @@
       },
       {
         "__type": "Sandbox.ModelCollider",
-        "__guid": "0c88af7c-799b-4da0-999f-948fb9042199",
+        "__guid": "4b1f25c5-0751-490c-9393-b48bf8a19369",
         "__enabled": true,
         "ColliderFlags": 0,
         "Elasticity": null,
         "Friction": null,
         "IsTrigger": false,
-        "Model": "goldbar/gold_bar.vmdl",
+        "Model": "models/reizer_props/srsp/random_stuff/wood_box/01a/wood_box_01a.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -67,14 +87,14 @@
       },
       {
         "__type": "Sandbox.Rigidbody",
-        "__guid": "e30268ea-c554-4261-b147-a69f0cd9b3b1",
+        "__guid": "fd081923-f680-49cf-985e-ab1eed10ad61",
         "__enabled": true,
-        "AngularDamping": 1,
+        "AngularDamping": 0,
         "EnableImpactDamage": true,
         "Gravity": true,
         "GravityScale": 1,
         "ImpactDamage": 0,
-        "LinearDamping": 0.25,
+        "LinearDamping": 0,
         "Locking": {
           "X": false,
           "Y": false,
@@ -84,7 +104,7 @@
           "Roll": false
         },
         "MassCenterOverride": "0,0,0",
-        "MassOverride": 25,
+        "MassOverride": 0,
         "MinImpactDamageSpeed": 500,
         "MotionEnabled": true,
         "OnComponentDestroy": null,
@@ -96,45 +116,9 @@
         "OverrideMassCenter": false,
         "RigidbodyFlags": 0,
         "StartAsleep": false
-      },
-      {
-        "__type": "Sandbox.VeggaPickupItem",
-        "__guid": "d1be29c1-ffac-4b05-aff2-b81885c7a7d6",
-        "__enabled": true,
-        "AutoLootRange": 150,
-        "InteractRange": 50,
-        "ItemId": 100,
-        "OnComponentDestroy": null,
-        "OnComponentDisabled": null,
-        "OnComponentEnabled": null,
-        "OnComponentFixedUpdate": null,
-        "OnComponentStart": null,
-        "OnComponentUpdate": null,
-        "PickupDelay": 0,
-        "Quantity": 1,
-        "ShowFloatingName": true
       }
     ],
-    "Children": [],
-    "__properties": {
-      "NetworkInterpolation": true,
-      "TimeScale": 1,
-      "WantsSystemScene": true,
-      "Metadata": {},
-      "NavMesh": {
-        "Enabled": false,
-        "IncludeStaticBodies": true,
-        "IncludeKeyframedBodies": true,
-        "EditorAutoUpdate": true,
-        "AgentHeight": 64,
-        "AgentRadius": 16,
-        "AgentStepSize": 18,
-        "AgentMaxSlope": 40,
-        "ExcludedBodies": "",
-        "IncludedBodies": ""
-      }
-    },
-    "__variables": []
+    "Children": []
   },
   "ResourceVersion": 2,
   "ShowInMenu": false,
@@ -142,7 +126,7 @@
   "MenuIcon": null,
   "DontBreakAsTemplate": false,
   "__references": [
-    "master.goldbar#95106"
+    "reizer.wood_box_01a#20072"
   ],
   "__version": 2
 }

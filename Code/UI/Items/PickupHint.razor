@@ -1,4 +1,5 @@
 @using Sandbox
+@using Sandbox.Money
 @using Sandbox.UI
 @using System
 @namespace Sandbox.UI
@@ -9,7 +10,7 @@
 	{
 		<div class="pickup-hint @GetRarityClass()">
 			<div class="item-name">@GetItemName()</div>
-			@if ( _targetItem.Quantity > 1 )
+			@if ( _targetItem.Quantity > 1 && !IsCash() )
 			{
 				<div class="item-quantity">x@_targetItem.Quantity</div>
 			}
@@ -65,7 +66,15 @@
 
 	string GetItemName()
 	{
-		return _targetItem?.ItemDef?.Name ?? "Unknown Item";
+		if ( _targetItem == null ) return "Unknown Item";
+		if ( IsCash() )
+			return $"${VeggaCurrency.FormatCompact( _targetItem.Quantity )}";
+		return _targetItem.ItemDef?.Name ?? "Unknown Item";
+	}
+
+	bool IsCash()
+	{
+		return _targetItem != null && _targetItem.ItemId == VeggaCurrency.CashItemId;
 	}
 
 	string GetRarityClass()

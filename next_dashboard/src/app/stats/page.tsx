@@ -134,107 +134,111 @@ export default function StatsPage() {
           </div>
 
           {/* Search */}
-          <div className="card mb-8">
-            <div className="flex gap-4">
+          <div className="card mb-12 p-8">
+            <div className="flex gap-6">
               <input
                 type="text"
                 placeholder="Enter Steam ID (e.g., 76561198012345678)"
                 value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
-                className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none transition-colors"
+                className="flex-1 px-6 py-4 bg-gray-800/50 border border-gray-700 rounded-xl focus:border-purple-500 focus:outline-none transition-all text-lg"
               />
-              <button className="btn btn-primary">
+              <button className="btn btn-primary px-8 text-lg">
                 Search
               </button>
             </div>
-                <p className="text-gray-500 text-sm mt-2">Enter a Steam ID to fetch player stats.</p>
+                <p className="text-gray-500 text-sm mt-3 ml-1">Enter a Steam ID to fetch player stats.</p>
           </div>
 
           {/* Player Header */}
-          <div className="card mb-8">
-            <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-full bg-linear-to-r from-purple-600 to-pink-600 flex items-center justify-center text-4xl">
+          <div className="card mb-12 p-8">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="w-32 h-32 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center text-5xl shadow-lg shadow-purple-500/20 ring-4 ring-purple-500/20">
                 👤
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-3xl font-bold">{player.preferredUsername}</h2>
-                  <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm border border-purple-500/30">
+              <div className="flex-1 text-center md:text-left">
+                <div className="flex flex-col md:flex-row items-center gap-4 mb-2">
+                  <h2 className="text-4xl font-bold text-white">{player.preferredUsername}</h2>
+                  <span className="px-4 py-1.5 bg-purple-500/20 text-purple-300 rounded-full text-sm font-medium border border-purple-500/30">
                     {player.rank}
                   </span>
                 </div>
-                <p className="text-gray-500">Steam: {player.steamName}</p>
-                <p className="text-gray-600 text-sm">ID: {player.steamId}</p>
+                <p className="text-gray-400 text-lg mb-1">Steam: <span className="text-gray-300">{player.steamName}</span></p>
+                <p className="text-gray-600 font-mono text-sm">ID: {player.steamId}</p>
               </div>
-              <div className="text-right">
-                <div className="text-4xl font-bold gradient-text">{combatLevel}</div>
-                <div className="text-gray-500">Combat Level</div>
+              <div className="text-center md:text-right bg-gray-800/30 p-6 rounded-2xl border border-gray-700/30">
+                <div className="text-5xl font-bold gradient-text mb-1">{combatLevel}</div>
+                <div className="text-gray-400 font-medium uppercase tracking-wider text-sm">Combat Level</div>
               </div>
             </div>
           </div>
 
           {/* Quick Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="card text-center">
-              <div className="text-3xl font-bold text-green-400">${formatNumber(player.money)}</div>
-              <div className="text-gray-500">Cash</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+            <div className="card text-center p-6 hover:border-green-500/30 transition-colors group">
+              <div className="text-3xl md:text-4xl font-bold text-green-400 mb-2 group-hover:scale-110 transition-transform">${formatNumber(player.money)}</div>
+              <div className="text-gray-500 font-medium">Cash</div>
             </div>
-            <div className="card text-center">
-              <div className="text-3xl font-bold text-blue-400">${formatNumber(player.bankBalance)}</div>
-              <div className="text-gray-500">Bank</div>
+            <div className="card text-center p-6 hover:border-blue-500/30 transition-colors group">
+              <div className="text-3xl md:text-4xl font-bold text-blue-400 mb-2 group-hover:scale-110 transition-transform">${formatNumber(player.bankBalance)}</div>
+              <div className="text-gray-500 font-medium">Bank</div>
             </div>
-            <div className="card text-center">
-              <div className="text-3xl font-bold text-purple-400">{totalLevel}</div>
-              <div className="text-gray-500">Total Level</div>
+            <div className="card text-center p-6 hover:border-purple-500/30 transition-colors group">
+              <div className="text-3xl md:text-4xl font-bold text-purple-400 mb-2 group-hover:scale-110 transition-transform">{totalLevel}</div>
+              <div className="text-gray-500 font-medium">Total Level</div>
             </div>
-            <div className="card text-center">
-              <div className="text-3xl font-bold text-pink-400">{formatNumber(totalXp)}</div>
-              <div className="text-gray-500">Total XP</div>
+            <div className="card text-center p-6 hover:border-pink-500/30 transition-colors group">
+              <div className="text-3xl md:text-4xl font-bold text-pink-400 mb-2 group-hover:scale-110 transition-transform">{formatNumber(totalXp)}</div>
+              <div className="text-gray-500 font-medium">Total XP</div>
             </div>
           </div>
 
           {/* Combat Stats */}
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div className="card">
-              <h3 className="text-xl font-semibold mb-4">⚔️ Combat Stats</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-2xl font-bold text-red-400">{player.totalKills}</div>
-                  <div className="text-gray-500">Kills</div>
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            <div className="card p-8">
+              <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span className="text-3xl">⚔️</span> Combat Stats
+              </h3>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/30">
+                  <div className="text-3xl font-bold text-red-400 mb-1">{player.totalKills}</div>
+                  <div className="text-gray-500 text-sm uppercase tracking-wide">Kills</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-400">{player.totalDeaths}</div>
-                  <div className="text-gray-500">Deaths</div>
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/30">
+                  <div className="text-3xl font-bold text-gray-400 mb-1">{player.totalDeaths}</div>
+                  <div className="text-gray-500 text-sm uppercase tracking-wide">Deaths</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-yellow-400">{kdRatio}</div>
-                  <div className="text-gray-500">K/D Ratio</div>
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/30">
+                  <div className="text-3xl font-bold text-yellow-400 mb-1">{kdRatio}</div>
+                  <div className="text-gray-500 text-sm uppercase tracking-wide">K/D Ratio</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-blue-400">{player.totalArrests}</div>
-                  <div className="text-gray-500">Arrests</div>
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/30">
+                  <div className="text-3xl font-bold text-blue-400 mb-1">{player.totalArrests}</div>
+                  <div className="text-gray-500 text-sm uppercase tracking-wide">Arrests</div>
                 </div>
               </div>
             </div>
 
-            <div className="card">
-              <h3 className="text-xl font-semibold mb-4">📊 Activity Stats</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-2xl font-bold text-green-400">{formatPlaytime(player.totalPlaytime)}</div>
-                  <div className="text-gray-500">Playtime</div>
+            <div className="card p-8">
+              <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span className="text-3xl">📊</span> Activity Stats
+              </h3>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/30">
+                  <div className="text-3xl font-bold text-green-400 mb-1">{formatPlaytime(player.totalPlaytime)}</div>
+                  <div className="text-gray-500 text-sm uppercase tracking-wide">Playtime</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-purple-400">{player.totalConnects}</div>
-                  <div className="text-gray-500">Sessions</div>
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/30">
+                  <div className="text-3xl font-bold text-purple-400 mb-1">{player.totalConnects}</div>
+                  <div className="text-gray-500 text-sm uppercase tracking-wide">Sessions</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-amber-400">{player.totalQuestsCompleted}</div>
-                  <div className="text-gray-500">Quests Done</div>
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/30">
+                  <div className="text-3xl font-bold text-amber-400 mb-1">{player.totalQuestsCompleted}</div>
+                  <div className="text-gray-500 text-sm uppercase tracking-wide">Quests Done</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-cyan-400">{player.totalPropsSpawned}</div>
-                  <div className="text-gray-500">Props Spawned</div>
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/30">
+                  <div className="text-3xl font-bold text-cyan-400 mb-1">{player.totalPropsSpawned}</div>
+                  <div className="text-gray-500 text-sm uppercase tracking-wide">Props Spawned</div>
                 </div>
               </div>
             </div>

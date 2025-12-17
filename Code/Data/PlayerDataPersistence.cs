@@ -102,6 +102,7 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 
 		var steamId = connection.SteamId.ToString();
 		Log.Info( $"📥 Loading player data for {connection.DisplayName} ({steamId})" );
+		VeggaChatManager.BroadcastSystemMessage( $"{connection.DisplayName} joined the server." );
 
 		// Load player data from JSON
 		var data = PlayerDataManager.LoadPlayerData( steamId );
@@ -135,6 +136,7 @@ public sealed class PlayerDataPersistence : Component, Component.INetworkListene
 
 		var steamId = connection.SteamId.ToString();
 		Log.Info( $"💾 Saving player data for {connection.DisplayName} ({steamId})" );
+		VeggaChatManager.BroadcastSystemMessage( $"{connection.DisplayName} left the server." );
 
 		SavePlayerNow( steamId );
 

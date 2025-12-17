@@ -1,42 +1,95 @@
 using System;
+using System.Linq;
 using Sandbox;
 
-namespace Sandbox.Money;
-
-public static class CashWorldDrop
+namespace Sandbox.Money
 {
-	public static GameObject Spawn( Scene scene, Vector3 position, Rotation rotation, int amount, string ownerSteamId = null )
+	public static class CashWorldDrop
 	{
-		if ( scene == null ) throw new ArgumentNullException( nameof( scene ) );
-		amount = Math.Clamp( amount, 1, int.MaxValue );
+		private const string PrefabPath = "droppedcash.prefab";
 
-		var go = new GameObject( true, "DroppedCash" );
-		go.WorldPosition = position;
-		go.WorldRotation = rotation;
+		public static GameObject Spawn( Scene scene, Vector3 position, Rotation rotation, int amount, Guid droppedById, string ownerSteamId = null )
+		{
+			if ( scene == null )
+				throw new ArgumentNullException( nameof( scene ) );
 
-		var renderer = go.Components.Create<ModelRenderer>();
+			amount = Math.Clamp( amount, 1, int.MaxValue );
 
-		var cash = go.Components.Create<CashMoneyVeggaSystem>();
-		cash.Amount = amount;
-		if ( !string.IsNullOrWhiteSpace( ownerSteamId ) )
-			cash.SetOwner( ownerSteamId );
+			GameObject go = null;
+			try
+			{
+				// Spawn the actual prefab so it stays in sync with Assets/droppedcash.prefab
+				// and serializes as a prefab instance.
+				go = GameObject.Clone( PrefabPath, new Transform( position, rotation ), scene, startEnabled: false, name: "droppedcash" );
+			}
+			catch
+			{
+				go = null;
+			}
 
-		// Ensure model is set now that Amount is assigned.
-		// (CashMoneyVeggaSystem also updates on update ticks.)
-		renderer.Model = Model.Load( "models/money/single_clean.vmdl" );
+			if ( go == null || !go.IsValid() )
+			{
+				// Fallback: construct a compatible object if the prefab fails to clone.
+				go = new GameObject( true, "droppedcash" );
+				go.WorldPosition = position;
+				go.WorldRotation = rotation;
 
-		var pickup = go.Components.Create<VeggaPickupItem>();
-		pickup.ItemId = VeggaCurrency.CashItemId;
-		pickup.Quantity = amount;
-		pickup.PickupDelay = 0.25f;
+				var renderer = go.Components.Create<ModelRenderer>();
+				renderer.Model = Model.Load( "models/money/single_clean.vmdl" );
 
-		var rb = go.Components.Create<Rigidbody>();
-		rb.Gravity = true;
+				var cashFallback = go.Components.Create<CashMoneyVeggaSystem>();
+				cashFallback.Amount = amount;
+				if ( !string.IsNullOrWhiteSpace( ownerSteamId ) )
+					cashFallback.SetOwner( ownerSteamId );
 
-		var collider = go.Components.Create<SphereCollider>();
-		collider.Radius = 12f;
-		collider.IsTrigger = false;
+				var pickupFallback = go.Components.Create<VeggaPickupItem>();
+				pickupFallback.ItemId = VeggaCurrency.CashItemId;
+				pickupFallback.Quantity = amount;
+				pickupFallback.PickupDelay = 0.25f;
+				if ( droppedById != Guid.Empty )
+					pickupFallback.DroppedById = droppedById;
+				pickupFallback.DroppedAtTime = Time.Now;
 
-		return go;
+				var colliderFallback = go.Components.Create<ModelCollider>();
+				colliderFallback.Model = renderer.Model;
+				colliderFallback.IsTrigger = false;
+
+				var rbFallback = go.Components.Create<Rigidbody>();
+				rbFallback.MotionEnabled = true;
+				rbFallback.Gravity = true;
+
+				return go;
+			}
+
+			// Apply runtime overrides to the prefab instance.
+			var cash = go.Components.Get<CashMoneyVeggaSystem>()
+				?? go.Components.GetAll<CashMoneyVeggaSystem>( FindMode.InDescendants ).FirstOrDefault();
+			if ( cash != null )
+			{
+				cash.Amount = amount;
+				if ( !string.IsNullOrWhiteSpace( ownerSteamId ) )
+					cash.SetOwner( ownerSteamId );
+			}
+
+			var pickup = go.Components.Get<VeggaPickupItem>()
+				?? go.Components.GetAll<VeggaPickupItem>( FindMode.InDescendants ).FirstOrDefault();
+			if ( pickup != null )
+			{
+				pickup.ItemId = VeggaCurrency.CashItemId;
+				pickup.Quantity = amount;
+				if ( pickup.PickupDelay <= 0 )
+					pickup.PickupDelay = 0.25f;
+				if ( droppedById != Guid.Empty )
+					pickup.DroppedById = droppedById;
+				pickup.DroppedAtTime = Time.Now;
+			}
+
+			// Enable after configuration to avoid one-frame defaults.
+			go.Enabled = true;
+			return go;
+		}
+
+		public static GameObject Spawn( Scene scene, Vector3 position, Rotation rotation, int amount, string ownerSteamId = null )
+			=> Spawn( scene, position, rotation, amount, Guid.Empty, ownerSteamId );
 	}
 }

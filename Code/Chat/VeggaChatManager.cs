@@ -114,12 +114,11 @@ public sealed class VeggaChatManager : Component
 
 	protected override void OnStart()
 	{
-		// Register default commands once (static registry)
-		if ( !_defaultCommandsRegistered )
-		{
-			_defaultCommandsRegistered = true;
-			RegisterDefaultCommands();
-		}
+		// Register default commands.
+		// NOTE: We intentionally re-register every time, because statics can survive hot reloads
+		// and stale lambda delegates can throw substitution errors when invoked.
+		_defaultCommandsRegistered = true;
+		RegisterDefaultCommands();
 
 		// Welcome message for the local player (on join).
 		// Keep it local-only so we don't spam everyone.
@@ -132,6 +131,20 @@ public sealed class VeggaChatManager : Component
 			}
 		}
 		catch { }
+	}
+
+	public static void BroadcastSystemMessage( string message )
+	{
+		if ( string.IsNullOrWhiteSpace( message ) )
+			return;
+		if ( !Networking.IsHost )
+			return;
+
+		var mgr = Local;
+		if ( mgr == null || !mgr.IsValid() )
+			return;
+
+		mgr.BroadcastMessage( Guid.NewGuid(), "Server", Guid.Empty, 0UL, message, ChatMessageType.System );
 	}
 
 	void RegisterDefaultCommands()
@@ -226,7 +239,7 @@ public sealed class VeggaChatManager : Component
 		}
 
 		var spawnPos = stats.WorldPosition + stats.WorldRotation.Forward * 40f + Vector3.Up * 20f;
-		CashWorldDrop.Spawn( Scene, spawnPos, stats.WorldRotation, amount, stats.Network?.Owner?.SteamId.ToString() );
+		CashWorldDrop.Spawn( Scene, spawnPos, stats.WorldRotation, amount, stats.Network?.Owner?.Id ?? Guid.Empty, stats.Network?.Owner?.SteamId.ToString() );
 
 		PlayerDataPersistence.MarkPlayerDataChanged( stats.Network?.Owner?.SteamId.ToString() ?? string.Empty );
 		ChatMsg( requesterId, $"Dropped ${amount}.", ChatMessageType.System );
@@ -252,12 +265,33 @@ public sealed class VeggaChatManager : Component
 	}
 
 	[Rpc.Broadcast]
-	void RpcSendSystemMessage( Guid targetConnectionId, string message, ChatMessageType type )
+	public void RpcSendSystemMessage( Guid targetConnectionId, string message, ChatMessageType type )
 	{
 		if ( Connection.Local?.Id != targetConnectionId )
 			return;
 
 		AddLocalMessage( message, type );
+	}
+
+	[Rpc.Broadcast]
+	public void RpcPlayUiSound( Guid targetConnectionId, string soundEvent )
+	{
+		if ( Connection.Local?.Id != targetConnectionId )
+			return;
+		if ( string.IsNullOrWhiteSpace( soundEvent ) )
+			return;
+
+		if ( !VeggaSfxSettings.Enabled )
+			return;
+
+		try
+		{
+			Sound.FromScreen( soundEvent );
+		}
+		catch
+		{
+			// Ignore missing/invalid sound events.
+		}
 	}
 
 	/// <summary>
