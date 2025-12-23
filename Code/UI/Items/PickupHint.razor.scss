@@ -16,7 +16,6 @@ PickupHint {
 	border-radius: 8px;
 	background-color: rgba(0, 0, 0, 0.75);
 	border: 2px solid rgba(255, 255, 255, 0.3);
-	backdrop-filter: blur(8px);
 	animation: hint-in 0.15s ease-out;
 
 	// Rarity border colors

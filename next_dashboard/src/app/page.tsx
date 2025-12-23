@@ -149,10 +149,20 @@ export default function Home() {
                     style={{ backgroundColor: "var(--skill-color)" }}
                   />
                   <div 
-                    className="text-3xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1"
+                    className="text-3xl mb-3 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1"
                     style={{ color: "var(--skill-color)" }}
                   >
-                    {skill.icon}
+                    {skill.icon.startsWith("/") ? (
+                      <Image
+                        src={skill.icon}
+                        alt={`${skill.name} icon`}
+                        width={34}
+                        height={34}
+                        className="object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.35)]"
+                      />
+                    ) : (
+                      skill.icon
+                    )}
                   </div>
                   <div className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors truncate w-full text-center">
                     {skill.name}

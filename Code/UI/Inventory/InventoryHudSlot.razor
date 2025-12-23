@@ -40,7 +40,8 @@
 	{
 		protected override void OnMouseUp( MousePanelEvent e )
 		{
-			base.OnMouseUp( e );
+			try { base.OnMouseUp( e ); }
+			catch ( EntryPointNotFoundException ) { }
 			InventoryHudSlot.FinalizeAnyActiveManualDrag();
 		}
 	}
@@ -130,8 +131,10 @@
 	static InventoryHudSlot _manualSplitOwner;
 	static InventoryHudSlot _manualRightOwner;
 	static InventoryHudSlot _manualLeftOwner;
-	static float _lastManualDragEndAt;
-	static MouseButtonKind _lastManualDragEndButton;
+	// Prevent first-click suppression on fresh level load: default values previously
+	// caused clicks to be ignored for the first ~0.2s.
+	static float _lastManualDragEndAt = -999f;
+	static MouseButtonKind _lastManualDragEndButton = MouseButtonKind.Other;
 
 	Label _countPanel;
 
@@ -468,6 +471,54 @@
 		return null;
 	}
 
+	static bool TryGetFurnaceDropSlot( Panel root, Vector2 screenPos, out int furnaceSlot )
+	{
+		furnaceSlot = -1;
+		if ( root == null ) return false;
+		if ( !WorldContainerUiContext.IsActive ) return false;
+		if ( WorldContainerUiContext.ActiveKind != WorldContainerKind.Furnace ) return false;
+
+		if ( IsInsidePanelByClass( root, "furnace-drop-fuel0", screenPos ) ) { furnaceSlot = global::Sandbox.VeggaFurnace.FuelSlot0; return true; }
+		if ( IsInsidePanelByClass( root, "furnace-drop-fuel1", screenPos ) ) { furnaceSlot = global::Sandbox.VeggaFurnace.FuelSlot1; return true; }
+		if ( IsInsidePanelByClass( root, "furnace-drop-fuel2", screenPos ) ) { furnaceSlot = global::Sandbox.VeggaFurnace.FuelSlot2; return true; }
+		// Back-compat: older UI used a single furnace-drop-fuel.
+		if ( IsInsidePanelByClass( root, "furnace-drop-fuel", screenPos ) ) { furnaceSlot = global::Sandbox.VeggaFurnace.FuelSlot0; return true; }
+		if ( IsInsidePanelByClass( root, "furnace-drop-inputa", screenPos ) ) { furnaceSlot = global::Sandbox.VeggaFurnace.InputSlotA; return true; }
+		if ( IsInsidePanelByClass( root, "furnace-drop-inputb", screenPos ) ) { furnaceSlot = global::Sandbox.VeggaFurnace.InputSlotB; return true; }
+		if ( IsInsidePanelByClass( root, "furnace-drop-mould", screenPos ) ) { furnaceSlot = global::Sandbox.VeggaFurnace.MouldSlot; return true; }
+
+		return false;
+	}
+
+	static bool IsAllowedItemForFurnaceSlot( int itemId, int furnaceSlot )
+	{
+		if ( itemId <= 0 ) return false;
+		return furnaceSlot switch
+		{
+			global::Sandbox.VeggaFurnace.FuelSlot0 => itemId == VeggaItemIds.LogFull || itemId == VeggaItemIds.LogChopped,
+			global::Sandbox.VeggaFurnace.FuelSlot1 => itemId == VeggaItemIds.LogFull || itemId == VeggaItemIds.LogChopped,
+			global::Sandbox.VeggaFurnace.FuelSlot2 => itemId == VeggaItemIds.LogFull || itemId == VeggaItemIds.LogChopped,
+			global::Sandbox.VeggaFurnace.MouldSlot => itemId == VeggaItemIds.MouldCoin || itemId == VeggaItemIds.MouldGoblet,
+			global::Sandbox.VeggaFurnace.InputSlotA => itemId == VeggaItemIds.GoldOre
+				|| itemId == VeggaItemIds.CoalOre
+				|| itemId == VeggaItemIds.GoldBar200g
+				|| itemId == VeggaItemIds.TinOre
+				|| itemId == VeggaItemIds.CopperOre
+				|| itemId == VeggaItemIds.IronOre
+				|| itemId == VeggaItemIds.TinBar
+				|| itemId == VeggaItemIds.CopperBar,
+			global::Sandbox.VeggaFurnace.InputSlotB => itemId == VeggaItemIds.GoldOre
+				|| itemId == VeggaItemIds.CoalOre
+				|| itemId == VeggaItemIds.GoldBar200g
+				|| itemId == VeggaItemIds.TinOre
+				|| itemId == VeggaItemIds.CopperOre
+				|| itemId == VeggaItemIds.IronOre
+				|| itemId == VeggaItemIds.TinBar
+				|| itemId == VeggaItemIds.CopperBar,
+			_ => false
+		};
+	}
+
 	static MouseButtonKind GetMouseButtonKind( MousePanelEvent e )
 	{
 		if ( e == null ) return MouseButtonKind.Left;
@@ -718,6 +769,7 @@
 			icon.Style.Set( "background-size", "contain" );
 			icon.Style.Set( "background-repeat", "no-repeat" );
 			icon.Style.Set( "background-position", "center" );
+			ApplyIconTint( icon, ItemId );
 			_ghost.AddChild( icon );
 		}
 		else
@@ -733,6 +785,7 @@
 				icon.Style.Set( "background-size", "contain" );
 				icon.Style.Set( "background-repeat", "no-repeat" );
 				icon.Style.Set( "background-position", "center" );
+				ApplyIconTint( icon, ItemId );
 				_ghost.AddChild( icon );
 			}
 			else
@@ -789,6 +842,22 @@
 
 		if ( target == null )
 		{
+			if ( TryGetFurnaceDropSlot( root, mouse, out var furnaceSlot ) )
+			{
+				if ( !IsAllowedItemForFurnaceSlot( SlotItemId, furnaceSlot ) )
+				{
+					var def = VeggaItemRegistry.Get( SlotItemId );
+					string name = def?.Name ?? $"Item {SlotItemId}";
+					VeggaChatManager.Local?.AddLocalMessage( $"{name} can't be placed in that furnace slot.", ChatMessageType.Error );
+					return;
+				}
+
+				bool ok = WorldContainerUiContext.TryDepositFromPlayerInventoryToFurnaceSlot( inv, SlotIndex, SlotItemCount, furnaceSlot );
+				if ( !ok )
+					VeggaChatManager.Local?.AddLocalMessage( "Furnace slot can't accept that right now.", ChatMessageType.Error );
+				return;
+			}
+
 			// Only world-drop when released outside both containers.
 			if ( outsideAll )
 				inv.RequestDropFromSlot( SlotIndex, SlotItemCount );
@@ -999,6 +1068,22 @@
 
 		if ( target == null )
 		{
+			if ( TryGetFurnaceDropSlot( root, mouse, out var furnaceSlot ) )
+			{
+				if ( !IsAllowedItemForFurnaceSlot( SlotItemId, furnaceSlot ) )
+				{
+					var def = VeggaItemRegistry.Get( SlotItemId );
+					string name = def?.Name ?? $"Item {SlotItemId}";
+					VeggaChatManager.Local?.AddLocalMessage( $"{name} can't be placed in that furnace slot.", ChatMessageType.Error );
+					return;
+				}
+
+				bool ok = WorldContainerUiContext.TryDepositFromPlayerInventoryToFurnaceSlot( inv, SlotIndex, 1, furnaceSlot );
+				if ( !ok )
+					VeggaChatManager.Local?.AddLocalMessage( "Furnace slot can't accept that right now.", ChatMessageType.Error );
+				return;
+			}
+
 			// Only world-drop when released outside both containers.
 			if ( outsideAll )
 				inv.RequestDropFromSlot( SlotIndex, 1 );
@@ -1120,6 +1205,21 @@
 			if ( outsideAll )
 			{
 				int dropCount = Math.Max( 1, _manualSplitCount );
+				if ( TryGetFurnaceDropSlot( root, mouse, out var furnaceSlot ) )
+				{
+					if ( !IsAllowedItemForFurnaceSlot( SlotItemId, furnaceSlot ) )
+					{
+						var def = VeggaItemRegistry.Get( SlotItemId );
+						string name = def?.Name ?? $"Item {SlotItemId}";
+						VeggaChatManager.Local?.AddLocalMessage( $"{name} can't be placed in that furnace slot.", ChatMessageType.Error );
+						return;
+					}
+
+					bool ok = WorldContainerUiContext.TryDepositFromPlayerInventoryToFurnaceSlot( inv, SlotIndex, dropCount, furnaceSlot );
+					if ( !ok )
+						VeggaChatManager.Local?.AddLocalMessage( "Furnace slot can't accept that right now.", ChatMessageType.Error );
+					return;
+				}
 				inv.RequestDropFromSlot( SlotIndex, dropCount );
 			}
 			return;
@@ -1161,6 +1261,7 @@
 		if ( !HasItem )
 		{
 			_iconPanel.Style.Set( "background-image", "none" );
+			ApplyIconTint( _iconPanel, 0 );
 			_iconPanel.Style.Dirty();
 			_iconPanel.Text = "";
 			_iconPanel.SetClass( "rendered-thumb", false );
@@ -1169,20 +1270,14 @@
 			return;
 		}
 
-		// Count overlay.
-		if ( IsCash )
+		// Count overlay (all stackables).
+		if ( ItemCount > 1 )
 		{
 			_countPanel.Text = VeggaCurrency.FormatCompact( ItemCount );
 			_countPanel.Style.Set( "display", "flex" );
 		}
-		else if ( ItemCount > 1 )
-		{
-			_countPanel.Text = ItemCount.ToString();
-			_countPanel.Style.Set( "display", "flex" );
-		}
 
-		// IconPath exists: let the Razor inline style drive the icon.
-		// Only clear runtime background if we previously rendered a thumbnail (to avoid clobbering valid PNG icons).
+		// If we have an explicit icon URL, prefer it (SVGs, etc). Works for both stack and non-stack.
 		if ( hasUrl )
 		{
 			// Drive icon URL directly (we no longer use inline Razor style for this).
@@ -1190,10 +1285,11 @@
 			_iconPanel.Style.Set( "background-size", "contain" );
 			_iconPanel.Style.Set( "background-repeat", "no-repeat" );
 			_iconPanel.Style.Set( "background-position", "center" );
+			ApplyIconTint( _iconPanel, ItemId );
 			_iconPanel.Style.Dirty();
 			_iconPanel.Text = "";
 			_iconPanel.SetClass( "rendered-thumb", false );
-			_iconPanel.SetClass( "currency", false );
+			_iconPanel.SetClass( "currency", IsCash );
 			_lastVisualKey = null;
 			return;
 		}
@@ -1209,6 +1305,7 @@
 		if ( tex is null )
 		{
 			_iconPanel.Style.Set( "background-image", "none" );
+			ApplyIconTint( _iconPanel, 0 );
 			_iconPanel.Style.Dirty();
 			_iconPanel.SetClass( "rendered-thumb", false );
 			_iconPanel.SetClass( "currency", IsCash );
@@ -1217,11 +1314,44 @@
 		}
 
 		_iconPanel.Style.SetBackgroundImage( tex );
+		ApplyIconTint( _iconPanel, ItemId );
 		_iconPanel.Style.Dirty();
 		_iconPanel.SetClass( "rendered-thumb", true );
 		_iconPanel.SetClass( "currency", false );
 		_iconPanel.Text = "";
 		_hasRenderedThumb = true;
+	}
+
+	public static void ApplyIconTint( Panel panel, int itemId )
+	{
+		// Disabled: tinting via background-color/blend-mode tints the entire slot square,
+		// which looks bad for thumbnails (magenta/pink blocks). Keeping method so callers compile.
+		if ( panel == null || !panel.IsValid() )
+			return;
+
+		panel.Style.Set( "background-color", "transparent" );
+		panel.Style.Set( "background-blend-mode", "normal" );
+	}
+
+	public static string GetIconTintInlineStyle( int itemId )
+	{
+		return null;
+	}
+
+	static string GetIconTintRgbaCss( int itemId )
+	{
+		// Keep this in sync with world-drop tints and bar prefab tints.
+		return itemId switch
+		{
+			VeggaItemIds.GoldOre or VeggaItemIds.GoldBar200g => "rgba(240,200,64,1)",
+			VeggaItemIds.TinOre or VeggaItemIds.TinBar => "rgba(179,179,191,1)",
+			VeggaItemIds.CopperOre or VeggaItemIds.CopperBar => "rgba(230,140,64,1)",
+			VeggaItemIds.IronOre or VeggaItemIds.IronBar => "rgba(115,115,120,1)",
+			VeggaItemIds.BronzeBar => "rgba(209,158,71,1)",
+			VeggaItemIds.CoalOre => "rgba(45,45,48,1)",
+			VeggaItemIds.SteelBar => "rgba(125,130,140,1)",
+			_ => null
+		};
 	}
 
 	protected override void OnMouseOver( MousePanelEvent e )
@@ -1250,7 +1380,8 @@
 		var btn = GetMouseButtonKind( e );
 		if ( btn != MouseButtonKind.Left )
 			return;
-		if ( _lastManualDragEndButton == MouseButtonKind.Left && (Time.Now - _lastManualDragEndAt) < 0.2f )
+		var dt = Time.Now - _lastManualDragEndAt;
+		if ( _lastManualDragEndButton == MouseButtonKind.Left && dt >= 0f && dt < 0.2f )
 			return;
 
 		var inv = Inventory;
@@ -1267,7 +1398,8 @@
 	protected override void OnRightClick( MousePanelEvent e )
 	{
 		base.OnRightClick( e );
-		if ( _lastManualDragEndButton == MouseButtonKind.Right && (Time.Now - _lastManualDragEndAt) < 0.2f )
+		var dt = Time.Now - _lastManualDragEndAt;
+		if ( _lastManualDragEndButton == MouseButtonKind.Right && dt >= 0f && dt < 0.2f )
 			return;
 
 		// If a manual RMB drag is active anywhere, consume this release to finalize the drag.
@@ -1299,7 +1431,8 @@
 	protected override void OnMiddleClick( MousePanelEvent e )
 	{
 		base.OnMiddleClick( e );
-		if ( _lastManualDragEndButton == MouseButtonKind.Middle && (Time.Now - _lastManualDragEndAt) < 0.2f )
+		var dt = Time.Now - _lastManualDragEndAt;
+		if ( _lastManualDragEndButton == MouseButtonKind.Middle && dt >= 0f && dt < 0.2f )
 			return;
 
 		// If a manual MMB drag is active anywhere, consume this release to finalize the drag.
@@ -1384,6 +1517,10 @@
 			{
 				var def = VeggaItemRegistry.Get( itemId );
 				int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+				if ( maxStack <= 0 ) maxStack = 1;
+				if ( maxStack > VeggaInventory.MaxStackSize ) maxStack = VeggaInventory.MaxStackSize;
+				if ( available > maxStack )
+					available = maxStack;
 				if ( maxStack > 1 )
 					_manualSplitCount = _manualSplitShift ? Math.Max( 1, (available + 2) / 3 ) : Math.Max( 1, (available + 1) / 2 );
 			}
@@ -1417,7 +1554,8 @@
 
 	protected override void OnMouseUp( MousePanelEvent e )
 	{
-		base.OnMouseUp( e );
+		try { base.OnMouseUp( e ); }
+		catch ( EntryPointNotFoundException ) { }
 
 		// End manual drags on mouse-up regardless of the reported button.
 		// Some setups misreport button-up, which previously left the manual drag active
@@ -1467,6 +1605,14 @@
 		// Shift+RMB: quick-move between main inventory and hotbar.
 		if ( button == MouseButtonKind.Right && shiftDown && HasSlotItem )
 		{
+			// If a world container UI is open (furnace/storage), Shift+RMB quick-transfers into it.
+			if ( WorldContainerUiContext.IsActive )
+			{
+				int count = Math.Max( 1, SlotItemCount );
+				if ( WorldContainerUiContext.TryDepositFromPlayerInventory( inv, SlotIndex, count ) )
+					return;
+			}
+
 			bool moved = SlotIndex >= 0 && SlotIndex < 9 ? TrySendToMainInventory( inv ) : TrySendToHotbar( inv );
 			if ( moved )
 			{
@@ -2008,9 +2154,24 @@
 		int lastDot = normalized.LastIndexOf( '.' );
 		if ( lastDot <= lastSlash )
 			return null;
+
+		// SVG icons are allowed, but ONLY if they exist.
+		// This avoids the missing/empty spam that can happen if UI points at non-existent SVGs.
+		if ( normalized.EndsWith( ".svg", StringComparison.OrdinalIgnoreCase ) )
+		{
+			try
+			{
+				return FileSystem.Mounted.FileExists( normalized ) ? normalized : null;
+			}
+			catch
+			{
+				return null;
+			}
+		}
+
 		try
 		{
-			// Keep the check only as a soft hint.
+			// Keep the check only as a soft hint for raster assets.
 			// If it's missing, still return the path and let the UI attempt to load it.
 			_ = FileSystem.Mounted.FileExists( normalized );
 		}

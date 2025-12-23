@@ -55,9 +55,40 @@ public static class VeggaCurrency
 
 	public static string FormatCompact( int amount )
 	{
-		if ( amount >= 1_000_000_000 ) return $"{amount / 1_000_000_000f:0.#}B";
-		if ( amount >= 1_000_000 ) return $"{amount / 1_000_000f:0.#}M";
-		if ( amount >= 1_000 ) return $"{amount / 1_000f:0.#}k";
-		return amount.ToString();
+		// Inventory/UI count formatting rules:
+		// - Under 10,000: show full number (with separators)
+		// - 10,000+: abbreviate with k/m/b
+		// - k: round down to integer (987,886 -> 987k)
+		// - m/b: round down to 1 decimal (2,147,483 -> 2.1m)
+		if ( amount < 0 )
+			return "-" + FormatCompact( -amount );
+
+		const int fullThreshold = 10_000;
+		if ( amount < fullThreshold )
+			return amount.ToString( "N0" );
+
+		if ( amount >= 1_000_000_000 )
+		{
+			float v = TruncateToDecimals( amount / 1_000_000_000f, 1 );
+			return $"{v:0.#}b";
+		}
+		if ( amount >= 1_000_000 )
+		{
+			float v = TruncateToDecimals( amount / 1_000_000f, 1 );
+			return $"{v:0.#}m";
+		}
+
+		// 10,000..999,999
+		return $"{amount / 1_000}k";
+	}
+
+	static float TruncateToDecimals( float value, int decimals )
+	{
+		if ( decimals <= 0 )
+			return MathF.Floor( value );
+		float scale = 1f;
+		for ( int i = 0; i < decimals; i++ )
+			scale *= 10f;
+		return MathF.Floor( value * scale ) / scale;
 	}
 }

@@ -116,6 +116,31 @@
         "OverrideMassCenter": false,
         "RigidbodyFlags": 0,
         "StartAsleep": false
+      },
+      {
+        "__type": "Sandbox.VeggaWorldContainerId",
+        "__guid": "fdcd49c2-8cc1-44d3-84ee-5b85f9f43a8a",
+        "__enabled": true,
+        "ContainerId": "00000000-0000-0000-0000-000000000000",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
+        "__type": "Sandbox.VeggaStorageBox",
+        "__guid": "caa88f72-f4a6-4c69-a870-1ddf3b0e33f1",
+        "__enabled": true,
+        "InteractRange": 160,
+        "Slots": 18,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
       }
     ],
     "Children": []

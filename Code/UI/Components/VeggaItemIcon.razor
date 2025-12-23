@@ -1,0 +1,74 @@
+@using Sandbox
+@using Sandbox.UI
+@namespace Sandbox.UI
+@inherits PanelComponent
+
+<div @ref="_panel" class="@CssClass">@_text</div>
+
+@code
+{
+	[Parameter] public string IconPath { get; set; }
+	[Parameter] public string ModelPath { get; set; }
+	[Parameter] public int ItemId { get; set; } = 0;
+	[Parameter] public int Size { get; set; } = 36;
+	[Parameter] public string CssClass { get; set; } = "sloticon";
+	[Parameter] public string FallbackText { get; set; } = "?";
+
+	Panel _panel;
+	string _text = "";
+	string _key;
+	bool _didInit;
+
+	protected override void OnUpdate()
+	{
+		var force = !_didInit;
+		_didInit = true;
+		UpdateVisual( force );
+	}
+
+	void UpdateVisual( bool force )
+	{
+		if ( _panel == null || !_panel.IsValid() )
+			return;
+
+		var iconUrl = InventoryHudSlot.ResolveCssUrl( IconPath );
+		var key = $"{Size}:{ItemId}:{iconUrl}:{ModelPath}";
+		if ( !force && key == _key )
+			return;
+		_key = key;
+
+		if ( Size > 0 )
+		{
+			_panel.Style.Width = Size;
+			_panel.Style.Height = Size;
+		}
+		_panel.Style.Set( "background-image", "none" );
+		_panel.Style.Set( "background-size", "contain" );
+		_panel.Style.Set( "background-repeat", "no-repeat" );
+		_panel.Style.Set( "background-position", "center" );
+		InventoryHudSlot.ApplyIconTint( _panel, 0 );
+		_panel.Style.Dirty();
+
+		_text = "";
+
+		if ( !string.IsNullOrWhiteSpace( iconUrl ) )
+		{
+			_panel.Style.Set( "background-image", $"url('{iconUrl}')" );
+			InventoryHudSlot.ApplyIconTint( _panel, ItemId );
+			_panel.Style.Dirty();
+			return;
+		}
+
+		// Prefer a rendered model thumbnail when there's no IconPath.
+		var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( ModelPath );
+		if ( tex is not null )
+		{
+			_panel.Style.SetBackgroundImage( tex );
+			InventoryHudSlot.ApplyIconTint( _panel, ItemId );
+			_panel.Style.Dirty();
+			return;
+		}
+
+		_text = FallbackText;
+	}
+}

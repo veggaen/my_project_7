@@ -1,0 +1,391 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Linq
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/code/ui/world/furnacehud.razor.scss" )]
+
+<root>
+	@if ( _isOpen || IsLayoutActive )
+	{
+		<div class="furnace-root">
+			<div class="furnace-panel">
+				<div class="furnace-header">
+					<div class="title">FURNACE</div>
+					@if ( _isOpen )
+					{
+						<button class="close" onclick="@Close">X</button>
+					}
+				</div>
+
+				@{
+					bool hasData = _isOpen && _furnace != null && _furnace.IsValid();
+				}
+
+				<div class="hint">
+					@(hasData ? "Drag logs/ore/bars/mould into the matching slots." : "Layout preview (open a furnace in-game to use it).")
+				</div>
+
+				@if ( hasData )
+				{
+					<div class="progress">
+						<div class="progress-row">
+							<div class="label">@GetJobLabel()</div>
+							<div class="value">@GetJobMeta()</div>
+						</div>
+						<div class="progress-bar">
+							<div class="progress-fill" style="width:@GetProgressWidthCss()"></div>
+						</div>
+					</div>
+				}
+
+				<div class="schematic">
+					<div class="section">
+						<div class="section-label">FUEL</div>
+						<div class="slotrow">
+							<div class="slotbox furnace-drop-fuel0" onclick="@(() => { if ( hasData ) Withdraw( Sandbox.VeggaFurnace.FuelSlot0 ); })">
+								@RenderFurnaceSlot( hasData, Sandbox.VeggaFurnace.FuelSlot0 )
+								@if ( hasData )
+								{
+									<div class="slotmeta">Fuel: @_furnace.FuelSecondsRemaining.ToString("0.0")s</div>
+								}
+							</div>
+							<div class="slotbox furnace-drop-fuel1" onclick="@(() => { if ( hasData ) Withdraw( Sandbox.VeggaFurnace.FuelSlot1 ); })">
+								@RenderFurnaceSlot( hasData, Sandbox.VeggaFurnace.FuelSlot1 )
+							</div>
+							<div class="slotbox furnace-drop-fuel2" onclick="@(() => { if ( hasData ) Withdraw( Sandbox.VeggaFurnace.FuelSlot2 ); })">
+								@RenderFurnaceSlot( hasData, Sandbox.VeggaFurnace.FuelSlot2 )
+							</div>
+						</div>
+					</div>
+
+					<div class="flow">
+						<div class="flow-line"></div>
+						<div class="flow-arrow">↓</div>
+					</div>
+
+					<div class="section">
+						<div class="section-label">INPUT</div>
+						<div class="slotrow">
+							<div class="slotbox furnace-drop-inputa" onclick="@(() => { if ( hasData ) Withdraw( Sandbox.VeggaFurnace.InputSlotA ); })">
+								@RenderFurnaceSlot( hasData, Sandbox.VeggaFurnace.InputSlotA )
+							</div>
+							<div class="slotbox furnace-drop-inputb" onclick="@(() => { if ( hasData ) Withdraw( Sandbox.VeggaFurnace.InputSlotB ); })">
+								@RenderFurnaceSlot( hasData, Sandbox.VeggaFurnace.InputSlotB )
+							</div>
+						</div>
+					</div>
+
+					<div class="flow">
+						<div class="flow-line"></div>
+						<div class="flow-arrow">↓</div>
+					</div>
+
+					<div class="section">
+						<div class="section-label">MOULD</div>
+						<div class="section-sub">(optional)</div>
+						<div class="slotrow">
+							<div class="slotbox furnace-drop-mould" onclick="@(() => { if ( hasData ) Withdraw( Sandbox.VeggaFurnace.MouldSlot ); })">
+								@RenderFurnaceSlot( hasData, Sandbox.VeggaFurnace.MouldSlot )
+							</div>
+						</div>
+					</div>
+
+					<div class="flow">
+						<div class="flow-line"></div>
+						<div class="flow-arrow">↓</div>
+					</div>
+
+					<div class="section">
+						<div class="section-label">OUTPUT</div>
+						<div class="slotrow">
+							@for ( int i = Sandbox.VeggaFurnace.OutputSlot0; i < Sandbox.VeggaFurnace.OutputSlotEndExclusive; i++ )
+							{
+								int slot = i;
+								<div class="slotbox output" onclick="@(() => { if ( hasData ) Withdraw( slot ); })">
+									@RenderFurnaceSlot( hasData, slot )
+								</div>
+							}
+						</div>
+					</div>
+				</div>
+
+				<div class="controls">
+					@if ( hasData )
+					{
+						<button class="btn power" onclick="@ToggleOn">@(_furnace.IsOn ? "TURN OFF" : "TURN ON")</button>
+					}
+					else
+					{
+						<div class="btn power disabled">TURN OFF</div>
+					}
+				</div>
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	static FurnaceHud _instance;
+	static bool _open;
+	static Guid _activeId;
+	string LayoutKey => VeggaHudLayoutState.KeyFurnaceMenu;
+	string SelectedElement => VeggaHudLayoutState.SelectedElement;
+
+	bool _isOpen => _open;
+	VeggaFurnace _furnace;
+
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+
+	protected override void OnStart()
+	{
+		_instance = this;
+		VeggaHudLayoutState.RegisterElement( LayoutKey, "Forge Menu", VeggaHudLayoutState.GetDefaultPosition( LayoutKey ) );
+	}
+
+	public static void Open( Guid furnaceId )
+	{
+		_open = true;
+		_activeId = furnaceId;
+		WorldContainerUiContext.SetActive( WorldContainerKind.Furnace, furnaceId );
+		InventoryHud.ForceOpen();
+		_instance?.StateHasChanged();
+	}
+
+	public static void ForceClose()
+	{
+		_open = false;
+		_activeId = Guid.Empty;
+		WorldContainerUiContext.Clear();
+		_instance?.StateHasChanged();
+	}
+
+	protected override void OnUpdate()
+	{
+		if ( Panel != null )
+		{
+			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_open ? PointerEvents.All : PointerEvents.None);
+			Panel.Style.ZIndex = (IsLayoutActive && SelectedElement == LayoutKey) ? 2601 : 0;
+		}
+		VeggaHudLayoutApply.Apply( Panel, LayoutKey, VeggaHudLayoutState.GetDefaultPosition( LayoutKey ), 1f );
+
+		if ( !_open )
+			return;
+		if ( IsLayoutActive )
+			return;
+
+		if ( Input.Pressed( "InventoryClose" ) )
+		{
+			Close();
+			return;
+		}
+
+		var scene = Scene ?? Game.ActiveScene;
+		if ( scene == null )
+			return;
+
+		_furnace = scene.GetAllComponents<VeggaFurnace>()
+			.FirstOrDefault( f => f != null && f.IsValid() && f.ContainerId == _activeId );
+
+		// Auto-close if furnace vanished.
+		if ( _furnace == null )
+		{
+			Close();
+			return;
+		}
+
+		UpdateFurnaceSlotIcons();
+		// Auto-close if you walk away.
+		var local = PlayerVeggaStats.Local;
+		if ( local != null && local.IsValid() )
+		{
+			float dist = Vector3.DistanceBetween( local.WorldPosition, _furnace.WorldPosition );
+			if ( dist > _furnace.InteractRange + 50f )
+				Close();
+		}
+	}
+
+	void Close()
+	{
+		_open = false;
+		_activeId = Guid.Empty;
+		WorldContainerUiContext.Clear();
+		StateHasChanged();
+	}
+
+	void ToggleOn()
+	{
+		_furnace?.RequestToggleOn();
+	}
+
+	void Withdraw( int slot )
+	{
+		// Take up to 999999 (container will clamp to what's available).
+		_furnace?.RequestWithdrawToPlayer( slot, int.MaxValue );
+	}
+
+	string GetSlotText( int slot )
+	{
+		if ( _furnace == null ) return "";
+		int id = _furnace.GetSlotItemId( slot );
+		int count = _furnace.GetSlotCount( slot );
+		if ( id <= 0 || count <= 0 ) return "(empty)";
+
+		var def = VeggaItemRegistry.Get( id );
+		string name = def?.Name ?? $"Item {id}";
+		return count > 1 ? $"{name} x{count}" : name;
+	}
+
+	RenderFragment RenderFurnaceSlot( bool hasData, int slot ) => __builder =>
+	{
+		if ( !hasData || _furnace == null )
+		{
+			__builder.OpenElement( 0, "div" );
+			__builder.AddAttribute( 1, "class", "empty" );
+			__builder.AddContent( 2, "(empty)" );
+			__builder.CloseElement();
+			return;
+		}
+
+		int id = _furnace.GetSlotItemId( slot );
+		int count = _furnace.GetSlotCount( slot );
+		if ( id <= 0 || count <= 0 )
+		{
+			__builder.OpenElement( 3, "div" );
+			__builder.AddAttribute( 4, "class", "empty" );
+			__builder.AddContent( 5, "(empty)" );
+			__builder.CloseElement();
+			return;
+		}
+
+		var def = VeggaItemRegistry.Get( id );
+		string name = def?.Name ?? $"Item {id}";
+		string countText = count > 1 ? $"x{count}" : string.Empty;
+
+		__builder.OpenElement( 6, "div" );
+		__builder.AddAttribute( 7, "class", "slotcontent" );
+		{
+			__builder.OpenElement( 8, "div" );
+			__builder.AddAttribute( 9, "class", $"sloticon furnace-sloticon-{slot}" );
+			__builder.CloseElement();
+
+			__builder.OpenElement( 10, "div" );
+			__builder.AddAttribute( 11, "class", "slotlabels" );
+			{
+				__builder.OpenElement( 12, "div" );
+				__builder.AddAttribute( 13, "class", "slotname" );
+				__builder.AddContent( 14, name );
+				__builder.CloseElement();
+
+				if ( !string.IsNullOrWhiteSpace( countText ) )
+				{
+					__builder.OpenElement( 15, "div" );
+					__builder.AddAttribute( 16, "class", "slotcount" );
+					__builder.AddContent( 17, countText );
+					__builder.CloseElement();
+				}
+			}
+			__builder.CloseElement();
+		}
+		__builder.CloseElement();
+	};
+
+	void UpdateFurnaceSlotIcons()
+	{
+		if ( Panel == null || !Panel.IsValid() )
+			return;
+		if ( !_open || IsLayoutActive )
+			return;
+		if ( _furnace == null || !_furnace.IsValid() )
+			return;
+
+		for ( int slot = 0; slot < VeggaFurnace.SlotCount; slot++ )
+		{
+			int id = _furnace.GetSlotItemId( slot );
+			int count = _furnace.GetSlotCount( slot );
+			if ( id <= 0 || count <= 0 )
+				id = 0;
+
+			var iconPanel = Panel.Descendants
+				.FirstOrDefault( p => p != null && p.IsValid() && p.HasClass( $"furnace-sloticon-{slot}" ) );
+			if ( iconPanel == null )
+				continue;
+
+			ApplyItemIconToPanel( iconPanel, id );
+		}
+	}
+
+	internal static void ApplyItemIconToPanel( Panel iconPanel, int itemId )
+	{
+		if ( iconPanel == null || !iconPanel.IsValid() )
+			return;
+
+		iconPanel.Style.Set( "background-image", "none" );
+		InventoryHudSlot.ApplyIconTint( iconPanel, 0 );
+
+		if ( itemId > 0 )
+		{
+			var def = VeggaItemRegistry.Get( itemId );
+			var iconUrl = InventoryHudSlot.ResolveCssUrl( def?.IconPath );
+			if ( !string.IsNullOrWhiteSpace( iconUrl ) )
+			{
+				iconPanel.Style.Set( "background-image", $"url('{iconUrl}')" );
+			}
+			else
+			{
+				var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( def?.ModelPath );
+				if ( tex is not null )
+					iconPanel.Style.SetBackgroundImage( tex );
+			}
+
+			InventoryHudSlot.ApplyIconTint( iconPanel, itemId );
+		}
+
+		iconPanel.Style.Dirty();
+	}
+
+	string GetJobLabel()
+	{
+		if ( _furnace == null ) return "";
+		if ( !_furnace.IsOn ) return "Status";
+		return _furnace.ActiveJob == VeggaFurnace.FurnaceJobKind.None ? "Status" : "Smelting";
+	}
+
+	string GetJobMeta()
+	{
+		if ( _furnace == null ) return "";
+		if ( !_furnace.IsOn ) return "OFF";
+		return _furnace.ActiveJob == VeggaFurnace.FurnaceJobKind.None ? "No recipe" : _furnace.ActiveJob.ToString();
+	}
+
+	string GetProgressWidthCss()
+	{
+		if ( _furnace == null ) return "0%";
+		float p = Math.Clamp( _furnace.ActiveJobProgress01, 0f, 1f );
+		return $"{p * 100f:0}%";
+	}
+
+	protected override int BuildHash()
+	{
+		var hash = new HashCode();
+		hash.Add( _open );
+		hash.Add( IsLayoutActive );
+		hash.Add( _activeId );
+		if ( _furnace != null )
+		{
+			hash.Add( _furnace.IsOn );
+			hash.Add( _furnace.FuelSecondsRemaining );
+			hash.Add( _furnace.ActiveJob );
+			hash.Add( _furnace.ActiveJobProgress01 );
+			for ( int i = 0; i < VeggaFurnace.SlotCount; i++ )
+			{
+				hash.Add( _furnace.GetSlotItemId( i ) );
+				hash.Add( _furnace.GetSlotCount( i ) );
+				hash.Add( _furnace.GetSlotDurability( i ) );
+			}
+		}
+		return hash.ToHashCode();
+	}
+}

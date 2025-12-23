@@ -32,25 +32,7 @@
 		_showHint = false;
 		_targetItem = null;
 
-		var camera = Scene.Camera;
-		if ( camera == null ) return;
-
-		// Raycast from screen center
-		var ray = camera.ScreenNormalToRay( new Vector2( 0.5f, 0.5f ) );
-		var tr = Scene.Trace.Ray( ray, 200f )
-			.WithoutTags( "player", "trigger" )
-			.Run();
-
-		if ( !tr.Hit ) return;
-
-		// Check if we hit a pickup item
-		var pickup = tr.GameObject?.Components.Get<VeggaPickupItem>();
-		if ( pickup == null )
-		{
-			// Also check parent
-			pickup = tr.GameObject?.Parent?.Components.Get<VeggaPickupItem>();
-		}
-
+		var pickup = VeggaPickupLook.GetLookedAtPickup( Scene );
 		if ( pickup == null ) return;
 
 		// Check distance

@@ -24,7 +24,6 @@ VeggaChat root {
 	box-shadow: 
 		0 12px 32px rgba(0, 0, 0, 0.6),
 		0 0 0 1px rgba(99, 102, 241, 0.15) inset;
-	backdrop-filter: blur(4px);
 	border-radius: 16px 16px 16px 16px; /* Top corners only */
 
 	&.closed { 

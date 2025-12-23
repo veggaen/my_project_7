@@ -11,6 +11,33 @@
 	{
 		<div class="inventory-root">
 			<div class="inventory-container">
+				@if ( _showItemDetails )
+					{
+						<div class="item-details">
+							<div class="item-details-header">
+								<div class="item-details-title">Item</div>
+								<button class="item-details-close" onclick="@CloseItemDetails">Close</button>
+							</div>
+							@if ( _selectedItemDef != null )
+							{
+								<div class="item-details-top">
+									<div @ref="_selectedIconPanel" class="item-details-icon">@_selectedIconText</div>
+									<div class="item-details-meta">
+										<div class="item-details-name">@_selectedItemDef.Name</div>
+										<div class="item-details-qty">Quantity: @_selectedItemCount</div>
+									</div>
+								</div>
+								@if ( !string.IsNullOrWhiteSpace( _selectedItemDef.Description ) )
+								{
+									<div class="item-details-desc">@_selectedItemDef.Description</div>
+								}
+							}
+							else
+							{
+								<div class="item-details-desc">No item selected.</div>
+							}
+						</div>
+					}
 				<div class="inventory-header">
 					<span class="inventory-title">BAG</span>
 					<span class="inventory-slots">@_usedSlots / @_totalSlots</span>
@@ -34,33 +61,6 @@
 						}
 					</div>
 
-					@if ( _showItemDetails )
-					{
-						<div class="item-details">
-							<div class="item-details-header">
-								<div class="item-details-title">Item</div>
-								<button class="item-details-close" onclick="@CloseItemDetails">Close</button>
-							</div>
-							@if ( _selectedItemDef != null )
-							{
-								<div class="item-details-top">
-									<div @ref="_selectedIconPanel" class="item-details-icon">@_selectedIconText</div>
-									<div class="item-details-meta">
-										<div class="item-details-name">@_selectedItemDef.Name</div>
-										<div class="item-details-qty">Quantity: @(selIsCash ? VeggaCurrency.FormatCompact( _selectedItemCount ) : _selectedItemCount.ToString())</div>
-									</div>
-								</div>
-								@if ( !string.IsNullOrWhiteSpace( _selectedItemDef.Description ) )
-								{
-									<div class="item-details-desc">@_selectedItemDef.Description</div>
-								}
-							}
-							else
-							{
-								<div class="item-details-desc">No item selected.</div>
-							}
-						</div>
-					}
 				</div>
 			</div>
 		</div>
@@ -128,6 +128,14 @@
 		if ( _instance == null ) return;
 		_instance._isOpen = false;
 		_instance._showItemDetails = false;
+		_instance.StateHasChanged();
+	}
+
+	public static void ForceOpen()
+	{
+		IsOpenGlobal = true;
+		if ( _instance == null ) return;
+		_instance._isOpen = true;
 		_instance.StateHasChanged();
 	}
 
@@ -209,6 +217,13 @@
 				_selectedItemDef = null;
 				_showItemDetails = false;
 			}
+			else
+			{
+				// Keep details panel values up to date (merges/splits can change count without re-selecting).
+				_selectedItemId = _inventory.GetSlotItemId( _selectedSlotIndex );
+				_selectedItemCount = _inventory.GetSlotCount( _selectedSlotIndex );
+				_selectedItemDef = VeggaItemRegistry.Get( _selectedItemId );
+			}
 
 			// Get UI settings
 			var uiSettings = VeggaUiSettings.Local;
@@ -287,6 +302,7 @@
 		_selectedIconKey = key;
 
 		_selectedIconPanel.Style.Set( "background-image", "none" );
+		InventoryHudSlot.ApplyIconTint( _selectedIconPanel, 0 );
 		_selectedIconPanel.Style.Dirty();
 
 		var url = InventoryHudSlot.ResolveCssUrl( _selectedItemDef.IconPath );
@@ -296,18 +312,20 @@
 			_selectedIconPanel.Style.Set( "background-size", "contain" );
 			_selectedIconPanel.Style.Set( "background-repeat", "no-repeat" );
 			_selectedIconPanel.Style.Set( "background-position", "center" );
+			InventoryHudSlot.ApplyIconTint( _selectedIconPanel, _selectedItemDef.Id );
 			_selectedIconText = "";
 			_selectedIconPanel.SetClass( "currency", false );
 			return;
 		}
 
-		var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( modelPath, 256 );
+		var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( modelPath );
 		if ( tex is not null )
 		{
 			_selectedIconPanel.Style.SetBackgroundImage( tex );
 			_selectedIconPanel.Style.Set( "background-size", "contain" );
 			_selectedIconPanel.Style.Set( "background-repeat", "no-repeat" );
 			_selectedIconPanel.Style.Set( "background-position", "center" );
+			InventoryHudSlot.ApplyIconTint( _selectedIconPanel, _selectedItemDef.Id );
 			_selectedIconPanel.Style.Dirty();
 			_selectedIconText = "";
 			_selectedIconPanel.SetClass( "currency", false );
@@ -317,6 +335,7 @@
 		bool isCash = _selectedItemId == VeggaCurrency.CashItemId;
 		_selectedIconText = isCash ? "$" : "?";
 		_selectedIconPanel.SetClass( "currency", isCash );
+		InventoryHudSlot.ApplyIconTint( _selectedIconPanel, 0 );
 	}
 
 	string GetSelectedModelPath()

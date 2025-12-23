@@ -1,0 +1,240 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Linq
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/code/ui/world/storagehud.razor.scss" )]
+
+<root>
+	@if ( _isOpen || IsLayoutActive )
+	{
+		<div class="storage-root">
+			<div class="storage-panel">
+				<div class="storage-header">
+					<div class="title">STORAGE BOX</div>
+					@if ( _isOpen )
+					{
+						<button class="close" onclick="@Close">X</button>
+					}
+				</div>
+
+				@if ( !_isOpen || _box == null || !_box.IsValid() )
+				{
+					<div class="hint">Layout preview (open a storage box in-game to use it).</div>
+						<div class="storage-grid">
+							@for ( int i = 0; i < _slots; i++ )
+							{
+								<div class="storage-slot empty">(empty)</div>
+							}
+						</div>
+				}
+				else
+				{
+					<div class="hint">Shift+RMB items in your bag to send to the open storage box.</div>
+						<div class="storage-grid">
+							@for ( int i = 0; i < _slots; i++ )
+							{
+								int slot = i;
+								int id = _box?.GetSlotItemId( slot ) ?? 0;
+								int count = _box?.GetSlotCount( slot ) ?? 0;
+								bool empty = id <= 0 || count <= 0;
+								<div class="storage-slot @(empty ? "empty" : "")" onclick="@(() => Withdraw( slot ))">
+									@if ( empty )
+									{
+										@( "(empty)" )
+									}
+									<div class="sloticon storage-sloticon-@slot"></div>
+									@if ( !empty && count > 1 )
+									{
+										<div class="slotcount">x@count</div>
+									}
+								</div>
+							}
+						</div>
+				}
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	static StorageHud _instance;
+	static bool _open;
+	static Guid _activeId;
+	string LayoutKey => VeggaHudLayoutState.KeyStorageMenu;
+	string SelectedElement => VeggaHudLayoutState.SelectedElement;
+
+	bool _isOpen => _open;
+	VeggaStorageBox _box;
+	int _slots = 24;
+
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+
+	protected override void OnStart()
+	{
+		_instance = this;
+		VeggaHudLayoutState.RegisterElement( LayoutKey, "Storage Menu", VeggaHudLayoutState.GetDefaultPosition( LayoutKey ) );
+	}
+
+	public static void Open( Guid boxId )
+	{
+		_open = true;
+		_activeId = boxId;
+		WorldContainerUiContext.SetActive( WorldContainerKind.StorageBox, boxId );
+		InventoryHud.ForceOpen();
+		_instance?.StateHasChanged();
+	}
+
+	public static void ForceClose()
+	{
+		_open = false;
+		_activeId = Guid.Empty;
+		WorldContainerUiContext.Clear();
+		_instance?.StateHasChanged();
+	}
+
+	protected override void OnUpdate()
+	{
+		if ( Panel != null )
+		{
+			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_open ? PointerEvents.All : PointerEvents.None);
+			Panel.Style.ZIndex = (IsLayoutActive && SelectedElement == LayoutKey) ? 2601 : 0;
+		}
+		VeggaHudLayoutApply.Apply( Panel, LayoutKey, VeggaHudLayoutState.GetDefaultPosition( LayoutKey ), 1f );
+
+		if ( !_open )
+			return;
+		if ( IsLayoutActive )
+			return;
+
+		if ( Input.Pressed( "InventoryClose" ) )
+		{
+			Close();
+			return;
+		}
+
+		var scene = Scene ?? Game.ActiveScene;
+		if ( scene == null )
+			return;
+
+		_box = scene.GetAllComponents<VeggaStorageBox>()
+			.FirstOrDefault( b => b != null && b.IsValid() && b.ContainerId == _activeId );
+
+		if ( _box == null )
+		{
+			Close();
+			return;
+		}
+
+		_slots = _box.Slots;
+
+		UpdateStorageSlotIcons();
+
+		var local = PlayerVeggaStats.Local;
+		if ( local != null && local.IsValid() )
+		{
+			float dist = Vector3.DistanceBetween( local.WorldPosition, _box.WorldPosition );
+			if ( dist > _box.InteractRange + 50f )
+				Close();
+		}
+	}
+
+	void Close()
+	{
+		_open = false;
+		_activeId = Guid.Empty;
+		WorldContainerUiContext.Clear();
+		StateHasChanged();
+	}
+
+	void Withdraw( int slot )
+	{
+		_box?.RequestWithdrawToPlayer( slot, int.MaxValue );
+	}
+
+	string GetSlotText( int slot )
+	{
+		if ( _box == null ) return "";
+		int id = _box.GetSlotItemId( slot );
+		int count = _box.GetSlotCount( slot );
+		if ( id <= 0 || count <= 0 ) return "(empty)";
+		var def = VeggaItemRegistry.Get( id );
+		string name = def?.Name ?? $"Item {id}";
+		return count > 1 ? $"{name} x{count}" : name;
+	}
+
+	void UpdateStorageSlotIcons()
+	{
+		if ( Panel == null || !Panel.IsValid() )
+			return;
+		if ( !_open || IsLayoutActive )
+			return;
+		if ( _box == null || !_box.IsValid() )
+			return;
+
+		for ( int slot = 0; slot < _slots; slot++ )
+		{
+			int id = _box.GetSlotItemId( slot );
+			int count = _box.GetSlotCount( slot );
+			if ( id <= 0 || count <= 0 )
+				id = 0;
+
+			var iconPanel = Panel.Descendants
+				.FirstOrDefault( p => p != null && p.IsValid() && p.HasClass( $"storage-sloticon-{slot}" ) );
+			if ( iconPanel == null )
+				continue;
+
+			ApplyItemIconToPanel( iconPanel, id );
+		}
+	}
+
+	internal static void ApplyItemIconToPanel( Panel iconPanel, int itemId )
+	{
+		if ( iconPanel == null || !iconPanel.IsValid() )
+			return;
+
+		iconPanel.Style.Set( "background-image", "none" );
+		InventoryHudSlot.ApplyIconTint( iconPanel, 0 );
+
+		if ( itemId > 0 )
+		{
+			var def = VeggaItemRegistry.Get( itemId );
+			var iconUrl = InventoryHudSlot.ResolveCssUrl( def?.IconPath );
+			if ( !string.IsNullOrWhiteSpace( iconUrl ) )
+			{
+				iconPanel.Style.Set( "background-image", $"url('{iconUrl}')" );
+			}
+			else
+			{
+				var tex = VeggaItemThumbnailCache.GetOrCreateModelThumbnail( def?.ModelPath );
+				if ( tex is not null )
+					iconPanel.Style.SetBackgroundImage( tex );
+			}
+
+			InventoryHudSlot.ApplyIconTint( iconPanel, itemId );
+		}
+
+		iconPanel.Style.Dirty();
+	}
+
+	protected override int BuildHash()
+	{
+		var hash = new HashCode();
+		hash.Add( _open );
+		hash.Add( IsLayoutActive );
+		hash.Add( _activeId );
+		hash.Add( _slots );
+		if ( _box != null && _box.IsValid() )
+		{
+			for ( int i = 0; i < _slots; i++ )
+			{
+				hash.Add( _box.GetSlotItemId( i ) );
+				hash.Add( _box.GetSlotCount( i ) );
+				hash.Add( _box.GetSlotDurability( i ) );
+			}
+		}
+		return hash.ToHashCode();
+	}
+}

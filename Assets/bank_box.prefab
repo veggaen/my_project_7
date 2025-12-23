@@ -134,6 +134,18 @@
         "OverrideMassCenter": false,
         "RigidbodyFlags": 0,
         "StartAsleep": false
+      },
+      {
+        "__type": "Sandbox.VeggaBankBox",
+        "__guid": "deae77fd-3c73-4bb5-96b5-4e9be3be05c4",
+        "__enabled": true,
+        "InteractRange": 160,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
       }
     ],
     "Children": []

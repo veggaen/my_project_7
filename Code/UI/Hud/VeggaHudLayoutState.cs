@@ -50,6 +50,9 @@ public static class VeggaHudLayoutState
 		{ KeyMinimap, HudAnchor.TopRight },
 		// Skills panel is a list that grows downward.
 		{ KeySkillsPanel, HudAnchor.TopLeft },
+		// World container windows behave like draggable panels.
+		{ KeyFurnaceMenu, HudAnchor.TopLeft },
+		{ KeyStorageMenu, HudAnchor.TopLeft },
 	};
 
 	// Runtime registry for modular HUD "plugins".
@@ -72,6 +75,8 @@ public static class VeggaHudLayoutState
 	public const string KeyChat = "chat";
 	public const string KeyInventory = "inventory";
 	public const string KeySkillsPanel = "skills";
+	public const string KeyFurnaceMenu = "furnace_menu";
+	public const string KeyStorageMenu = "storage_menu";
 
 	/// <summary>
 	/// Available screen positions.
@@ -122,6 +127,9 @@ public static class VeggaHudLayoutState
 		{ KeyMinimap, new Vector2( 0.96f, 0.04f ) },
 		{ KeyInventory, new Vector2( 0.96f, 0.96f ) },
 		{ KeySkillsPanel, new Vector2( 0.70f, 0.10f ) },
+		// World container windows (furnace/storage)
+		{ KeyFurnaceMenu, new Vector2( 0.50f, 0.55f ) },
+		{ KeyStorageMenu, new Vector2( 0.50f, 0.55f ) },
 	};
 
 	/// <summary>
@@ -903,6 +911,8 @@ public static class VeggaHudLayoutState
 			KeyMinimap => "Minimap",
 			KeyInventory => "Inventory",
 			KeySkillsPanel => "Skills",
+			KeyFurnaceMenu => "Forge Menu",
+			KeyStorageMenu => "Storage Menu",
 			_ => key
 		};
 	}

@@ -28,7 +28,6 @@ VeggaPauseMenu {
 		top: 0;
 		width: 100%;
 		height: 100%;
-		backdrop-filter: blur(10px);
 	}
 
 	/* Shared card base */
@@ -48,7 +47,6 @@ VeggaPauseMenu {
 		background-color: rgba(14, 21, 37, 0.78);
 		border: 2px solid rgba(129, 140, 248, 0.25);
 		box-shadow: 0 24px 40px rgba(38, 14, 173, 0.10);
-		backdrop-filter: blur(12px);
 
 		/* Important in flex layouts so children can scroll */
 		min-height: 0;

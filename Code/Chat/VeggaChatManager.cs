@@ -209,6 +209,56 @@ public sealed class VeggaChatManager : Component
 			amount = Math.Max( 1, amount );
 			RpcRequestDropMoney( Connection.Local?.Id ?? Guid.Empty, amount );
 		} );
+
+		// Bank exchange
+		RegisterCommand( "bank", "Exchange gold coins for cash at a bank", "<coins>", ( args ) =>
+		{
+			if ( args.Length < 1 || !int.TryParse( args[0], out var coins ) )
+			{
+				AddLocalMessage( "Usage: /bank <coins>", ChatMessageType.Error );
+				return;
+			}
+
+			coins = Math.Max( 1, coins );
+			RpcRequestBankExchange( Connection.Local?.Id ?? Guid.Empty, coins );
+		} );
+
+		RegisterCommand( "bankset", "Set bank exchange rate and fee", "<rate> <feePercent>", ( args ) =>
+		{
+			if ( args.Length < 2 || !int.TryParse( args[0], out var rate ) || !float.TryParse( args[1], out var feePercent ) )
+			{
+				AddLocalMessage( "Usage: /bankset <rate> <feePercent>", ChatMessageType.Error );
+				return;
+			}
+
+			RpcRequestBankSet( Connection.Local?.Id ?? Guid.Empty, rate, feePercent );
+		}, adminOnly: true );
+
+		RegisterCommand( "note", "Convert logs into noted logs at a bank", "<log|chopped> <count>", ( args ) =>
+		{
+			if ( args.Length < 2 || !int.TryParse( args[1], out var count ) )
+			{
+				AddLocalMessage( "Usage: /note <log|chopped> <count>", ChatMessageType.Error );
+				return;
+			}
+
+			var kind = (args[0] ?? "").Trim().ToLowerInvariant();
+			count = Math.Max( 1, count );
+			RpcRequestNoteLogs( Connection.Local?.Id ?? Guid.Empty, kind, count );
+		} );
+
+		RegisterCommand( "unnote", "Convert noted logs back into logs at a bank", "<log|chopped> <count>", ( args ) =>
+		{
+			if ( args.Length < 2 || !int.TryParse( args[1], out var count ) )
+			{
+				AddLocalMessage( "Usage: /unnote <log|chopped> <count>", ChatMessageType.Error );
+				return;
+			}
+
+			var kind = (args[0] ?? "").Trim().ToLowerInvariant();
+			count = Math.Max( 1, count );
+			RpcRequestUnnoteLogs( Connection.Local?.Id ?? Guid.Empty, kind, count );
+		} );
 	}
 
 	[Rpc.Broadcast]
@@ -243,6 +293,199 @@ public sealed class VeggaChatManager : Component
 
 		PlayerDataPersistence.MarkPlayerDataChanged( stats.Network?.Owner?.SteamId.ToString() ?? string.Empty );
 		ChatMsg( requesterId, $"Dropped ${amount}.", ChatMessageType.System );
+	}
+
+	[Rpc.Broadcast]
+	void RpcRequestBankExchange( Guid requesterId, int coins )
+	{
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) return;
+		if ( coins <= 0 ) return;
+
+		var stats = FindPlayerStatsByConnectionId( requesterId );
+		if ( stats == null || !stats.IsValid() ) return;
+
+		if ( !VeggaBankBox.IsPlayerNearAnyBank( stats, extraRange: 10f ) )
+		{
+			ChatMsg( requesterId, "You must be near a bank to exchange coins.", ChatMessageType.Error );
+			return;
+		}
+
+		var inv = stats.GameObject?.Components.Get<VeggaInventory>();
+		if ( inv == null ) return;
+
+		int availableCoins = VeggaCurrency.GetGoldCoins( inv );
+		if ( availableCoins <= 0 )
+		{
+			ChatMsg( requesterId, "You have no gold coins.", ChatMessageType.Error );
+			return;
+		}
+
+		coins = Math.Min( coins, availableCoins );
+		if ( !Sandbox.Money.VeggaBankExchange.TryCompute( coins, out var grossCash, out var feeCash, out var netCash ) )
+		{
+			ChatMsg( requesterId, "Bank exchange is not available right now.", ChatMessageType.Error );
+			return;
+		}
+
+		if ( !VeggaCurrency.TryRemoveGoldCoins( stats.GameObject, coins ) )
+		{
+			ChatMsg( requesterId, "Could not remove gold coins from inventory.", ChatMessageType.Error );
+			return;
+		}
+
+		if ( !VeggaCurrency.TryAddCash( stats.GameObject, netCash ) )
+		{
+			// Best-effort rollback.
+			VeggaCurrency.TryAddGoldCoins( stats.GameObject, coins );
+			ChatMsg( requesterId, "Not enough inventory space for cash.", ChatMessageType.Error );
+			return;
+		}
+
+		PlayerDataPersistence.MarkPlayerDataChanged( stats.Network?.Owner?.SteamId.ToString() ?? string.Empty );
+		ChatMsg( requesterId, $"Exchanged {coins} coin(s) for ${netCash} (fee ${feeCash}).", ChatMessageType.System );
+	}
+
+	[Rpc.Broadcast]
+	void RpcRequestBankSet( Guid requesterId, int rate, float feePercent )
+	{
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) return;
+		if ( !VeggaAdminManager.IsAdmin( requesterId ) ) return;
+
+		Sandbox.Money.VeggaBankExchange.SetConfig( rate, feePercent );
+		ChatMsg( requesterId, $"Bank exchange updated: rate={Sandbox.Money.VeggaBankExchange.CoinToCashRate} cash/coin, fee={Sandbox.Money.VeggaBankExchange.FeePercent:0.#}%. ", ChatMessageType.System );
+	}
+
+	static bool TryResolveLogKind( string kind, out int logItemId, out int notedItemId, out string displayName )
+	{
+		logItemId = 0;
+		notedItemId = 0;
+		displayName = "";
+
+		kind = (kind ?? "").Trim().ToLowerInvariant();
+		if ( kind is "log" or "logs" or "full" )
+		{
+			logItemId = VeggaItemIds.LogFull;
+			notedItemId = VeggaItemIds.NotedLogFull;
+			displayName = "log";
+			return true;
+		}
+		if ( kind is "chopped" or "chop" or "logchopped" )
+		{
+			logItemId = VeggaItemIds.LogChopped;
+			notedItemId = VeggaItemIds.NotedLogChopped;
+			displayName = "chopped log";
+			return true;
+		}
+
+		return false;
+	}
+
+	[Rpc.Broadcast]
+	void RpcRequestNoteLogs( Guid requesterId, string kind, int count )
+	{
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) return;
+		if ( count <= 0 ) return;
+
+		var stats = FindPlayerStatsByConnectionId( requesterId );
+		if ( stats == null || !stats.IsValid() ) return;
+		if ( !VeggaBankBox.IsPlayerNearAnyBank( stats, extraRange: 10f ) )
+		{
+			ChatMsg( requesterId, "You must be near a bank to note logs.", ChatMessageType.Error );
+			return;
+		}
+
+		if ( !TryResolveLogKind( kind, out var logItemId, out var notedItemId, out var displayName ) )
+		{
+			ChatMsg( requesterId, "Usage: /note <log|chopped> <count>", ChatMessageType.Error );
+			return;
+		}
+
+		var inv = stats.GameObject?.Components.Get<VeggaInventory>();
+		if ( inv == null ) return;
+
+		int available = inv.GetItemCount( logItemId );
+		if ( available <= 0 )
+		{
+			ChatMsg( requesterId, $"You have no {displayName}s to note.", ChatMessageType.Error );
+			return;
+		}
+
+		count = Math.Min( count, available );
+		if ( !inv.RemoveItem( logItemId, count ) )
+		{
+			ChatMsg( requesterId, "Could not remove logs from inventory.", ChatMessageType.Error );
+			return;
+		}
+
+		if ( !inv.AddItem( notedItemId, count ) )
+		{
+			// Rollback best-effort.
+			inv.AddItem( logItemId, count );
+			ChatMsg( requesterId, "Not enough inventory space for noted logs.", ChatMessageType.Error );
+			return;
+		}
+
+		PlayerDataPersistence.MarkPlayerDataChanged( stats.Network?.Owner?.SteamId.ToString() ?? string.Empty );
+		ChatMsg( requesterId, $"Noted {count} {displayName}(s).", ChatMessageType.System );
+	}
+
+	[Rpc.Broadcast]
+	void RpcRequestUnnoteLogs( Guid requesterId, string kind, int count )
+	{
+		if ( !Networking.IsHost ) return;
+		if ( requesterId == Guid.Empty ) return;
+		if ( count <= 0 ) return;
+
+		var stats = FindPlayerStatsByConnectionId( requesterId );
+		if ( stats == null || !stats.IsValid() ) return;
+		if ( !VeggaBankBox.IsPlayerNearAnyBank( stats, extraRange: 10f ) )
+		{
+			ChatMsg( requesterId, "You must be near a bank to unnote logs.", ChatMessageType.Error );
+			return;
+		}
+
+		if ( !TryResolveLogKind( kind, out var logItemId, out var notedItemId, out var displayName ) )
+		{
+			ChatMsg( requesterId, "Usage: /unnote <log|chopped> <count>", ChatMessageType.Error );
+			return;
+		}
+
+		var inv = stats.GameObject?.Components.Get<VeggaInventory>();
+		if ( inv == null ) return;
+
+		int availableNotes = inv.GetItemCount( notedItemId );
+		if ( availableNotes <= 0 )
+		{
+			ChatMsg( requesterId, $"You have no noted {displayName}s.", ChatMessageType.Error );
+			return;
+		}
+
+		count = Math.Min( count, availableNotes );
+		if ( !inv.CanFitItem( logItemId, count ) )
+		{
+			ChatMsg( requesterId, "Not enough inventory space for logs.", ChatMessageType.Error );
+			return;
+		}
+
+		if ( !inv.RemoveItem( notedItemId, count ) )
+		{
+			ChatMsg( requesterId, "Could not remove noted logs.", ChatMessageType.Error );
+			return;
+		}
+
+		if ( !inv.AddItem( logItemId, count ) )
+		{
+			// Rollback best-effort.
+			inv.AddItem( notedItemId, count );
+			ChatMsg( requesterId, "Not enough inventory space for logs.", ChatMessageType.Error );
+			return;
+		}
+
+		PlayerDataPersistence.MarkPlayerDataChanged( stats.Network?.Owner?.SteamId.ToString() ?? string.Empty );
+		ChatMsg( requesterId, $"Unnoted {count} {displayName}(s).", ChatMessageType.System );
 	}
 
 	PlayerVeggaStats FindPlayerStatsByConnectionId( Guid connectionId )
@@ -286,7 +529,10 @@ public sealed class VeggaChatManager : Component
 
 		try
 		{
-			Sound.FromScreen( soundEvent );
+			var scene = Game.ActiveScene;
+			var cam = scene?.Camera;
+			var pos = cam != null ? cam.Transform.Position : Vector3.Zero;
+			Sound.Play( soundEvent, pos );
 		}
 		catch
 		{

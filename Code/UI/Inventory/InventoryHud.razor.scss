@@ -41,7 +41,7 @@ InventoryHud root {
 
 	.inventory-body {
 		display: flex;
-		flex-direction: row;
+		flex-direction: column-reverse;
 		gap: 14px;
 		align-items: flex-start;
 	}
@@ -81,14 +81,16 @@ InventoryHud root {
 	.inventory-grid {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px;
+		gap: 2px;
 		max-height: 400px;
 		padding: 4px;
-		width: 520px;
+		width: 720px;
 	}
 
 	.item-details {
-		width: 280px;
+		display: flex;
+		flex-direction: column;
+		flex: 1 1 auto;
 		padding: 12px 12px;
 		border-radius: 8px;
 		background-color: rgba(15, 23, 42, 0.85);
@@ -145,8 +147,8 @@ InventoryHud root {
 	}
 
 	.item-details-icon {
-		width: 128px;
-		height: 128px;
+		width: 192px;
+		height: 192px;
 		border-radius: 10px;
 		background-color: rgba(2, 6, 23, 0.35);
 		border: 1px solid rgba(148, 163, 184, 0.18);
@@ -195,8 +197,8 @@ InventoryHud root {
 	}
 
 	.inventory-slot {
-		width: 40px;
-		height: 40px;
+		width: 48px;
+		height: 48px;
 		background-color: rgba(20, 20, 30, 0.7);
 		border: 1px solid rgba(255, 255, 255, 0.15);
 		border-radius: 3px;
@@ -234,12 +236,12 @@ InventoryHud root {
 			top: 50%;
 			left: 50%;
 			transform: translate(-50%, -50%);
-			width: 28px;
-			height: 28px;
+			width: 32px;
+			height: 32px;
 			background-size: contain;
 			background-repeat: no-repeat;
 			background-position: center;
-			font-size: 18px;
+			font-size: 20px;
 			pointer-events: none;
 			display: flex;
 			align-items: center;

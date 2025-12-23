@@ -1,0 +1,73 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/code/ui/world/interacthint.razor.scss" )]
+
+<root>
+	@if ( _show )
+	{
+		<div class="interact-hint">
+			<span class="key">E</span>
+			<span class="text">@_text</span>
+		</div>
+	}
+</root>
+
+@code
+{
+	bool _show;
+	string _text = "";
+
+	protected override void OnUpdate()
+	{
+		_show = false;
+		_text = "";
+
+		var local = PlayerVeggaStats.Local;
+		if ( local == null || !local.IsValid() ) return;
+
+		var cam = Scene.Camera;
+		if ( cam == null ) return;
+
+		var ray = cam.ScreenNormalToRay( new Vector2( 0.5f, 0.5f ) );
+		var tr = Scene.Trace.Ray( ray, 200f )
+			.WithoutTags( "trigger" )
+			.Run();
+
+		if ( !tr.Hit ) return;
+
+		var obj = tr.GameObject;
+		if ( obj == null ) return;
+
+		var furnace = obj.Components.Get<VeggaFurnace>() ?? obj.Parent?.Components.Get<VeggaFurnace>();
+		if ( furnace != null && furnace.IsValid() )
+		{
+			float dist = Vector3.DistanceBetween( local.WorldPosition, furnace.WorldPosition );
+			if ( dist <= furnace.InteractRange )
+			{
+				_show = true;
+				_text = "Open Furnace";
+				return;
+			}
+		}
+
+		var box = obj.Components.Get<VeggaStorageBox>() ?? obj.Parent?.Components.Get<VeggaStorageBox>();
+		if ( box != null && box.IsValid() )
+		{
+			float dist = Vector3.DistanceBetween( local.WorldPosition, box.WorldPosition );
+			if ( dist <= box.InteractRange )
+			{
+				_show = true;
+				_text = "Open Storage";
+				return;
+			}
+		}
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine( _show, _text );
+	}
+}

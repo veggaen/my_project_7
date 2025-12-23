@@ -1,0 +1,147 @@
+StorageHud,
+StorageHud root {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: flex-start;
+	width: auto;
+	height: auto;
+	overflow: visible;
+	color: #ffffff;
+	pointer-events: none;
+
+	.storage-root {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		justify-content: flex-start;
+		width: auto;
+		height: auto;
+		overflow: visible;
+	}
+
+	.storage-panel {
+		min-width: 520px;
+		padding: 18px 22px;
+		border-radius: 6px;
+		background: linear-gradient(135deg, rgba(10, 10, 20, 0.95) 0%, rgba(20, 20, 35, 0.95) 100%);
+		border: 2px solid rgba(100, 150, 255, 0.30);
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.90);
+		color: #ffffff;
+		font-size: 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		pointer-events: all;
+	}
+
+	.storage-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding-bottom: 8px;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+	}
+
+	.title {
+		font-size: 18px;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: #ffffff;
+		text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+	}
+
+	.close {
+		background-color: rgba(255, 255, 255, 0.08);
+		color: #ffffff;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		padding: 4px 10px;
+		border-radius: 4px;
+		font-weight: 700;
+	}
+
+	.hint {
+		opacity: 0.75;
+		font-size: 12px;
+		color: rgba(226, 232, 240, 0.92);
+	}
+
+	.storage-grid {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 2px;
+		max-height: 420px;
+		overflow: scroll;
+		padding: 4px;
+		width: 720px;
+	}
+
+	.storage-slot {
+		width: 48px;
+		height: 48px;
+		background-color: rgba(20, 20, 30, 0.7);
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		border-radius: 3px;
+		position: relative;
+		cursor: pointer;
+		transition: all 0.1s ease;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: rgba(226, 232, 240, 0.65);
+		font-size: 11px;
+		font-weight: 700;
+		text-align: center;
+		padding: 2px;
+
+		&:hover {
+			background-color: rgba(60, 80, 120, 0.5);
+			border-color: rgba(100, 150, 255, 0.6);
+			transform: scale(1.05);
+		}
+
+		&.empty {
+			cursor: default;
+			opacity: 0.55;
+		}
+
+		.sloticon {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 32px;
+			height: 32px;
+			background-size: contain;
+			background-repeat: no-repeat;
+			background-position: center;
+			pointer-events: none;
+		}
+
+		.slotcount {
+			position: absolute;
+			right: 4px;
+			bottom: 2px;
+			font-size: 12px;
+			font-weight: 800;
+			color: rgba(226, 232, 240, 0.95);
+			text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+			pointer-events: none;
+		}
+	}
+
+	.btn {
+		background-color: rgba(255, 255, 255, 0.08);
+		color: #ffffff;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		padding: 6px 10px;
+		border-radius: 4px;
+		font-weight: 700;
+	}
+
+	.btn.disabled {
+		opacity: 0.35;
+	}
+}

@@ -424,11 +424,27 @@ public static class VeggaAdminManager
 				return;
 			}
 
-			// Parse amount
+			// Determine amount:
+			// - If stackable and amount omitted => 100
+			// - If non-stackable => always 1 (avoid filling inventory)
 			int amount = 1;
+			int maxStack = itemDef.MaxStack;
+			if ( maxStack <= 0 ) maxStack = 1;
+			bool isStackable = maxStack > 1;
 			if ( args.Length > 2 && int.TryParse( args[2], out int parsedAmount ) )
 			{
 				amount = parsedAmount;
+			}
+			else
+			{
+				amount = isStackable ? 100 : 1;
+			}
+
+			if ( amount <= 0 ) amount = 1;
+			if ( !isStackable && amount != 1 )
+			{
+				amount = 1;
+				ChatMsg( executor, $"{itemDef.Name} is non-stackable; giving 1 to avoid filling inventory.", ChatMessageType.Admin );
 			}
 
 			// Get inventory and add item

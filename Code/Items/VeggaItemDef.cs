@@ -71,34 +71,39 @@ public class CraftRecipe
 public static class VeggaItemRegistry
 {
 	private static Dictionary<int, VeggaItemDef> _items = new();
-	private static bool _initialized = false;
 
 	public static void Initialize()
 	{
-		if ( _initialized ) return;
-		_initialized = true;
+		// NOTE:
+		// Hotload can preserve static fields. We re-register the defaults every time
+		// Initialize() is called so edits to item defs apply immediately without
+		// requiring a full restart.
+		// This is cheap (small item set) and prevents stale data like PrefabPath.
+
+		_items ??= new();
 
 		// ---- CURRENCY ----
 		Register( new VeggaItemDef
 		{
-			Id = 1,
+			Id = VeggaItemIds.Cash,
 			Name = "Money",
 			Description = "Fiat currency. Stackable.",
 			ModelPath = "models/money/single_clean.vmdl",
 			Value = 1,
-			MaxStack = int.MaxValue,
+			MaxStack = 100000,
 			Category = ItemCategory.Currency,
 			Rarity = ItemRarity.Common
 		} );
 
 		Register( new VeggaItemDef
 		{
-			Id = 2,
+			Id = VeggaItemIds.GoldCoin,
 			Name = "Gold Coin",
-			Description = "Gold currency. Value: $140 each. Stackable.",
-			ModelPath = "models/items/gold_coin.vmdl",
-			Value = 140,
-			MaxStack = int.MaxValue,
+			Description = "Gold currency. Stackable.",
+			PrefabPath = "goldcoin.prefab",
+			ModelPath = "models/goldcoin/goldcoin.vmdl",
+			Value = 0,
+			MaxStack = 100000,
 			Category = ItemCategory.Currency,
 			Rarity = ItemRarity.Common
 		} );
@@ -106,37 +111,292 @@ public static class VeggaItemRegistry
 		// ---- MATERIALS ----
 		Register( new VeggaItemDef
 		{
-			Id = 100,
-			Name = "200g Gold Bar",
-			Description = "A 200g gold bar. Smelt at a furnace into 200 gold coins.",
+			Id = VeggaItemIds.GoldBar200g,
+			Name = "Gold Bar",
+			Description = "A refined gold bar. Can be turned into coins at a furnace.",
 			ModelPath = "goldbar/gold_bar.vmdl",
 			PrefabPath = "goldbar_200g.prefab",
-			Value = 28000,
+			Value = 0,
 			MaxStack = 1,
 			Category = ItemCategory.Material,
-			Rarity = ItemRarity.Rare,
-			MaxGrams = 200,
-			CraftInto = new List<CraftRecipe>
-			{
-				new CraftRecipe
-				{
-					OutputItemId = 2, // Gold Coin
-					// This mirrors the value above so generic crafting UIs can read it
-					OutputCount = 200,
-					RecipeName = "Smelt into Gold Coins"
-				}
-			}
+			Rarity = ItemRarity.Rare
 		} );
 
-		Log.Info( $"✅ VeggaItemRegistry initialized with {_items.Count} items" );
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.GoldOre,
+			Name = "Gold Ore",
+			Description = "Unrefined ore. Smelt into a gold bar.",
+			ModelPath = "models/props/rock_scatter/rock_scatter_03.vmdl",
+			PrefabPath = "ore_pickup.prefab",
+			// Use model thumbnail (SVGs were producing error/blank icons for some ore items).
+			IconPath = null,
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.ClayOre,
+			Name = "Clay Ore",
+			Description = "Soft mineral-rich clay. (Not smeltable yet.)",
+			ModelPath = "models/props/rock_scatter/rock_scatter_01.vmdl",
+			PrefabPath = "ore_pickup.prefab",
+			IconPath = null,
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.TinOre,
+			Name = "Tin Ore",
+			Description = "Dark heavy ore. Smelt into a tin bar.",
+			ModelPath = "models/props/rock_scatter/rock_scatter_01.vmdl",
+			PrefabPath = "ore_pickup.prefab",
+			IconPath = null,
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Uncommon
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.CopperOre,
+			Name = "Copper Ore",
+			Description = "Reddish-brown ore. Smelt into a copper bar.",
+			ModelPath = "models/props/rock_scatter/rock_scatter_03.vmdl",
+			PrefabPath = "ore_pickup.prefab",
+			IconPath = null,
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Uncommon
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.IronOre,
+			Name = "Iron Ore",
+			Description = "Common ore. Smelt into an iron bar.",
+			ModelPath = "models/props/rock_scatter/rock_scatter_01.vmdl",
+			PrefabPath = "ore_pickup.prefab",
+			IconPath = null,
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.CoalOre,
+			Name = "Coal Ore",
+			Description = "Fuel-rich ore used for making steel.",
+			ModelPath = "models/props/rock_scatter/rock_scatter_01.vmdl",
+			PrefabPath = "ore_pickup.prefab",
+			IconPath = null,
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.TinBar,
+			Name = "Tin Bar",
+			Description = "A refined tin bar.",
+			ModelPath = "goldbar/gold_bar.vmdl",
+			PrefabPath = "tinbar_200g.prefab",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Uncommon
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.CopperBar,
+			Name = "Copper Bar",
+			Description = "A refined copper bar.",
+			ModelPath = "goldbar/gold_bar.vmdl",
+			PrefabPath = "copperbar_200g.prefab",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Uncommon
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.BronzeBar,
+			Name = "Bronze Bar",
+			Description = "A bronze alloy bar made from copper + tin.",
+			ModelPath = "goldbar/gold_bar.vmdl",
+			PrefabPath = "bronzebar_200g.prefab",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Rare
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.IronBar,
+			Name = "Iron Bar",
+			Description = "A refined iron bar.",
+			ModelPath = "goldbar/gold_bar.vmdl",
+			PrefabPath = "ironbar_200g.prefab",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.SteelBar,
+			Name = "Steel Bar",
+			Description = "A steel bar made from iron and coal.",
+			ModelPath = "goldbar/gold_bar.vmdl",
+			PrefabPath = "steelbar_200g.prefab",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Uncommon
+		} );
+
+		// ---- WOOD / FUEL ----
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.LogFull,
+			Name = "Log",
+			Description = "A full log. Can be used as furnace fuel.",
+			PrefabPath = "logs.prefab",
+			ModelPath = "models/log/saunalog.vmdl",
+			// Use model thumbnail instead of remote fish URL (fixes blank icons if fish fetch fails).
+			IconPath = null,
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.LogChopped,
+			Name = "Chopped Log",
+			Description = "Half a log. Can be used as furnace fuel.",
+			PrefabPath = "logchopped.prefab",
+			// Match the chopped-log prefab model so the thumbnail is distinct.
+			ModelPath = "models/logchopped/logchopped.vmdl",
+			// Use model thumbnail instead of remote fish URL (fixes blank icons if fish fetch fails).
+			IconPath = null,
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.NotedLogFull,
+			Name = "Noted Log",
+			Description = "A bank note representing a log. Exchange at a bank.",
+			ModelPath = "models/log/saunalog.vmdl",
+			IconPath = null,
+			Value = 0,
+			MaxStack = 10000,
+			Tradeable = true,
+			Droppable = false,
+			Category = ItemCategory.Misc,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.NotedLogChopped,
+			Name = "Noted Chopped Log",
+			Description = "A bank note representing a chopped log. Exchange at a bank.",
+			ModelPath = "models/logchopped/logchopped.vmdl",
+			IconPath = null,
+			Value = 0,
+			MaxStack = 10000,
+			Tradeable = true,
+			Droppable = false,
+			Category = ItemCategory.Misc,
+			Rarity = ItemRarity.Common
+		} );
+
+		// ---- MOULDS ----
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.MouldBar,
+			Name = "Bar Mould",
+			Description = "A mould used for casting bars.",
+			PrefabPath = "mould_bar.prefab",
+			ModelPath = "models/food-kit/foodkit_plate-rectangle.vmdl",
+			IconPath = "ui/items/mould.svg",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Uncommon
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.MouldCoin,
+			Name = "Coin Mould",
+			Description = "Insert into furnace to mint gold coins from a gold bar.",
+			PrefabPath = "mould_coin.prefab",
+			ModelPath = "models/game_room/deep_plate.vmdl",
+			IconPath = "ui/items/mould.svg",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Uncommon
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.MouldGoblet,
+			Name = "Goblet Mould",
+			Description = "Insert into furnace to cast a gold goblet (consumes 2 gold bars).",
+			PrefabPath = "mould_goblet.prefab",
+			ModelPath = "models/rug/ceramic_vase_02_1k.vmdl",
+			IconPath = "ui/items/mould.svg",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Rare
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.GoldGoblet,
+			Name = "Gold Goblet",
+			Description = "A fancy gold goblet.",
+			PrefabPath = "goldgoblet.prefab",
+			// Let the inventory UI generate a model thumbnail (avoids trying to fetch a non-image URL).
+			IconPath = null,
+			// If this model exists via mounted content/packages, the thumbnail + world drop will use it.
+			ModelPath = "models/3dmodelscc0/medievalpropspack/medieval_goblet/medieval_goblet.vmdl",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Epic
+		} );
 	}
 
 	public static void Register( VeggaItemDef item )
 	{
-		if ( _items.ContainsKey( item.Id ) )
-		{
-			Log.Warning( $"⚠️ Item ID {item.Id} already registered, overwriting" );
-		}
+		// Overwrite silently: Initialize() intentionally re-registers defaults.
 		_items[item.Id] = item;
 	}
 

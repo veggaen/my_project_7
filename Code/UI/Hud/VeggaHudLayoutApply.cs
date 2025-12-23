@@ -35,6 +35,9 @@ public static class VeggaHudLayoutApply
 			VeggaHudLayoutState.KeyXpBar => new Vector2( 520f, 90f ),
 			// Minimap is typically square-ish.
 			VeggaHudLayoutState.KeyMinimap => new Vector2( 260f, 260f ),
+			// World container menus.
+			VeggaHudLayoutState.KeyFurnaceMenu => new Vector2( 560f, 520f ),
+			VeggaHudLayoutState.KeyStorageMenu => new Vector2( 560f, 520f ),
 			_ => FallbackSizePx
 		};
 	}

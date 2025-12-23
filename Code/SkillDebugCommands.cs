@@ -2,6 +2,8 @@ using System;
 using Sandbox;
 using Sandbox.Data;
 
+#nullable enable
+
 namespace Sandbox;
 
 /// <summary>
@@ -22,6 +24,16 @@ namespace Sandbox;
 /// </summary>
 public static class SkillDebugCommands
 {
+	static bool EnsureHost()
+	{
+		if ( !Networking.IsHost )
+		{
+			Log.Warning( "[Reset] Host-only (run it on the server/host)." );
+			return false;
+		}
+		return true;
+	}
+
 	/// <summary>
 	/// Helper: get the local player's PlayerVeggaSkills component.
 	/// Returns null and logs a warning if anything is missing.
@@ -222,6 +234,106 @@ public static class SkillDebugCommands
 	}
 
 	/// <summary>
+	/// Remove all items from your inventory and immediately save.
+	/// Usage: vegga_clear_inventory
+	/// </summary>
+	[ConCmd( "vegga_clear_inventory" )]
+	public static void ClearInventoryCmd()
+	{
+		if ( !EnsureHost() ) return;
+
+		var inv = VeggaInventory.Local;
+		if ( inv == null || !inv.IsValid() )
+		{
+			Log.Warning( "[Reset] No local inventory found." );
+			return;
+		}
+
+		inv.ClearAll();
+		PlayerDataPersistence.SaveLocalNow();
+		Log.Info( "[Reset] Inventory cleared." );
+	}
+
+	[ConCmd( "hex_clear_inventory" )]
+	public static void HexClearInventoryCmd() => ClearInventoryCmd();
+
+	/// <summary>
+	/// Fully reset your player data: inventory, skills, and bank balance.
+	/// This overwrites your save file for the current persistence key (SteamId or editor_local).
+	/// Usage: vegga_reset_me [giveStarterCash]
+	/// Example: vegga_reset_me true
+	/// </summary>
+	[ConCmd( "vegga_reset_me" )]
+	public static void ResetMeCmd( bool giveStarterCash = true )
+	{
+		if ( !EnsureHost() ) return;
+
+		var stats = PlayerVeggaStats.Local;
+		if ( stats is null || !stats.IsValid() )
+		{
+			Log.Warning( "[Reset] PlayerVeggaStats.Local is null." );
+			return;
+		}
+
+		var inv = stats.Components.Get<VeggaInventory>();
+		if ( inv == null || !inv.IsValid() )
+		{
+			Log.Warning( "[Reset] Player has no VeggaInventory." );
+			return;
+		}
+
+		var skills = stats.Components.Get<PlayerVeggaSkills>();
+
+		// Apply runtime reset first, so SaveLocalNow() won't re-save old state.
+		inv.ClearAll();
+		if ( giveStarterCash )
+		{
+			int start = Math.Max( 0, stats.StartMoney );
+			if ( start > 0 )
+				inv.AddItem( Sandbox.Money.VeggaCurrency.CashItemId, start );
+		}
+
+		if ( skills != null && skills.IsValid() )
+		{
+			skills.TestResetAllSkills();
+		}
+
+		// Export fresh save payload.
+		inv.ExportSaveData( out var itemIds, out var itemCounts, out var itemDurability );
+		var skillLevels = new List<int>();
+		var skillXps = new List<int>();
+		if ( skills != null && skills.IsValid() )
+		{
+			skills.ExportSaveData( out skillLevels, out skillXps );
+		}
+
+		string key = PlayerDataPersistence.GetLocalPersistenceKey();
+		var data = new PlayerDataManager.PlayerData
+		{
+			SaveVersion = 5,
+			SteamId = key,
+			Money = 0,
+			BankBalance = 0,
+			InventorySlots = inv.TotalSlots,
+			ItemIds = itemIds,
+			ItemCounts = itemCounts,
+			ItemDurability = itemDurability,
+			SkillLevels = skillLevels,
+			SkillXps = skillXps,
+			HasSavedTransform = false,
+			HasReceivedStarterCash = true
+		};
+
+		PlayerDataManager.SavePlayerData( key, data );
+		PlayerDataPersistence.SaveLocalNow();
+
+		Log.Info( $"[Reset] Player data reset for key '{key}'. giveStarterCash={giveStarterCash}" );
+	}
+
+	[ConCmd( "hex_reset_me" )]
+	public static void HexResetMeCmd( bool giveStarterCash = true ) => ResetMeCmd( giveStarterCash );
+
+	/// <summary>
 	/// Add money to the local player and save immediately.
 	/// Example: vegga_add_money 100
 	/// </summary>
@@ -294,5 +406,56 @@ public static class SkillDebugCommands
 		}
 
 		Log.Info( $"[Money] ========================================" );
+	}
+
+	/// <summary>
+	/// Wipe the local player's persisted gameplay data (inventory + skills) and save immediately.
+	/// Does NOT touch HUD layout/keybinds.
+	/// Host-only.
+	/// Usage: vegga_wipe_me
+	/// </summary>
+	[ConCmd( "vegga_wipe_me" )]
+	public static void WipeMeCmd()
+	{
+		if ( !Networking.IsHost )
+		{
+			Log.Warning( "[Wipe] vegga_wipe_me is host-only (run it on the server/host)." );
+			return;
+		}
+
+		var stats = PlayerVeggaStats.Local;
+		if ( stats is null || !stats.IsValid() )
+		{
+			Log.Warning( "[Wipe] No local PlayerVeggaStats found." );
+			return;
+		}
+
+		var inv = stats.GameObject?.Components.Get<VeggaInventory>();
+		if ( inv != null && inv.IsValid() )
+		{
+			inv.ClearAll();
+			stats.AddMoney( stats.StartMoney );
+		}
+		else
+		{
+			Log.Warning( "[Wipe] No VeggaInventory component found; skipping inventory wipe." );
+		}
+
+		var skills = stats.GameObject?.Components.Get<PlayerVeggaSkills>();
+		if ( skills != null && skills.IsValid() )
+		{
+			var levels = new int[PlayerVeggaSkills.SkillCount];
+			for ( int i = 0; i < levels.Length; i++ )
+				levels[i] = (i == (int)SkillId.Hitpoints) ? 10 : 1;
+
+			skills.LoadSaveData( levels, null );
+		}
+		else
+		{
+			Log.Warning( "[Wipe] No PlayerVeggaSkills component found; skipping skills wipe." );
+		}
+
+		PlayerDataPersistence.SaveLocalNow();
+		Log.Info( "[Wipe] Local player wiped and saved. Rejoin if UI still shows old data." );
 	}
 }

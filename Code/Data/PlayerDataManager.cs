@@ -28,7 +28,7 @@ public static class PlayerDataManager
 	public class PlayerData
 	{
 		// Save schema version (increment when changing format)
-		public int SaveVersion { get; set; } = 3;
+		public int SaveVersion { get; set; } = 5;
 
 		// Identity
 		public string SteamId { get; set; } = "";
@@ -61,11 +61,21 @@ public static class PlayerDataManager
 		public int Money { get; set; }
 		public int BankBalance { get; set; }
 
+		// One-time grants / initialization
+		public bool HasReceivedStarterCash { get; set; } = false;
+
 		// Inventory
 		public int InventorySlots { get; set; }
 		public List<int> ItemIds { get; set; } = new();
 		public List<int> ItemCounts { get; set; } = new();
 		public List<int> ItemDurability { get; set; } = new();
+
+		// Player state (editor stop/start + singleplayer convenience)
+		public bool HasSavedTransform { get; set; } = false;
+		public Vector3 SavedPosition { get; set; }
+		public Rotation SavedRotation { get; set; }
+		public float SavedHealth { get; set; }
+		public float SavedArmor { get; set; }
 
 		// Skills
 		public List<int> SkillLevels { get; set; } = new();
@@ -147,21 +157,27 @@ public static class PlayerDataManager
 				Log.Info( $"📂 New player - no data file found at: {fullPath}" );
 
 				// Return new player data with $500 starting money
-				return new PlayerData
+				var newData = new PlayerData
 				{
 					SteamId = steamId,
-					SaveVersion = 3,
+					SaveVersion = 5,
 					Money = 0,
 					InventorySlots = 96,
 					// Starting cash is now an inventory stack (CashItemId=1)
 					ItemIds = new List<int> { 1 },
 					ItemCounts = new List<int> { 500 },
 					ItemDurability = new List<int> { 0 },
+					HasReceivedStarterCash = true,
+					HasSavedTransform = false,
 					SkillLevels = new List<int>(),
 					SkillXps = new List<int>(),
 					FirstSeen = DateTime.UtcNow,
 					LastSeen = DateTime.UtcNow
 				};
+
+				// Persist immediately so editor Stop->Play doesn't re-create the "new player" every time.
+				SavePlayerData( steamId, newData );
+				return newData;
 			}
 
 			// Try to load main file

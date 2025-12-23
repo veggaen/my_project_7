@@ -116,6 +116,23 @@
         "OverrideMassCenter": false,
         "RigidbodyFlags": 0,
         "StartAsleep": false
+      },
+      {
+        "__type": "Sandbox.VeggaPickupItem",
+        "__guid": "a51a3e67-2f3e-4f96-8d46-2a06c43e9fd0",
+        "__enabled": true,
+        "AutoLootRange": 150,
+        "InteractRange": 100,
+        "ItemId": 200,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "PickupDelay": 0,
+        "Quantity": 1,
+        "ShowFloatingName": true
       }
     ],
     "Children": []

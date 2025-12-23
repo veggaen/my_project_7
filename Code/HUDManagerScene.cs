@@ -93,6 +93,24 @@ public sealed class HUDManagerScene : Component
 	[Property, Group( "Links" )]
 	public SkillsPanel SkillsPanel { get; set; }
 
+	/// <summary>
+	/// Link to the InteractHint component (Press E to open furnace/storage).
+	/// </summary>
+	[Property, Group( "Links" )]
+	public InteractHint InteractHintPanel { get; set; }
+
+	/// <summary>
+	/// Link to the FurnaceHud component.
+	/// </summary>
+	[Property, Group( "Links" )]
+	public FurnaceHud FurnaceHudPanel { get; set; }
+
+	/// <summary>
+	/// Link to the StorageHud component.
+	/// </summary>
+	[Property, Group( "Links" )]
+	public StorageHud StorageHudPanel { get; set; }
+
 	private PlayerVeggaStats _currentPlayerStats;
 
 	protected override void OnStart()
@@ -256,6 +274,42 @@ public sealed class HUDManagerScene : Component
 					existing.Enabled = false;
 				}
 				SkillsPanel = Components.Create<SkillsPanel>();
+			}
+		}
+
+		if ( InteractHintPanel == null )
+		{
+			InteractHintPanel = Components.Get<InteractHint>();
+			if ( InteractHintPanel == null )
+			{
+				var existing = Scene.GetAllComponents<InteractHint>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+					existing.Enabled = false;
+				InteractHintPanel = Components.Create<InteractHint>();
+			}
+		}
+
+		if ( FurnaceHudPanel == null )
+		{
+			FurnaceHudPanel = Components.Get<FurnaceHud>();
+			if ( FurnaceHudPanel == null )
+			{
+				var existing = Scene.GetAllComponents<FurnaceHud>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+					existing.Enabled = false;
+				FurnaceHudPanel = Components.Create<FurnaceHud>();
+			}
+		}
+
+		if ( StorageHudPanel == null )
+		{
+			StorageHudPanel = Components.Get<StorageHud>();
+			if ( StorageHudPanel == null )
+			{
+				var existing = Scene.GetAllComponents<StorageHud>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+					existing.Enabled = false;
+				StorageHudPanel = Components.Create<StorageHud>();
 			}
 		}
 

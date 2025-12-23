@@ -202,21 +202,8 @@ public sealed class PlayerVeggaStats : Component
 	{
 		if ( Network.IsProxy ) return;
 
-		// Fallback: If persistence hasn't set money after 1 second, apply StartMoney
-		// This handles editor single-player mode where OnActive() might not trigger
-		if ( !_fallbackApplied && !_moneyLoadedFromSave && _initialized && _timeSinceStart > 1.0f )
-		{
-			_fallbackApplied = true;
-			if ( Money == 0 )
-			{
-				VeggaCurrency.TryAddCash( GameObject, StartMoney );
-				Log.Info( $"💰 [Fallback] Persistence didn't run - using StartMoney: ${StartMoney}" );
-			}
-			else
-			{
-				Log.Info( $"💰 [Fallback] Money already set to ${Money} (possibly from scene)" );
-			}
-		}
+		// Starter cash is handled by PlayerDataManager/PlayerDataPersistence.
+		// Avoid runtime fallbacks here; they cause repeated grants in editor Stop->Play.
 
 		// TypeScript: updateCache(this) - only emits events if changed
 		PlayerDataCache.UpdatePlayerStats( this );
@@ -230,16 +217,7 @@ public sealed class PlayerVeggaStats : Component
 		if ( Network.IsProxy ) return;
 
 		_fallbackApplied = true; // Disable the fallback since persistence ran
-
-		if ( !_moneyLoadedFromSave && Money == 0 )
-		{
-			VeggaCurrency.TryAddCash( GameObject, StartMoney );
-			Log.Info( $"💰 [FinalizeMoneyInit] No saved money found - using StartMoney: ${StartMoney}" );
-		}
-		else
-		{
-			Log.Info( $"💰 [FinalizeMoneyInit] Money already set: ${Money}" );
-		}
+		Log.Info( $"💰 [FinalizeMoneyInit] Money ready: ${Money} (loadedFromSave={_moneyLoadedFromSave})" );
 	}
 
 	// ---- Simple helpers you can call from other code ----

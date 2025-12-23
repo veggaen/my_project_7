@@ -65,8 +65,28 @@ public sealed class VeggaInventory : Component
 	// ---- Constants ----
 	public const int BaseSlots = 96; // 12x8 grid
 	public const int MaxSlots = 1024; // Maximum possible slots
-	public const int MaxStackSize = int.MaxValue; // 2,147,483,647
+	// Global hard cap for stack sizes. Keep this sane to prevent overflow/UX issues.
+	// Item defs can set lower MaxStack values per-item.
+	public const int MaxStackSize = 100000;
 	const int DurableStackMarker = 0; // durability==0 means "full" when the item uses durability
+
+	internal static bool IsCurrencyItemId( int itemId )
+		=> itemId == Sandbox.Money.VeggaCurrency.CashItemId || itemId == Sandbox.Money.VeggaCurrency.GoldCoinItemId;
+
+	internal static int GetEffectiveMaxStackForItem( int itemId, VeggaItemDef def = null )
+	{
+		if ( itemId <= 0 ) return 1;
+
+		// OSRS-style: currency stacks effectively up to int.MaxValue.
+		if ( IsCurrencyItemId( itemId ) )
+			return int.MaxValue;
+
+		def ??= VeggaItemRegistry.Get( itemId );
+		int maxStack = def?.MaxStack ?? MaxStackSize;
+		if ( maxStack <= 0 ) maxStack = 1;
+		if ( maxStack > MaxStackSize ) maxStack = MaxStackSize;
+		return maxStack;
+	}
 
 	// ---- Inventory Data ----
 	[Sync] private NetList<int> _itemIds { get; set; } = new();
@@ -156,6 +176,16 @@ public sealed class VeggaInventory : Component
 		AddItem( itemId, count );
 	}
 
+	[Rpc.Broadcast]
+	public void RpcGiveItemToOwnerWithDurability( Guid targetId, int itemId, int count, int durability )
+	{
+		if ( Connection.Local?.Id != targetId ) return;
+		if ( Network.IsProxy ) return;
+		if ( DebugNet ) Log.Info( $"[Inv] RpcGiveItemToOwnerWithDurability targetId={targetId} itemId={itemId} count={count} dur={durability}" );
+		if ( itemId <= 0 || count <= 0 ) return;
+		AddItemWithDurability( itemId, count, durability );
+	}
+
 	// ---- Local Singleton ----
 	private static VeggaInventory _local;
 	public static VeggaInventory Local
@@ -213,9 +243,7 @@ public sealed class VeggaInventory : Component
 		bool blockHotbar = IsHotbarBlockedItem( itemId );
 
 		var def = VeggaItemRegistry.Get( itemId );
-		int maxStack = def?.MaxStack ?? MaxStackSize;
-		if ( maxStack <= 0 ) maxStack = 1;
-		if ( maxStack > MaxStackSize ) maxStack = MaxStackSize;
+		int maxStack = GetEffectiveMaxStackForItem( itemId, def );
 		bool isStackable = maxStack > 1;
 		bool usesDurability = def != null && def.MaxGrams > 0;
 		int maxDurability = usesDurability ? def.MaxGrams : 0;
@@ -462,7 +490,7 @@ public sealed class VeggaInventory : Component
 		if ( count >= available ) return; // splitting should leave something behind
 
 		var def = VeggaItemRegistry.Get( itemId );
-		int maxStack = def?.MaxStack ?? MaxStackSize;
+		int maxStack = GetEffectiveMaxStackForItem( itemId, def );
 		if ( maxStack <= 1 ) return; // non-stackable items can't be split like this
 		if ( count > maxStack ) count = maxStack;
 
@@ -497,7 +525,7 @@ public sealed class VeggaInventory : Component
 		}
 
 		var def = VeggaItemRegistry.Get( itemId );
-		int maxStack = def?.MaxStack ?? MaxStackSize;
+		int maxStack = GetEffectiveMaxStackForItem( itemId, def );
 		if ( maxStack <= 1 ) return;
 		bool usesDurability = def != null && def.MaxGrams > 0;
 		if ( usesDurability )
@@ -672,47 +700,97 @@ public sealed class VeggaInventory : Component
 		if ( lookRot != default )
 			spawnRot = lookRot;
 
+		// Ores and goblet mould use tight/simple colliders; drop a touch higher to avoid starting intersecting the ground.
+		if ( VeggaOreVisuals.IsOre( itemId ) || itemId == VeggaItemIds.MouldGoblet )
+			spawnPos += Vector3.Up * 8f;
+
+		var lowerBack = FindLowerBack( stats?.GameObject );
+		var startPos = lowerBack != null && lowerBack.IsValid() ? lowerBack.WorldPosition : (stats.WorldPosition + stats.WorldRotation.Backward * 6f + Vector3.Up * 30f);
+
 		var dropVelocity = GetDropInertiaVelocity( stats, rayForward );
+
+		// Gold bars are non-stackable. Enforce a single-bar drop.
+		if ( itemId == VeggaItemIds.GoldBar200g )
+			count = 1;
 
 		if ( itemId == Sandbox.Money.VeggaCurrency.CashItemId )
 		{
-			var cashGo = Sandbox.Money.CashWorldDrop.Spawn( worldScene, spawnPos, spawnRot, count, requesterId );
-			var rb = cashGo?.Components.Get<Rigidbody>();
-			if ( rb != null )
-				rb.Velocity = dropVelocity;
-		}
-		else if ( itemId == GoldBarWorldDrop.GoldBarItemId )
-		{
-			var barGo = GoldBarWorldDrop.Spawn( worldScene, spawnPos, spawnRot, requesterId );
-			var rb = barGo?.Components.Get<Rigidbody>();
-			if ( rb != null )
-				rb.Velocity = dropVelocity;
+			var cashGo = Sandbox.Money.CashWorldDrop.Spawn( worldScene, startPos, spawnRot, count, requesterId );
+			if ( cashGo != null && cashGo.IsValid() )
+			{
+				var anim = cashGo.Components.Create<VeggaDropThrowAnimator>();
+				anim.Begin( stats.GameObject, rayOrigin, spawnPos, spawnRot, dropVelocity,
+					registerPersistence: false,
+					itemId: Sandbox.Money.VeggaCurrency.CashItemId,
+					count: count,
+					durability: 0,
+					prefabPath: null,
+					droppedBy: requesterId,
+					droppedAtUtcTicks: DateTime.UtcNow.Ticks );
+			}
+
+			// Note: cash persistence is not handled here (CashWorldDrop uses its own component).
 		}
 		else
 		{
-			var go = TrySpawnPrefabDrop( worldScene, def, itemId, count, spawnPos, spawnRot, requesterId, dropVelocity );
+			int dropDurability = inv.GetSlotDurability( slotIndex );
+			if ( VeggaOreVisuals.IsOre( itemId ) )
+			{
+				// If this is a legacy ore with no stored variant, choose one now.
+				dropDurability = VeggaOreVisuals.EnsureVariant( itemId, dropDurability, allowRandomize: true );
+			}
+
+			var go = TrySpawnPrefabDrop( worldScene, def, itemId, count, startPos, spawnRot, requesterId, Vector3.Zero );
+			if ( go != null && go.IsValid() )
+			{
+				var rootPickup = go.Components.Get<VeggaPickupItem>();
+				if ( rootPickup != null && rootPickup.IsValid() )
+					rootPickup.Durability = dropDurability;
+				foreach ( var pickup in go.Components.GetAll<VeggaPickupItem>( FindMode.InDescendants ) )
+				{
+					if ( pickup == null || !pickup.IsValid() ) continue;
+					pickup.Durability = dropDurability;
+				}
+				VeggaOreVisuals.ApplyToWorldObject( go, itemId, dropDurability );
+			}
 			if ( go == null )
 			{
+				// If the item has a prefab, never fall back to a dynamic GameObject. Reject the drop.
+				if ( def != null && !string.IsNullOrWhiteSpace( def.PrefabPath ) )
+				{
+					if ( DebugNet ) Log.Warning( $"[Inv] Drop RPC rejected: prefab spawn failed for itemId={itemId} prefab={def.PrefabPath}" );
+					RpcDropRejected( requesterId, dropToken );
+					return;
+				}
+
 				go = new GameObject( true, $"DroppedItem_{itemId}" );
-				go.WorldPosition = spawnPos;
+				go.WorldPosition = startPos;
 				go.WorldRotation = spawnRot;
 
 				var renderer = go.Components.Create<ModelRenderer>();
-				if ( def != null && !string.IsNullOrWhiteSpace( def.ModelPath ) )
+				if ( VeggaOreVisuals.IsOre( itemId ) )
+				{
+					try { renderer.Model = Model.Load( VeggaOreVisuals.GetVariantModelPath( dropDurability ) ); } catch { }
+					renderer.Tint = VeggaOreVisuals.GetTintForItem( itemId );
+				}
+				else if ( def != null && !string.IsNullOrWhiteSpace( def.ModelPath ) )
 				{
 					try { renderer.Model = Model.Load( def.ModelPath ); } catch { }
+					TryApplyDropTint( renderer, itemId );
 				}
 
 				var pickup = go.Components.Create<VeggaPickupItem>();
 				pickup.ItemId = itemId;
 				pickup.Quantity = count;
+				pickup.Durability = dropDurability;
 				pickup.PickupDelay = 0.25f;
 				pickup.DroppedById = requesterId;
 				pickup.DroppedAtTime = Time.Now;
+				pickup.DroppedAtUtcTicks = DateTime.UtcNow.Ticks;
 
 				var rb = go.Components.Create<Rigidbody>();
 				rb.Gravity = true;
-				rb.Velocity = dropVelocity;
+				rb.Velocity = Vector3.Zero;
 
 				if ( renderer != null && renderer.Model != null )
 				{
@@ -727,9 +805,75 @@ public sealed class VeggaInventory : Component
 					collider.IsTrigger = false;
 				}
 			}
+
+			// Apply visuals + durability now, but delay persistence registration until after the throw animation.
+			if ( go != null && go.IsValid() )
+			{
+				var droppedAtUtcTicks = DateTime.UtcNow.Ticks;
+				var pickup = go.Components.Get<VeggaPickupItem>();
+				if ( pickup != null && pickup.IsValid() )
+				{
+					pickup.Durability = dropDurability;
+					pickup.DroppedById = requesterId;
+					pickup.DroppedAtUtcTicks = droppedAtUtcTicks;
+				}
+				VeggaOreVisuals.ApplyToWorldObject( go, itemId, dropDurability );
+
+				var anim = go.Components.Create<VeggaDropThrowAnimator>();
+				anim.Begin( stats.GameObject, rayOrigin, spawnPos, spawnRot, dropVelocity,
+					registerPersistence: def != null && !string.IsNullOrWhiteSpace( def.PrefabPath ),
+					itemId: itemId,
+					count: count,
+					durability: dropDurability,
+					prefabPath: def?.PrefabPath,
+					droppedBy: requesterId,
+					droppedAtUtcTicks: droppedAtUtcTicks );
+			}
+		}
+
+		static void TryApplyDropTint( ModelRenderer renderer, int itemId )
+		{
+			if ( renderer == null || !renderer.IsValid() ) return;
+
+			// Subtle tints so the same rock mesh reads as different metal.
+			switch ( itemId )
+			{
+				case VeggaItemIds.TinOre:
+				case VeggaItemIds.TinBar:
+					renderer.Tint = new Color( 0.70f, 0.70f, 0.75f, 1.0f );
+					break;
+				case VeggaItemIds.CopperOre:
+				case VeggaItemIds.CopperBar:
+					renderer.Tint = new Color( 0.90f, 0.55f, 0.25f, 1.0f );
+					break;
+				case VeggaItemIds.IronOre:
+				case VeggaItemIds.IronBar:
+					renderer.Tint = new Color( 0.45f, 0.45f, 0.47f, 1.0f );
+					break;
+				case VeggaItemIds.BronzeBar:
+					renderer.Tint = new Color( 0.82f, 0.62f, 0.28f, 1.0f );
+					break;
+				case VeggaItemIds.CoalOre:
+					renderer.Tint = new Color( 0.20f, 0.20f, 0.20f, 1.0f );
+					break;
+				case VeggaItemIds.SteelBar:
+					renderer.Tint = new Color( 0.50f, 0.52f, 0.56f, 1.0f );
+					break;
+			}
 		}
 
 		// Tell the owning client to consume items from their inventory.
+		// Also consume on the host (when the host still sees the items) so persistence
+		// snapshots taken immediately after a drop don't resurrect items on scene reset.
+		// This is a best-effort sync: if the host view is already consumed, do nothing.
+		if ( slotIndex >= 0 && slotIndex < inv._itemIds.Count && inv._itemIds[slotIndex] == itemId && inv._itemCounts[slotIndex] > 0 )
+		{
+			inv.RemoveFromSlot( slotIndex, count );
+			var steamId = stats.Network?.Owner?.SteamId.ToString();
+			if ( !string.IsNullOrWhiteSpace( steamId ) )
+				PlayerDataPersistence.MarkPlayerDataChanged( steamId );
+		}
+
 		if ( dropToken != Guid.Empty )
 		{
 			if ( DebugNet ) Log.Info( $"[Inv] Drop RPC spawned world drop itemId={itemId} count={count}; ACK token={dropToken}" );
@@ -790,6 +934,19 @@ public sealed class VeggaInventory : Component
 		RemoveFromSlot( slotIndex, count );
 	}
 
+	[Rpc.Broadcast]
+	public void RpcConsumeFromSlot( Guid targetId, int slotIndex, int count, int expectedItemId )
+	{
+		// Only the owning client should mutate their [Sync] inventory state.
+		if ( Connection.Local?.Id != targetId ) return;
+		if ( Network.IsProxy ) return;
+		if ( count <= 0 ) return;
+		EnsureSlotArraysSized();
+		if ( slotIndex < 0 || slotIndex >= TotalSlots ) return;
+		if ( _itemIds[slotIndex] != expectedItemId ) return;
+		RemoveFromSlot( slotIndex, count );
+	}
+
 	/// <summary>
 	/// Can this inventory fit an item quantity? Works for proxies (no mutation).
 	/// Used by host-side pickup validation.
@@ -801,9 +958,7 @@ public sealed class VeggaInventory : Component
 		if ( limit <= 0 ) return false;
 
 		var def = VeggaItemRegistry.Get( itemId );
-		int maxStack = def?.MaxStack ?? MaxStackSize;
-		if ( maxStack <= 0 ) maxStack = 1;
-		if ( maxStack > MaxStackSize ) maxStack = MaxStackSize;
+		int maxStack = GetEffectiveMaxStackForItem( itemId, def );
 		bool isStackable = maxStack > 1;
 
 		if ( !isStackable )
@@ -855,32 +1010,56 @@ public sealed class VeggaInventory : Component
 		var ray = GetBestLocalDropRay();
 		var pos = GetDropSpawnPosition( scene, stats, ray.Position, ray.Forward, out var rot );
 		if ( rot == default ) rot = GameObject.WorldRotation;
+		// Ores and goblet mould use tight/simple colliders; drop a touch higher to avoid starting intersecting the ground.
+		if ( VeggaOreVisuals.IsOre( itemId ) || itemId == VeggaItemIds.MouldGoblet )
+			pos += Vector3.Up * 8f;
 		var dropVelocity = GetDropInertiaVelocity( stats, ray.Forward );
+		var lowerBack = FindLowerBack( stats?.GameObject ?? GameObject );
+		var startPos = lowerBack != null && lowerBack.IsValid() ? lowerBack.WorldPosition : (GameObject.WorldPosition + GameObject.WorldRotation.Backward * 6f + Vector3.Up * 30f);
 
 		if ( itemId == Sandbox.Money.VeggaCurrency.CashItemId )
 		{
 			var dropperId = stats?.Network?.Owner?.Id ?? Connection.Local?.Id ?? Guid.Empty;
-			var cashGo = Sandbox.Money.CashWorldDrop.Spawn( scene, pos, rot, count, dropperId );
-			var rb = cashGo?.Components.Get<Rigidbody>();
-			if ( rb != null )
-				rb.Velocity = dropVelocity;
-		}
-		else if ( itemId == GoldBarWorldDrop.GoldBarItemId )
-		{
-			var dropperId = stats?.Network?.Owner?.Id ?? Connection.Local?.Id ?? Guid.Empty;
-			var barGo = GoldBarWorldDrop.Spawn( scene, pos, rot, dropperId );
-			var rb = barGo?.Components.Get<Rigidbody>();
-			if ( rb != null )
-				rb.Velocity = dropVelocity;
+			var cashGo = Sandbox.Money.CashWorldDrop.Spawn( scene, startPos, rot, count, dropperId );
+			if ( cashGo != null && cashGo.IsValid() )
+			{
+				var anim = cashGo.Components.Create<VeggaDropThrowAnimator>();
+				anim.Begin( stats?.GameObject ?? GameObject, ray.Position, pos, rot, dropVelocity,
+					registerPersistence: false,
+					itemId: Sandbox.Money.VeggaCurrency.CashItemId,
+					count: count,
+					durability: 0,
+					prefabPath: null,
+					droppedBy: dropperId,
+					droppedAtUtcTicks: DateTime.UtcNow.Ticks );
+			}
+
+			// Note: cash world drops currently use their own component and are not persisted.
 		}
 		else
 		{
 			var dropperId = stats?.Network?.Owner?.Id ?? Connection.Local?.Id ?? Guid.Empty;
-			var go = TrySpawnPrefabDrop( scene, def, itemId, count, pos, rot, dropperId, dropVelocity );
+
+			// Gold bars are non-stackable. Enforce a single-bar drop.
+			if ( itemId == VeggaItemIds.GoldBar200g )
+				count = 1;
+
+			int dropDurability = GetSlotDurability( slotIndex );
+			if ( VeggaOreVisuals.IsOre( itemId ) )
+			{
+				// If this is a legacy ore with no stored variant, choose one now.
+				dropDurability = VeggaOreVisuals.EnsureVariant( itemId, dropDurability, allowRandomize: true );
+			}
+
+			var go = TrySpawnPrefabDrop( scene, def, itemId, count, startPos, rot, dropperId, Vector3.Zero );
 			if ( go == null )
 			{
+				// If the item has a prefab, never fall back to a dynamic GameObject.
+				if ( def != null && !string.IsNullOrWhiteSpace( def.PrefabPath ) )
+					return;
+
 				go = new GameObject( true, $"DroppedItem_{itemId}" );
-				go.WorldPosition = pos;
+				go.WorldPosition = startPos;
 				go.WorldRotation = rot;
 
 				var renderer = go.Components.Create<ModelRenderer>();
@@ -899,7 +1078,7 @@ public sealed class VeggaInventory : Component
 
 				var rb = go.Components.Create<Rigidbody>();
 				rb.Gravity = true;
-				rb.Velocity = dropVelocity;
+				rb.Velocity = Vector3.Zero;
 
 				if ( renderer != null && renderer.Model != null )
 				{
@@ -914,10 +1093,54 @@ public sealed class VeggaInventory : Component
 					collider.IsTrigger = false;
 				}
 			}
+
+			// Apply visuals + durability now, but delay persistence registration until after the throw animation.
+			if ( go != null && go.IsValid() )
+			{
+				var droppedAtUtcTicks = DateTime.UtcNow.Ticks;
+				var rootPickup = go.Components.Get<VeggaPickupItem>();
+				if ( rootPickup != null && rootPickup.IsValid() )
+				{
+					rootPickup.Durability = dropDurability;
+					rootPickup.DroppedById = dropperId;
+					rootPickup.DroppedAtUtcTicks = droppedAtUtcTicks;
+				}
+				foreach ( var pickup in go.Components.GetAll<VeggaPickupItem>( FindMode.InDescendants ) )
+				{
+					if ( pickup == null || !pickup.IsValid() ) continue;
+					pickup.Durability = dropDurability;
+					pickup.DroppedById = dropperId;
+					pickup.DroppedAtUtcTicks = droppedAtUtcTicks;
+				}
+				VeggaOreVisuals.ApplyToWorldObject( go, itemId, dropDurability );
+
+				var anim = go.Components.Create<VeggaDropThrowAnimator>();
+				anim.Begin( stats?.GameObject ?? GameObject, ray.Position, pos, rot, dropVelocity,
+					registerPersistence: def != null && !string.IsNullOrWhiteSpace( def.PrefabPath ),
+					itemId: itemId,
+					count: count,
+					durability: dropDurability,
+					prefabPath: def?.PrefabPath,
+					droppedBy: dropperId,
+					droppedAtUtcTicks: droppedAtUtcTicks );
+			}
 		}
 
 		// Remove from inventory after successful spawn.
 		RemoveFromSlot( slotIndex, count );
+
+		// Editor/host-only: persist immediately so Stop→Play doesn't resurrect items.
+		// (Autosave interval can be minutes; this keeps iteration tight.)
+		try
+		{
+			var key = PlayerDataPersistence.GetLocalPersistenceKey();
+			PlayerDataPersistence.MarkPlayerDataChanged( key );
+			PlayerDataPersistence.SaveLocalNow();
+		}
+		catch
+		{
+			// Best-effort only.
+		}
 	}
 
 	private Ray GetBestLocalDropRay()
@@ -936,6 +1159,21 @@ public sealed class VeggaInventory : Component
 		}
 
 		return new Ray( GameObject.WorldPosition + Vector3.Up * 60f, GameObject.WorldRotation.Forward );
+	}
+
+	static GameObject FindLowerBack( GameObject root )
+	{
+		if ( root == null || !root.IsValid )
+			return null;
+		if ( string.Equals( root.Name, "LowerBack", StringComparison.OrdinalIgnoreCase ) )
+			return root;
+		foreach ( var child in root.Children )
+		{
+			var found = FindLowerBack( child );
+			if ( found != null && found.IsValid )
+				return found;
+		}
+		return null;
 	}
 
 	static Vector3 GetDropInertiaVelocity( PlayerVeggaStats stats, Vector3 rayForward )
@@ -977,24 +1215,121 @@ public sealed class VeggaInventory : Component
 			return null;
 
 		// Override pickup metadata on prefab (root or descendants).
-		foreach ( var pickup in go.Components.GetAll<VeggaPickupItem>( FindMode.InDescendants ) )
+		IEnumerable<VeggaPickupItem> SelfAndDescendantsPickups()
 		{
-			if ( pickup == null ) continue;
-			pickup.ItemId = itemId;
-			pickup.Quantity = count;
-			if ( pickup.PickupDelay <= 0 )
-				pickup.PickupDelay = 0.25f;
-			if ( droppedById != Guid.Empty )
-				pickup.DroppedById = droppedById;
-			pickup.DroppedAtTime = Time.Now;
+			var root = go.Components.Get<VeggaPickupItem>();
+			if ( root != null )
+				yield return root;
+			foreach ( var child in go.Components.GetAll<VeggaPickupItem>( FindMode.InDescendants ) )
+				yield return child;
 		}
 
+		void ApplyPickupOverrides()
+		{
+			foreach ( var pickup in SelfAndDescendantsPickups() )
+			{
+				if ( pickup == null ) continue;
+				pickup.ItemId = itemId;
+				pickup.Quantity = count;
+				if ( pickup.PickupDelay <= 0 )
+					pickup.PickupDelay = 0.25f;
+				if ( droppedById != Guid.Empty )
+					pickup.DroppedById = droppedById;
+				pickup.DroppedAtTime = Time.Now;
+			}
+		}
+
+		ApplyPickupOverrides();
+
+		// Ensure physics is actually enabled (ores were reported as “no rigidbody” / weightless in-world).
 		var rb = go.Components.Get<Rigidbody>()
 			?? go.Components.GetAll<Rigidbody>( FindMode.InDescendants ).FirstOrDefault();
+		if ( rb == null )
+		{
+			rb = go.Components.Create<Rigidbody>();
+		}
 		if ( rb != null )
+		{
+			rb.Enabled = true;
+			rb.MotionEnabled = true;
+			rb.Gravity = true;
+			if ( VeggaOreVisuals.IsOre( itemId ) )
+			{
+				// Match the "Gold Bar" baseline so ore always falls and settles.
+				rb.MassOverride = 25;
+				rb.LinearDamping = 0.25f;
+				rb.AngularDamping = 1f;
+			}
+			else if ( itemId == VeggaItemIds.MouldGoblet )
+			{
+				rb.MassOverride = 25;
+				rb.LinearDamping = 0.35f;
+				rb.AngularDamping = 4f;
+			}
 			rb.Velocity = dropVelocity;
+		}
+
+		var modelCollider = go.Components.Get<ModelCollider>()
+			?? go.Components.GetAll<ModelCollider>( FindMode.InDescendants ).FirstOrDefault();
+		if ( modelCollider != null )
+		{
+			var renderer = go.Components.Get<ModelRenderer>()
+				?? go.Components.GetAll<ModelRenderer>( FindMode.InDescendants ).FirstOrDefault();
+			if ( renderer != null && renderer.IsValid() && renderer.Model != null )
+				modelCollider.Model = renderer.Model;
+
+			modelCollider.Enabled = true;
+			modelCollider.IsTrigger = false;
+			modelCollider.Static = false;
+		}
+
+		// IMPORTANT: some item models don't have a usable collision mesh.
+		// Guarantee a simple collider so the rigidbody actually simulates and the drop falls.
+		bool isGobletMould = itemId == VeggaItemIds.MouldGoblet;
+		bool needsFallbackCollider = VeggaOreVisuals.IsOre( itemId ) || isGobletMould;
+		if ( needsFallbackCollider )
+		{
+			if ( isGobletMould )
+			{
+				// Prevent weird rolling by using a box collider instead of a sphere.
+				var sphere = go.Components.Get<SphereCollider>()
+					?? go.Components.GetAll<SphereCollider>( FindMode.InDescendants ).FirstOrDefault();
+				if ( sphere != null ) sphere.Enabled = false;
+
+				if ( modelCollider != null ) modelCollider.Enabled = false;
+
+				var box = go.Components.Get<BoxCollider>()
+					?? go.Components.GetAll<BoxCollider>( FindMode.InDescendants ).FirstOrDefault();
+				if ( box == null )
+					box = go.Components.Create<BoxCollider>();
+				if ( box != null )
+				{
+					box.Enabled = true;
+					box.IsTrigger = false;
+					box.Scale = new Vector3( 12f, 12f, 10f );
+				}
+			}
+			else
+			{
+				// Ore model collision can be flaky; prefer the simple sphere collider.
+				if ( modelCollider != null ) modelCollider.Enabled = false;
+
+				var sphere = go.Components.Get<SphereCollider>()
+					?? go.Components.GetAll<SphereCollider>( FindMode.InDescendants ).FirstOrDefault();
+				if ( sphere == null )
+					sphere = go.Components.Create<SphereCollider>();
+				if ( sphere != null )
+				{
+					sphere.Enabled = true;
+					sphere.IsTrigger = false;
+					// Slightly larger than before to avoid slipping through terrain seams.
+					if ( sphere.Radius <= 0 || sphere.Radius > 16f ) sphere.Radius = 10f;
+				}
+			}
+		}
 
 		go.Enabled = true;
+		ApplyPickupOverrides();
 		return go;
 	}
 
@@ -1109,9 +1444,7 @@ public sealed class VeggaInventory : Component
 			if ( fromItemId > 0 && fromItemId == toItemId && _itemCounts[fromIndex] > 0 && _itemCounts[toIndex] > 0 )
 			{
 				var def = VeggaItemRegistry.Get( fromItemId );
-				int maxStack = def?.MaxStack ?? MaxStackSize;
-				if ( maxStack <= 0 ) maxStack = 1;
-				if ( maxStack > MaxStackSize ) maxStack = MaxStackSize;
+				int maxStack = GetEffectiveMaxStackForItem( fromItemId, def );
 				bool usesDurability = def != null && def.MaxGrams > 0;
 				if ( maxStack > 1 )
 				{
@@ -1268,6 +1601,55 @@ public sealed class VeggaInventory : Component
 		}
 
 		return false;
+	}
+
+	public bool AddItemWithDurability( int itemId, int count, int durability )
+	{
+		if ( Network.IsProxy ) return false;
+		if ( itemId <= 0 || count <= 0 ) return false;
+		EnsureSlotArraysSized();
+
+		var def = VeggaItemRegistry.Get( itemId );
+		int maxStack = def?.MaxStack ?? MaxStackSize;
+		if ( maxStack <= 0 ) maxStack = 1;
+		if ( maxStack > MaxStackSize ) maxStack = MaxStackSize;
+		bool isStackable = maxStack > 1;
+		bool usesDurability = def != null && def.MaxGrams > 0;
+		int maxDurability = usesDurability ? def.MaxGrams : 0;
+
+		// Stackables: durability isn’t meaningful, route to normal add.
+		if ( isStackable )
+			return AddItem( itemId, count );
+
+		int freeSlots = FreeSlots;
+		if ( freeSlots < count )
+			return false;
+
+		int remainingToPlace = count;
+		for ( int i = 0; i < _itemIds.Count && remainingToPlace > 0; i++ )
+		{
+			if ( !IsEmptySlot( i ) )
+				continue;
+
+			_itemIds[i] = itemId;
+			_itemCounts[i] = 1;
+			if ( usesDurability )
+			{
+				int d = durability;
+				if ( d <= 0 ) d = maxDurability;
+				if ( d < 0 ) d = 0;
+				if ( maxDurability > 0 && d > maxDurability ) d = maxDurability;
+				_itemDurability[i] = d;
+			}
+			else
+			{
+				_itemDurability[i] = durability;
+			}
+
+			remainingToPlace--;
+		}
+
+		return remainingToPlace <= 0;
 	}
 
 	// ---- Get Item Count ----

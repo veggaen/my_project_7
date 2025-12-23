@@ -129,6 +129,37 @@
         "OnComponentStart": null,
         "OnComponentUpdate": null,
         "Radius": 350
+      },
+      {
+        "__type": "Sandbox.VeggaWorldContainerId",
+        "__guid": "b0f0e1f0-3dbb-4c2a-9899-f27b2860bfe8",
+        "__enabled": true,
+        "ContainerId": "00000000-0000-0000-0000-000000000000",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
+        "__type": "Sandbox.VeggaFurnace",
+        "__guid": "8d839f4e-77cd-4a1b-8f7f-3d6e4a1a32da",
+        "__enabled": true,
+        "BurnLoopIntervalSeconds": 6,
+        "BurnLoopSound": "deltarune/elegant_entrance",
+        "ExtinguishSound": "exorealms/66d09d44dcbf5e0c",
+        "FuelSecondsPerChoppedLog": 30,
+        "FuelSecondsPerLog": 60,
+        "IgniteSound": "duccsoft/sfx_smooch",
+        "InteractRange": 160,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "SmeltGramsPerSecond": 25
       }
     ],
     "Children": [

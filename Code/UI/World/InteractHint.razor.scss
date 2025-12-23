@@ -1,0 +1,31 @@
+InteractHint {
+	.interact-hint {
+		position: absolute;
+		left: 50%;
+		top: 62%;
+		transform: translate(-50%, -50%);
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+		background-color: rgba(0,0,0,0.55);
+		border: 1px solid rgba(255,255,255,0.10);
+		padding: 6px 10px;
+		color: white;
+		font-size: 14px;
+		pointer-events: none;
+	}
+
+	.key {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 18px;
+		text-align: center;
+		border: 1px solid rgba(255,255,255,0.18);
+		padding: 1px 6px;
+		background-color: rgba(255,255,255,0.06);
+	}
+
+	.text { opacity: 0.95; }
+}
