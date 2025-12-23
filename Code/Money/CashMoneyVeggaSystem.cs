@@ -9,10 +9,9 @@ namespace Sandbox.Money;
 /// CashMoneyVeggaSystem - Money prop with visual tiers and anti-exploit protection.
 ///
 /// Visual Tiers:
-/// - $1-10: models/money/single_clean_bended.vmdl (bent single bill)
-/// - $10-1,000: models/money/single_clean.vmdl (flat single bill)
-/// - $1,000-100,000: models/money/batch_clean.vmdl (stack of bills)
-/// - $100,000-10,000,000: models/money/box.vmdl (money box)
+/// - $1-10,000: models/money/batch_used.vmdl
+/// - $10,000-100,000: models/money/batch_clean.vmdl
+/// - $100,000+: models/money/box.vmdl
 /// </summary>
 public sealed class CashMoneyVeggaSystem : Component
 {
@@ -49,16 +48,7 @@ public sealed class CashMoneyVeggaSystem : Component
 	{
 		var modelRenderer = Components.Get<ModelRenderer>();
 		if ( modelRenderer == null ) return;
-
-		string modelPath = Amount switch
-		{
-			<= 100 => "models/money/single_clean_bended.vmdl",
-			<= 10_000 => "models/money/single_clean.vmdl",
-			<= 1_000_000 => "models/money/batch_clean.vmdl",
-			_ => "models/money/box.vmdl"
-		};
-
-		modelRenderer.Model = Model.Load( modelPath );
+		modelRenderer.Model = Model.Load( VeggaCurrency.GetCashModelPathForAmount( Amount ) );
 	}
 
 	/// <summary>

@@ -52,7 +52,8 @@ public sealed class VeggaDropThrowAnimator : Component
 		int durability,
 		string prefabPath,
 		Guid droppedBy,
-		long droppedAtUtcTicks )
+		long droppedAtUtcTicks,
+		float startDelaySeconds = 0f )
 	{
 		_player = player;
 		_endPos = endPos;
@@ -67,7 +68,7 @@ public sealed class VeggaDropThrowAnimator : Component
 		_persistDroppedAtUtcTicks = droppedAtUtcTicks;
 
 		_startScale = WorldScale;
-		_startTime = Time.Now;
+		_startTime = Time.Now + MathF.Max( 0f, startDelaySeconds );
 
 		var playerPos = player != null && player.IsValid ? player.WorldPosition : WorldPosition;
 		var playerRot = player != null && player.IsValid ? player.WorldRotation : Rotation.Identity;
@@ -168,11 +169,17 @@ public sealed class VeggaDropThrowAnimator : Component
 		bool hasPickup = (rootPickup != null && rootPickup.IsValid()) || descendantPickups.Any( p => p != null && p.IsValid() );
 		bool isProblemDrop = false;
 		if ( rootPickup != null && rootPickup.IsValid() )
-			isProblemDrop |= VeggaOreVisuals.IsOre( rootPickup.ItemId ) || rootPickup.ItemId == VeggaItemIds.MouldGoblet;
+			isProblemDrop |= VeggaOreVisuals.IsOre( rootPickup.ItemId )
+				|| rootPickup.ItemId == VeggaItemIds.MouldGoblet
+				|| rootPickup.ItemId == Sandbox.Money.VeggaCurrency.CashItemId
+				|| rootPickup.ItemId == Sandbox.Money.VeggaCurrency.GoldCoinItemId;
 		foreach ( var p in descendantPickups )
 		{
 			if ( p == null || !p.IsValid() ) continue;
-			if ( VeggaOreVisuals.IsOre( p.ItemId ) || p.ItemId == VeggaItemIds.MouldGoblet )
+			if ( VeggaOreVisuals.IsOre( p.ItemId )
+				|| p.ItemId == VeggaItemIds.MouldGoblet
+				|| p.ItemId == Sandbox.Money.VeggaCurrency.CashItemId
+				|| p.ItemId == Sandbox.Money.VeggaCurrency.GoldCoinItemId )
 			{
 				isProblemDrop = true;
 				break;

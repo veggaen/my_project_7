@@ -346,13 +346,7 @@
 		if ( _selectedItemId == VeggaCurrency.CashItemId )
 		{
 			int amount = Math.Max( 1, _selectedItemCount );
-			return amount switch
-			{
-				<= 100 => "models/money/single_clean_bended.vmdl",
-				<= 10_000 => "models/money/single_clean.vmdl",
-				<= 1_000_000 => "models/money/batch_clean.vmdl",
-				_ => "models/money/box.vmdl"
-			};
+			return VeggaCurrency.GetCashModelPathForAmount( amount );
 		}
 
 		return _selectedItemDef.ModelPath;

@@ -88,7 +88,7 @@ public static class VeggaItemRegistry
 			Id = VeggaItemIds.Cash,
 			Name = "Money",
 			Description = "Fiat currency. Stackable.",
-			ModelPath = "models/money/single_clean.vmdl",
+			ModelPath = "models/money/batch_used.vmdl",
 			Value = 1,
 			MaxStack = 100000,
 			Category = ItemCategory.Currency,
@@ -309,12 +309,14 @@ public static class VeggaItemRegistry
 			Id = VeggaItemIds.NotedLogFull,
 			Name = "Noted Log",
 			Description = "A bank note representing a log. Exchange at a bank.",
+			PrefabPath = "noted_page.prefab",
+			// Inventory thumbnail should look like the underlying item; world-drop uses the page prefab.
 			ModelPath = "models/log/saunalog.vmdl",
-			IconPath = null,
+			IconPath = "ui/items/log.svg",
 			Value = 0,
 			MaxStack = 10000,
 			Tradeable = true,
-			Droppable = false,
+			Droppable = true,
 			Category = ItemCategory.Misc,
 			Rarity = ItemRarity.Common
 		} );
@@ -324,12 +326,14 @@ public static class VeggaItemRegistry
 			Id = VeggaItemIds.NotedLogChopped,
 			Name = "Noted Chopped Log",
 			Description = "A bank note representing a chopped log. Exchange at a bank.",
+			PrefabPath = "noted_page.prefab",
+			// Inventory thumbnail should look like the underlying item; world-drop uses the page prefab.
 			ModelPath = "models/logchopped/logchopped.vmdl",
-			IconPath = null,
+			IconPath = "ui/items/log_chopped.svg",
 			Value = 0,
 			MaxStack = 10000,
 			Tradeable = true,
-			Droppable = false,
+			Droppable = true,
 			Category = ItemCategory.Misc,
 			Rarity = ItemRarity.Common
 		} );

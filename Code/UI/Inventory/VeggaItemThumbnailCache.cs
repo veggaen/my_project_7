@@ -44,19 +44,27 @@ public static class VeggaItemThumbnailCache
 			try
 			{
 				// Try disk cache first (per-client, persists across sessions).
+				// IMPORTANT: disk cache failures must not poison the in-memory renderer.
 				if ( PersistToDisk )
 				{
-					var cachePath = GetCachePath( modelPath, size );
-					if ( FileSystem.Data.FileExists( cachePath ) )
+					try
 					{
-						var bytes = FileSystem.Data.ReadAllBytes( cachePath ).ToArray();
-						using var fromDisk = Bitmap.CreateFromBytes( bytes );
-						var diskTex = fromDisk?.ToTexture();
-						if ( diskTex is not null )
+						var cachePath = GetCachePath( modelPath, size );
+						if ( FileSystem.Data.FileExists( cachePath ) )
 						{
-							_modelThumbs[modelPath] = diskTex;
-							return diskTex;
+							var bytes = FileSystem.Data.ReadAllBytes( cachePath ).ToArray();
+							using var fromDisk = Bitmap.CreateFromBytes( bytes );
+							var diskTex = fromDisk?.ToTexture();
+							if ( diskTex is not null )
+							{
+								_modelThumbs[modelPath] = diskTex;
+								return diskTex;
+							}
 						}
+					}
+					catch
+					{
+						// Ignore disk cache issues and fall back to rendering.
 					}
 				}
 

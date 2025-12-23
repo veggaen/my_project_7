@@ -255,8 +255,7 @@
 		if ( toItem > 0 && toItem == fromItem && toCount > 0 )
 		{
 			var def = VeggaItemRegistry.Get( fromItem );
-			int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
-			if ( maxStack <= 0 ) maxStack = 1;
+			int maxStack = VeggaInventory.GetEffectiveMaxStackForItem( fromItem, def );
 			if ( maxStack > 1 )
 			{
 				long space = (long)maxStack - (long)toCount;
@@ -296,7 +295,7 @@
 		int toCount = _predItemCounts[toIndex];
 
 		var def = VeggaItemRegistry.Get( fromItem );
-		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+		int maxStack = VeggaInventory.GetEffectiveMaxStackForItem( fromItem, def );
 		if ( maxStack <= 1 ) return false;
 
 		// Empty target: create new partial stack.
@@ -649,18 +648,80 @@
 			{
 				// Use the underlying slot count so the visual doesn't flicker due to held-reserve math.
 				int amount = Math.Max( 1, SlotItemCount );
-				return amount switch
-				{
-					<= 100 => "models/money/single_clean_bended.vmdl",  // moneysingleused
-					<= 10_000 => "models/money/single_clean.vmdl",        // moneysingleclean
-					<= 1_000_000 => "models/money/batch_clean.vmdl",       // moneybatchclean
-					_ => "models/money/box.vmdl"                            // money_stack_box
-				};
+				return VeggaCurrency.GetCashModelPathForAmount( amount );
 			}
 
 			var def = VeggaItemRegistry.Get( ItemId );
 			return def?.ModelPath;
 		}
+	}
+
+	bool IsNoted
+	{
+		get
+		{
+			if ( !HasItem ) return false;
+			var def = VeggaItemRegistry.Get( ItemId );
+			return def != null && string.Equals( def.PrefabPath, "noted_page.prefab", StringComparison.OrdinalIgnoreCase );
+		}
+	}
+
+	static void ClearIconMaskTint( Panel panel )
+	{
+		if ( panel == null || !panel.IsValid() )
+			return;
+		panel.Style.Set( "background-color", "transparent" );
+		panel.Style.Set( "mask-image", "none" );
+		panel.Style.Set( "-webkit-mask-image", "none" );
+		panel.Style.Set( "mask-repeat", "no-repeat" );
+		panel.Style.Set( "-webkit-mask-repeat", "no-repeat" );
+		panel.Style.Set( "mask-size", "contain" );
+		panel.Style.Set( "-webkit-mask-size", "contain" );
+		panel.Style.Set( "mask-position", "center" );
+		panel.Style.Set( "-webkit-mask-position", "center" );
+	}
+
+	static void ApplyNotedMaskTint( Panel panel, string iconUrl )
+	{
+		if ( panel == null || !panel.IsValid() )
+			return;
+		if ( string.IsNullOrWhiteSpace( iconUrl ) )
+			return;
+
+		panel.Style.Set( "background-image", "none" );
+		// Noted items only: yellow tint
+		panel.Style.Set( "background-color", "#eab308" );
+		panel.Style.Set( "mask-image", $"url('{iconUrl}')" );
+		panel.Style.Set( "-webkit-mask-image", $"url('{iconUrl}')" );
+		panel.Style.Set( "mask-repeat", "no-repeat" );
+		panel.Style.Set( "-webkit-mask-repeat", "no-repeat" );
+		panel.Style.Set( "mask-size", "contain" );
+		panel.Style.Set( "-webkit-mask-size", "contain" );
+		panel.Style.Set( "mask-position", "center" );
+		panel.Style.Set( "-webkit-mask-position", "center" );
+	}
+
+	void ApplyIconUrlVisualToPanel( Panel iconPanel, string iconUrl, int itemId )
+	{
+		if ( iconPanel == null || !iconPanel.IsValid() )
+			return;
+		if ( string.IsNullOrWhiteSpace( iconUrl ) )
+			return;
+
+		var def = VeggaItemRegistry.Get( itemId );
+		bool isNoted = def != null && string.Equals( def.PrefabPath, "noted_page.prefab", StringComparison.OrdinalIgnoreCase );
+		if ( isNoted )
+		{
+			ApplyNotedMaskTint( iconPanel, iconUrl );
+			return;
+		}
+
+		ClearIconMaskTint( iconPanel );
+		iconPanel.Style.Set( "background-image", $"url('{iconUrl}')" );
+		iconPanel.Style.Set( "background-size", "contain" );
+		iconPanel.Style.Set( "background-repeat", "no-repeat" );
+		iconPanel.Style.Set( "background-position", "center" );
+		ApplyIconTint( iconPanel, itemId );
 	}
 
 	string IconText
@@ -765,11 +826,7 @@
 			icon.Style.Width = 48;
 			icon.Style.Height = 48;
 			icon.Style.PointerEvents = PointerEvents.None;
-			icon.Style.Set( "background-image", $"url('{iconUrl}')" );
-			icon.Style.Set( "background-size", "contain" );
-			icon.Style.Set( "background-repeat", "no-repeat" );
-			icon.Style.Set( "background-position", "center" );
-			ApplyIconTint( icon, ItemId );
+			ApplyIconUrlVisualToPanel( icon, iconUrl, ItemId );
 			_ghost.AddChild( icon );
 		}
 		else
@@ -993,10 +1050,7 @@
 			icon.Style.Width = 48;
 			icon.Style.Height = 48;
 			icon.Style.PointerEvents = PointerEvents.None;
-			icon.Style.Set( "background-image", $"url('{iconUrl}')" );
-			icon.Style.Set( "background-size", "contain" );
-			icon.Style.Set( "background-repeat", "no-repeat" );
-			icon.Style.Set( "background-position", "center" );
+			ApplyIconUrlVisualToPanel( icon, iconUrl, ItemId );
 			_ghost.AddChild( icon );
 		}
 		else
@@ -1127,10 +1181,7 @@
 			icon.Style.Width = 48;
 			icon.Style.Height = 48;
 			icon.Style.PointerEvents = PointerEvents.None;
-			icon.Style.Set( "background-image", $"url('{iconUrl}')" );
-			icon.Style.Set( "background-size", "contain" );
-			icon.Style.Set( "background-repeat", "no-repeat" );
-			icon.Style.Set( "background-position", "center" );
+			ApplyIconUrlVisualToPanel( icon, iconUrl, ItemId );
 			_ghost.AddChild( icon );
 		}
 		else
@@ -1261,6 +1312,7 @@
 		if ( !HasItem )
 		{
 			_iconPanel.Style.Set( "background-image", "none" );
+			ClearIconMaskTint( _iconPanel );
 			ApplyIconTint( _iconPanel, 0 );
 			_iconPanel.Style.Dirty();
 			_iconPanel.Text = "";
@@ -1281,11 +1333,19 @@
 		if ( hasUrl )
 		{
 			// Drive icon URL directly (we no longer use inline Razor style for this).
-			_iconPanel.Style.Set( "background-image", $"url('{CssIconUrl}')" );
-			_iconPanel.Style.Set( "background-size", "contain" );
-			_iconPanel.Style.Set( "background-repeat", "no-repeat" );
-			_iconPanel.Style.Set( "background-position", "center" );
-			ApplyIconTint( _iconPanel, ItemId );
+			if ( IsNoted )
+			{
+				ApplyNotedMaskTint( _iconPanel, CssIconUrl );
+			}
+			else
+			{
+				ClearIconMaskTint( _iconPanel );
+				_iconPanel.Style.Set( "background-image", $"url('{CssIconUrl}')" );
+				_iconPanel.Style.Set( "background-size", "contain" );
+				_iconPanel.Style.Set( "background-repeat", "no-repeat" );
+				_iconPanel.Style.Set( "background-position", "center" );
+				ApplyIconTint( _iconPanel, ItemId );
+			}
 			_iconPanel.Style.Dirty();
 			_iconPanel.Text = "";
 			_iconPanel.SetClass( "rendered-thumb", false );
@@ -1293,6 +1353,9 @@
 			_lastVisualKey = null;
 			return;
 		}
+
+		// Ensure we don't keep a noted-item mask around when switching to thumbnails.
+		ClearIconMaskTint( _iconPanel );
 
 		var modelPath = ModelPath;
 		var key = string.IsNullOrWhiteSpace( modelPath ) ? "no-model" : $"model:{modelPath}";
@@ -1305,6 +1368,7 @@
 		if ( tex is null )
 		{
 			_iconPanel.Style.Set( "background-image", "none" );
+			ClearIconMaskTint( _iconPanel );
 			ApplyIconTint( _iconPanel, 0 );
 			_iconPanel.Style.Dirty();
 			_iconPanel.SetClass( "rendered-thumb", false );
@@ -1516,9 +1580,7 @@
 			if ( itemId > 0 && available > 1 )
 			{
 				var def = VeggaItemRegistry.Get( itemId );
-				int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
-				if ( maxStack <= 0 ) maxStack = 1;
-				if ( maxStack > VeggaInventory.MaxStackSize ) maxStack = VeggaInventory.MaxStackSize;
+				int maxStack = VeggaInventory.GetEffectiveMaxStackForItem( itemId, def );
 				if ( available > maxStack )
 					available = maxStack;
 				if ( maxStack > 1 )
@@ -1712,7 +1774,7 @@
 			VeggaChatManager.Local?.AddLocalMessage( $"{def.Name} can't be placed on the action bar.", ChatMessageType.Error );
 			return false;
 		}
-		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+		int maxStack = VeggaInventory.GetEffectiveMaxStackForItem( itemId, def );
 
 		int hotbarEnd = Math.Min( inv.TotalSlots - 1, hotbarCount - 1 );
 		if ( hotbarEnd < 0 )
@@ -1771,7 +1833,7 @@
 			return false;
 
 		var def = VeggaItemRegistry.Get( itemId );
-		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+		int maxStack = VeggaInventory.GetEffectiveMaxStackForItem( itemId, def );
 
 		// 1) Prefer first empty main slot.
 		for ( int i = mainStart; i < inv.TotalSlots; i++ )
@@ -1813,7 +1875,7 @@
 			return false;
 
 		var def = VeggaItemRegistry.Get( itemId );
-		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+		int maxStack = VeggaInventory.GetEffectiveMaxStackForItem( itemId, def );
 
 		bool fromHotbar = SlotIndex >= 0 && SlotIndex < hotbarCount;
 		bool fromMain = SlotIndex >= mainStart && SlotIndex < (mainStart + mainCount);
@@ -1867,7 +1929,7 @@
 		int itemId = inv.GetSlotItemId( targetSlot );
 		if ( itemId <= 0 ) return;
 		var def = VeggaItemRegistry.Get( itemId );
-		int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+		int maxStack = VeggaInventory.GetEffectiveMaxStackForItem( itemId, def );
 		if ( maxStack <= 1 ) return;
 
 		int current = inv.GetSlotCount( targetSlot );
@@ -1953,7 +2015,7 @@
 		if ( ItemCount > 1 )
 		{
 			var def = VeggaItemRegistry.Get( ItemId );
-			int maxStack = def?.MaxStack ?? VeggaInventory.MaxStackSize;
+			int maxStack = VeggaInventory.GetEffectiveMaxStackForItem( ItemId, def );
 			if ( maxStack > 1 )
 			{
 				if ( wantSingle )
@@ -1998,10 +2060,7 @@
 			icon.Style.Width = 48;
 			icon.Style.Height = 48;
 			icon.Style.PointerEvents = PointerEvents.None;
-			icon.Style.Set( "background-image", $"url('{iconUrl}')" );
-			icon.Style.Set( "background-size", "contain" );
-			icon.Style.Set( "background-repeat", "no-repeat" );
-			icon.Style.Set( "background-position", "center" );
+			ApplyIconUrlVisualToPanel( icon, iconUrl, ItemId );
 			_ghost.AddChild( icon );
 		}
 		else

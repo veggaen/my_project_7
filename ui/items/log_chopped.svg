@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Two half-logs to represent chopped logs -->
+  <rect x="8" y="22" width="22" height="20" rx="10" fill="none" stroke="white" stroke-width="4"/>
+  <rect x="34" y="22" width="22" height="20" rx="10" fill="none" stroke="white" stroke-width="4"/>
+
+  <path d="M16 22c2 6 2 14 0 20" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <path d="M42 22c2 6 2 14 0 20" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Cut marks -->
+  <path d="M30 24l4 4M30 32l4 4M30 40l4 4" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg>

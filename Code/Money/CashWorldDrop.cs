@@ -36,7 +36,7 @@ namespace Sandbox.Money
 				go.WorldRotation = rotation;
 
 				var renderer = go.Components.Create<ModelRenderer>();
-				renderer.Model = Model.Load( "models/money/single_clean.vmdl" );
+				renderer.Model = Model.Load( VeggaCurrency.GetCashModelPathForAmount( amount ) );
 
 				var cashFallback = go.Components.Create<CashMoneyVeggaSystem>();
 				cashFallback.Amount = amount;
@@ -115,7 +115,17 @@ namespace Sandbox.Money
 			// Replace thin model collider with a simple box to avoid “flying away” on collision.
 			var existingBox = go.Components.Get<BoxCollider>()
 				?? go.Components.GetAll<BoxCollider>( FindMode.InDescendants ).FirstOrDefault();
-			if ( existingBox == null )
+			// Ensure we have at least one SOLID collider. Trigger-only colliders will fall through the world.
+			if ( existingBox != null )
+			{
+				existingBox.Enabled = true;
+				existingBox.IsTrigger = false;
+				// Ensure non-zero thickness so it doesn't tunnel through terrain seams.
+				var s = existingBox.Scale;
+				if ( s.z < 2f )
+					existingBox.Scale = new Vector3( MathF.Max( 8f, s.x ), MathF.Max( 4f, s.y ), 3f );
+			}
+			else
 			{
 				var modelCollider = go.Components.Get<ModelCollider>()
 					?? go.Components.GetAll<ModelCollider>( FindMode.InDescendants ).FirstOrDefault();
@@ -123,7 +133,7 @@ namespace Sandbox.Money
 					modelCollider.Enabled = false;
 
 				var box = go.Components.Create<BoxCollider>();
-				box.Scale = new Vector3( 8f, 4f, 1f );
+				box.Scale = new Vector3( 9f, 6f, 3f );
 				box.IsTrigger = false;
 			}
 

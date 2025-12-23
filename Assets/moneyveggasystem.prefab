@@ -25,7 +25,7 @@
         "MaterialGroup": null,
         "MaterialOverride": null,
         "Materials": null,
-        "Model": "models/money/single_clean_bended.vmdl",
+        "Model": "models/money/batch_used.vmdl",
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
@@ -49,8 +49,6 @@
   "MenuPath": null,
   "MenuIcon": null,
   "DontBreakAsTemplate": false,
-  "__references": [
-    "opengameartcco.moneysingleused#95929"
-  ],
+  "__references": [],
   "__version": 2
 }

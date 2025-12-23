@@ -56,39 +56,42 @@ public static class VeggaCurrency
 	public static string FormatCompact( int amount )
 	{
 		// Inventory/UI count formatting rules:
-		// - Under 10,000: show full number (with separators)
-		// - 10,000+: abbreviate with k/m/b
-		// - k: round down to integer (987,886 -> 987k)
-		// - m/b: round down to 1 decimal (2,147,483 -> 2.1m)
+		// - Under 10,000: show full number (no separators)
+		// - 10,000..999,999: show k (floor), e.g. 999,999 -> 999k
+		// - 1,000,000..999,999,999: show M (floor), e.g. 2,147,483,647 -> 2147M
+		// - 1,000,000,000+: show B (floor)
 		if ( amount < 0 )
 			return "-" + FormatCompact( -amount );
 
-		const int fullThreshold = 10_000;
-		if ( amount < fullThreshold )
-			return amount.ToString( "N0" );
+		if ( amount < 10_000 )
+			return amount.ToString();
 
 		if ( amount >= 1_000_000_000 )
-		{
-			float v = TruncateToDecimals( amount / 1_000_000_000f, 1 );
-			return $"{v:0.#}b";
-		}
+			return $"{amount / 1_000_000_000}B";
 		if ( amount >= 1_000_000 )
-		{
-			float v = TruncateToDecimals( amount / 1_000_000f, 1 );
-			return $"{v:0.#}m";
-		}
-
-		// 10,000..999,999
+			return $"{amount / 1_000_000}M";
 		return $"{amount / 1_000}k";
 	}
 
-	static float TruncateToDecimals( float value, int decimals )
+	public static string FormatExact( int amount )
 	{
-		if ( decimals <= 0 )
-			return MathF.Floor( value );
-		float scale = 1f;
-		for ( int i = 0; i < decimals; i++ )
-			scale *= 10f;
-		return MathF.Floor( value * scale ) / scale;
+		return amount.ToString( "N0" );
+	}
+
+	/// <summary>
+	/// Cash model selection. Never uses one-sided single-bill models.
+	/// </summary>
+	public static string GetCashModelPathForAmount( int amount )
+	{
+		amount = Math.Clamp( amount, 1, int.MaxValue );
+
+		// Requested tiers:
+		// - Use batch models for low/medium values
+		// - Use box model for 100k+ (100k money box)
+		if ( amount <= 10_000 )
+			return "models/money/batch_used.vmdl";
+		if ( amount < 100_000 )
+			return "models/money/batch_clean.vmdl";
+		return "models/money/box.vmdl";
 	}
 }

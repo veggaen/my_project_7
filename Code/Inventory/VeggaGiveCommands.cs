@@ -46,8 +46,12 @@ public static class VeggaGiveCommands
 		if ( !IsStackable( def ) ) return 1;
 
 		int desired = GetEffectiveMaxStack( def );
-		if ( VeggaInventory.IsCurrencyItemId( def.Id ) )
-			desired = Math.Min( desired, VeggaInventory.MaxStackSize );
+		// Currency/noted stacks can be int.MaxValue, but "give all" should stay sane.
+		if ( VeggaInventory.IsCurrencyItemId( def.Id )
+			|| string.Equals( def.PrefabPath, "noted_page.prefab", StringComparison.OrdinalIgnoreCase ) )
+		{
+			desired = Math.Min( desired, 10_000 );
+		}
 		return desired;
 	}
 
