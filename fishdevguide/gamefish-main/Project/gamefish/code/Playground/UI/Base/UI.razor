@@ -1,0 +1,35 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using GameFish;
+
+@inherits PanelComponent
+
+@namespace Playground.Razor
+
+<root>
+
+	@{
+		/*
+		@if (InMainMenu)
+		{
+		<MainMenu />
+		}
+		else if (InMenu)
+		{
+		<Menu />
+		}
+		else
+		{
+		<HUD />
+		}
+		*/
+	}
+
+	<EditorUI />
+
+	@if (!EditorMenu.IsOpen)
+	{
+		<HUD />
+	}
+
+</root>

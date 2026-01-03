@@ -1,0 +1,30 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using GameFish;
+@using GameFish.Razor;
+
+@inherits Panel
+
+@namespace Playground.Razor
+
+@{
+	var toolHints = Functions;
+
+	if (toolHints is null || !toolHints.Any())
+	{
+		return;
+	}
+}
+
+<root>
+
+	@foreach (var hint in toolHints)
+	{
+		var desc = hint.Description.IsBlank()
+		? "No description."
+		: hint.Description;
+
+		<Keybind Action="@hint.Action" Text="@hint.Name" Size=@InputGlyphSize.Small />
+	}
+
+</root>

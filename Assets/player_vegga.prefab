@@ -99,6 +99,18 @@
         "TestDamageAmount": 10
       },
       {
+        "__type": "Sandbox.VeggaEquipmentController",
+        "__guid": "3b3b860e-2a64-4dd6-a0bb-a1d8aa5b52c6",
+        "__enabled": true,
+        "AutoReloadWhenEmpty": true,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
         "__type": "Sandbox.PlayerSessionStats",
         "__guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "__enabled": true,
@@ -252,7 +264,12 @@
         "OnComponentFixedUpdate": null,
         "OnComponentStart": null,
         "OnComponentUpdate": null,
-        "PlayerStats": null
+        "PlayerStats": {
+          "_type": "component",
+          "component_id": "c5bbe7f5-e20d-4e6a-b1a8-678a94fe11c1",
+          "go": "5b9d46a7-cfd0-4165-84bf-60ccdeee7443",
+          "component_type": "PlayerVeggaStats"
+        }
       },
       {
         "__type": "Sandbox.PlayerGoldSmelter",

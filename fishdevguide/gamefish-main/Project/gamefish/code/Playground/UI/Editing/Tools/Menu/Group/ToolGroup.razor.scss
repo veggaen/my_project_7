@@ -1,0 +1,95 @@
+@import "../../../../global.scss";
+
+ToolGroup {
+	width: 100%;
+	height: auto;
+
+	gap: 4px;
+	padding: 3;
+
+	align-self: flex-start;
+	flex-direction: column;
+
+	background-color: $bg-black3;
+
+	.group-bar {
+		cursor: pointer;
+
+		width: 100%;
+
+		padding-left: 10;
+		padding-right: 10;
+
+		align-items: center;
+		justify-content: space-between;
+
+		color: white;
+
+		background-color: $blue-bar1;
+
+		&:hover {
+			background-color: $blue-bar1-hover;
+		}
+
+		.group-name {
+			font-size: 26px;
+			font-weight: 600;
+		}
+
+		.tool-count {
+			font-size: 20px;
+			font-weight: 500;
+		}
+	}
+
+	.tool-list {
+		width: 100%;
+		gap: 2px;
+
+		flex-direction: column;
+	}
+
+	.tool-button {
+		cursor: pointer;
+
+		height: 30;
+
+		align-items: center;
+		justify-content: flex-start;
+
+		padding-left: 2;
+		padding-right: 7;
+
+		color: hsl(0, 0%, 75%);
+
+		font-size: 22px;
+		font-weight: 480;
+		text-align: center;
+
+		background-color: hsla(0, 0%, 10%, 0.8);
+
+		&:hover {
+			color: white;
+			background-color: hsla(0, 0%, 22%, 1);
+		}
+
+		&.selected {
+			color: black;
+			background-color: hsla(0, 0%, 100%, 0.8);
+		}
+
+		label {
+			height: 100%;
+		}
+
+		.tool-icon {
+			width: 45;
+
+			font-size: 22px;
+			font-family: "Material Icons";
+
+			align-items: center;
+			justify-content: center;
+		}
+	}
+}

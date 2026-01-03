@@ -1,0 +1,28 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using GameFish;
+
+@inherits Panel
+
+@namespace Playground.Razor
+
+<root>
+
+	@if (Spectator.IsValid())
+	{
+		@* <SpectatorHUD /> *@
+		return;
+	}
+
+	@if (IsAlive)
+	{
+
+		<div class="hud-inner">
+
+			@* <PlayerHealth /> *@
+
+		</div>
+
+	}
+
+</root>

@@ -7,6 +7,7 @@
 @inherits Panel
 
 <root>
+	<label class="slot-keybind">@SlotKeybindText</label>
 	<label @ref="_iconPanel" class="item-icon"></label>
 	<label @ref="_countPanel" class="item-count"></label>
 </root>
@@ -754,8 +755,19 @@
 		// (Slots are Panels, not PanelComponents; relying on Razor re-render alone can be stale.)
 		SetClass( "inventory-slot", true );
 		SetClass( "has-item", HasItem );
-		SetClass( "selected", HasItem && IsSelected );
+		SetClass( "selected", IsSelected );
 		UpdateIconVisual();
+	}
+
+	string SlotKeybindText
+	{
+		get
+		{
+			// Only show keybind hints for hotbar slots (0..8 => 1..9).
+			if ( SlotIndex < 0 || SlotIndex > 8 )
+				return string.Empty;
+			return (SlotIndex + 1).ToString();
+		}
 	}
 
 	void TickManualLeftDrag()

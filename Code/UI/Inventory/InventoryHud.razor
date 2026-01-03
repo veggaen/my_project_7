@@ -142,6 +142,19 @@
 		_instance.StateHasChanged();
 	}
 
+	/// <summary>
+	/// Allow other UI (eg. hotbar) to show the details panel for a specific slot
+	/// while the inventory is open.
+	/// </summary>
+	public static void InspectSlot( int slotIndex )
+	{
+		if ( _instance == null )
+			return;
+		if ( !_instance._isOpen )
+			return;
+		_instance.SelectSlot( slotIndex );
+	}
+
 	void CloseSelfFromEscape()
 	{
 		_isOpen = false;
@@ -202,7 +215,10 @@
 		if ( Panel != null )
 		{
 			bool cursorEnabled = VeggaHudLayoutState.GetCursorMode( InventoryKey, defaultValue: true ) || VeggaUiFreeCursor.IsActive;
-			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_isOpen && cursorEnabled ? PointerEvents.All : PointerEvents.None);
+			// IMPORTANT: keep the inventory panel itself click-through so it doesn't block clicking
+			// other UI elements (eg. hotbar) while the bag is open. The `.inventory-container` div
+			// has `pointer-events: all` in CSS so it still remains interactive.
+			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : PointerEvents.None;
 			Panel.Style.ZIndex = (IsLayoutActive && SelectedElement == InventoryKey) ? 2601 : 0;
 		}
 		ApplyLayoutPosition();
@@ -215,7 +231,7 @@
 		if ( _inventory == null
 			|| !_inventory.IsValid()
 			|| _inventory.Network?.IsProxy == true
-			|| _inventory.Network?.Owner != Connection.Local )
+			|| _inventory.GameObject?.Network?.Owner != Connection.Local )
 			_inventory = VeggaInventory.Local;
 
 		if ( _inventory != null && _inventory.IsValid() )
@@ -370,6 +386,8 @@
 
 	void SelectSlot( int slotIndex )
 	{
+		if ( _inventory == null || !_inventory.IsValid() || _inventory.Network?.IsProxy == true || _inventory.GameObject?.Network?.Owner != Connection.Local )
+			_inventory = VeggaInventory.Local;
 		if ( _inventory == null || !_inventory.IsValid() )
 			return;
 		if ( slotIndex < 0 )

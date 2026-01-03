@@ -259,6 +259,89 @@ public static class VeggaItemRegistry
 			Rarity = ItemRarity.Common
 		} );
 
+		// ---- WEAPONS / TOOLS ----
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.Pistol9mm,
+			Name = "9mm Pistol",
+			Description = "A simple semi-auto pistol.",
+			ModelPath = "models/weapons/sbox_pistol_usp/w_usp.vmdl",
+			PrefabPath = "pistol_9mm.prefab",
+			Value = 0,
+			MaxStack = 1,
+			MaxGrams = 12, // magazine capacity
+			Category = ItemCategory.Equipment,
+			Rarity = ItemRarity.Uncommon
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.Rifle556,
+			Name = "5.56 Rifle",
+			Description = "A basic rifle.",
+			// Replace this with a proper rifle model once a weapon asset package is mounted.
+			ModelPath = "models/dev/box.vmdl",
+			PrefabPath = "rifle_556.prefab",
+			Value = 0,
+			MaxStack = 1,
+			MaxGrams = 30, // magazine capacity
+			Category = ItemCategory.Equipment,
+			Rarity = ItemRarity.Rare
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.Knife,
+			Name = "Knife",
+			Description = "A close-range melee weapon.",
+			ModelPath = "models/dev/knife.vmdl",
+			PrefabPath = "knife.prefab",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Equipment,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.BuildHammer,
+			Name = "Build Hammer",
+			Description = "A tool item (build system stub).",
+			ModelPath = "models/items/tools/hammer/wood_hammer.vmdl",
+			PrefabPath = "wood_hammer.prefab",
+			Value = 0,
+			MaxStack = 1,
+			Category = ItemCategory.Equipment,
+			Rarity = ItemRarity.Common
+		} );
+
+		// ---- AMMO ----
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.Ammo9mm,
+			Name = "9mm Rounds",
+			Description = "Ammunition for 9mm weapons.",
+			ModelPath = "models/weapons/sbox_ammo/9mm_ammobox/ammobox_9mm.vmdl",
+			PrefabPath = "ammo_9mm.prefab",
+			Value = 0,
+			MaxStack = 200,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
+		Register( new VeggaItemDef
+		{
+			Id = VeggaItemIds.Ammo556,
+			Name = "5.56 Rounds",
+			Description = "Ammunition for 5.56 weapons.",
+			ModelPath = "models/items/ammo.vmdl",
+			PrefabPath = "ammo_556.prefab",
+			Value = 0,
+			MaxStack = 200,
+			Category = ItemCategory.Material,
+			Rarity = ItemRarity.Common
+		} );
+
 		Register( new VeggaItemDef
 		{
 			Id = VeggaItemIds.SteelBar,

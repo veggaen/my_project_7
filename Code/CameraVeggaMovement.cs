@@ -36,6 +36,11 @@ public sealed class CameraVeggaMovement : Component
 
 	private CameraComponent _camera;
 	private ModelRenderer _bodyRenderer;
+	private ModelRenderer[] _playerRenderers;
+	private float _currentFov;
+
+	private GameObject _viewModelObject;
+	private ModelRenderer _viewModelRenderer;
 
 	private float _currentDistance;
 	private float _targetDistance;
@@ -46,6 +51,7 @@ public sealed class CameraVeggaMovement : Component
 
 	private bool IsFirstPersonTarget => _targetDistance <= 0.01f;
 	private bool IsFirstPerson => _currentDistance <= 0.05f;
+	public bool InFirstPerson => IsFirstPerson;
 
 	protected override void OnAwake()
 	{
@@ -56,8 +62,9 @@ public sealed class CameraVeggaMovement : Component
 		_targetDistance = ThirdPersonDistance;
 		_shoulderBlend = _targetShoulderSide = 1;
 
+		_currentFov = BaseFov;
 		if ( _camera is not null )
-			_camera.FieldOfView = BaseFov;
+			_camera.FieldOfView = _currentFov;
 	}
 
 	protected override void OnUpdate()
@@ -71,8 +78,7 @@ public sealed class CameraVeggaMovement : Component
 				Head = Player.Head;
 				Body = Player.Body;
 
-				if ( Body is not null )
-					_bodyRenderer = Body.Components.Get<ModelRenderer>();
+				CachePlayerRenderers();
 
 				Log.Info( $"📷 Camera linked to local player: Head={Head?.Name}, Body={Body?.Name}" );
 			}
@@ -92,6 +98,7 @@ public sealed class CameraVeggaMovement : Component
 			Head = null;
 			Body = null;
 			_bodyRenderer = null;
+			_playerRenderers = null;
 			return;
 		}
 
@@ -127,6 +134,124 @@ public sealed class CameraVeggaMovement : Component
 		_shoulderBlend = _shoulderBlend + (_targetShoulderSide - _shoulderBlend) * ShoulderLerpSpeed * Time.Delta;
 
 		UpdateCameraTransform( eyeAngles );
+		UpdateAimFov();
+		UpdateWeaponViewModel();
+	}
+
+	private void UpdateWeaponViewModel()
+	{
+		// Only show viewmodel for the local player in first person.
+		if ( Player == null || !Player.IsValid() || Player.IsProxy || _camera is null )
+		{
+			DestroyViewModel();
+			return;
+		}
+
+		if ( !IsFirstPerson )
+		{
+			DestroyViewModel();
+			return;
+		}
+
+		var equipment = Player.Components.Get<Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
+		if ( equipment == null || !equipment.IsValid() )
+		{
+			DestroyViewModel();
+			return;
+		}
+
+		var itemId = equipment.GetEquippedItemId();
+		if ( !VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out var spec ) || string.IsNullOrWhiteSpace( spec.ViewModelPath ) )
+		{
+			DestroyViewModel();
+			return;
+		}
+
+		EnsureViewModel();
+		_viewModelRenderer.Model = Model.Load( spec.ViewModelPath );
+	}
+
+	private void EnsureViewModel()
+	{
+		if ( _viewModelObject != null && _viewModelObject.IsValid() && _viewModelRenderer != null && _viewModelRenderer.IsValid() )
+			return;
+
+		DestroyViewModel();
+
+		_viewModelObject = new GameObject( true, "weapon_viewmodel" );
+		_viewModelObject.Parent = GameObject;
+		// Most s&box viewmodels are authored to sit at the camera origin.
+		_viewModelObject.Transform.LocalPosition = Vector3.Zero;
+		_viewModelObject.Transform.LocalRotation = Rotation.Identity;
+
+		_viewModelRenderer = _viewModelObject.Components.Create<ModelRenderer>();
+		_viewModelRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
+	}
+
+	private void DestroyViewModel()
+	{
+		if ( _viewModelObject != null && _viewModelObject.IsValid() )
+			_viewModelObject.Destroy();
+		_viewModelObject = null;
+		_viewModelRenderer = null;
+	}
+
+	private void CachePlayerRenderers()
+	{
+		_playerRenderers = null;
+		_bodyRenderer = null;
+
+		if ( Player == null || !Player.IsValid() )
+			return;
+
+		var root = Player.GameObject;
+		if ( root == null || !root.IsValid() )
+			return;
+
+		var list = root.Components.GetAll<ModelRenderer>( FindMode.InDescendants ).ToList();
+		var rootR = root.Components.Get<ModelRenderer>();
+		if ( rootR != null && rootR.IsValid() )
+			list.Insert( 0, rootR );
+
+		_playerRenderers = list.Where( r => r != null && r.IsValid() ).Distinct().ToArray();
+
+		if ( Body is not null )
+			_bodyRenderer = Body.Components.Get<ModelRenderer>()
+				?? Body.Components.GetAll<ModelRenderer>( FindMode.InDescendants ).FirstOrDefault();
+	}
+
+	private void SetPlayerRenderType( ModelRenderer.ShadowRenderType type )
+	{
+		if ( _playerRenderers == null || _playerRenderers.Length == 0 )
+			CachePlayerRenderers();
+
+		if ( _playerRenderers == null )
+			return;
+
+		foreach ( var r in _playerRenderers )
+		{
+			if ( r == null || !r.IsValid() )
+				continue;
+			r.RenderType = type;
+		}
+	}
+
+	private void UpdateAimFov()
+	{
+		if ( _camera is null )
+			return;
+
+		var targetFov = BaseFov;
+		var equipment = Player != null && Player.IsValid()
+			? Player.Components.Get<Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants )
+			: null;
+
+		// "1x" ADS: slight FOV tighten for feel (not a scope).
+		if ( !VeggaUiMouse.WantsUiMouse && equipment != null && equipment.IsValid() && equipment.CanAim() && Input.Down( "Attack2" ) )
+			targetFov = MathF.Max( 10f, BaseFov * 0.85f );
+
+		_currentFov = _currentFov + (targetFov - _currentFov) * (12f * Time.Delta).Clamp( 0f, 1f );
+		_camera.FieldOfView = _currentFov;
 	}
 
 	private void HandleInput()
@@ -174,8 +299,7 @@ public sealed class CameraVeggaMovement : Component
 			// First person: at the head
 			targetCamPos = headPos + up * vertical;
 
-			if ( _bodyRenderer is not null )
-				_bodyRenderer.RenderType = ModelRenderer.ShadowRenderType.ShadowsOnly;
+			SetPlayerRenderType( ModelRenderer.ShadowRenderType.ShadowsOnly );
 		}
 		else
 		{
@@ -204,8 +328,7 @@ public sealed class CameraVeggaMovement : Component
 			else
 				targetCamPos = desiredCamPos;
 
-			if ( _bodyRenderer is not null )
-				_bodyRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
+			SetPlayerRenderType( ModelRenderer.ShadowRenderType.On );
 		}
 
 		// Smooth camera position a bit so motion feels weighted but still responsive

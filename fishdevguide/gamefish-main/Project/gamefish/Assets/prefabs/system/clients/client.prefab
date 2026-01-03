@@ -1,0 +1,141 @@
+{
+  "RootObject": {
+    "__guid": "962d4124-9d83-425e-ae8a-1883b6f45c52",
+    "__version": 1,
+    "Flags": 0,
+    "Name": "client",
+    "Position": "0,0,0",
+    "Rotation": "0,0,0,1",
+    "Scale": "1,1,1",
+    "Tags": "team_player",
+    "Enabled": true,
+    "NetworkMode": 2,
+    "NetworkInterpolation": true,
+    "NetworkOrphaned": 0,
+    "NetworkTransmit": true,
+    "OwnerTransfer": 1,
+    "Components": [
+      {
+        "__type": "GameFish.Client",
+        "__guid": "af98a2ba-66d5-4a1e-b3b9-1dab13ece240",
+        "__enabled": true,
+        "Flags": 0,
+        "ClassId": "client_player",
+        "ClassName": null,
+        "IsClass": false,
+        "IsNetworkingForced": true,
+        "NetworkAutomatically": true,
+        "NetworkId": "af98a2ba-66d5-4a1e-b3b9-1dab13ece240",
+        "NetworkingMode": "Object",
+        "NetworkOrphanedMode": "ClearOwner",
+        "NetworkOwner": null,
+        "NetworkTransferMode": "Fixed",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "Team": "data/teams/player.team"
+      },
+      {
+        "__type": "Sandbox.Voice",
+        "__guid": "c14b7927-2a28-4fbe-953a-2f44c6014289",
+        "__enabled": true,
+        "Flags": 0,
+        "Distance": 7000,
+        "Falloff": [
+          {
+            "x": 0,
+            "y": 1,
+            "in": 13.499992,
+            "out": -13.499992,
+            "mode": "Mirrored"
+          },
+          {
+            "x": 0.02264151,
+            "y": 0.72019696,
+            "in": 4.723807,
+            "out": -4.723807,
+            "mode": "Mirrored"
+          },
+          {
+            "x": 0.16320755,
+            "y": 0.31970447,
+            "in": 1.0977784,
+            "out": -1.0977784,
+            "mode": "Mirrored"
+          },
+          {
+            "x": 1,
+            "y": 0,
+            "in": -0,
+            "out": -0,
+            "mode": "Mirrored"
+          }
+        ],
+        "Loopback": false,
+        "Mode": "PushToTalk",
+        "MorphScale": 3,
+        "MorphSmoothTime": 0.1,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "PushToTalkInput": "voice",
+        "Renderer": null,
+        "VoiceMixer": {
+          "Name": "voice",
+          "Id": "3b76efb2-90e2-4edf-81fd-64544e503943"
+        },
+        "Volume": 1,
+        "WorldspacePlayback": false
+      }
+    ],
+    "Children": [
+      {
+        "__guid": "7a018834-690a-4e86-adf0-a64181906d4e",
+        "__version": 1,
+        "__Prefab": "prefabs/system/clients/modules/toggle_spec.prefab",
+        "__PrefabInstancePatch": {
+          "AddedObjects": [],
+          "RemovedObjects": [],
+          "PropertyOverrides": [],
+          "MovedObjects": []
+        },
+        "__PrefabIdToInstanceId": {
+          "1e9b6ab9-0fac-45cc-b3f9-3ab116b24fc1": "7a018834-690a-4e86-adf0-a64181906d4e",
+          "40505435-1abd-4235-b08e-367d8a819657": "1ffb7327-ae2e-45d8-9e6c-2fff570d2ef3"
+        }
+      }
+    ],
+    "__properties": {
+      "NetworkInterpolation": true,
+      "TimeScale": 1,
+      "WantsSystemScene": true,
+      "Metadata": {},
+      "NavMesh": {
+        "Enabled": false,
+        "IncludeStaticBodies": true,
+        "IncludeKeyframedBodies": true,
+        "EditorAutoUpdate": true,
+        "AgentHeight": 64,
+        "AgentRadius": 16,
+        "AgentStepSize": 18,
+        "AgentMaxSlope": 40,
+        "ExcludedBodies": "",
+        "IncludedBodies": ""
+      }
+    },
+    "__variables": []
+  },
+  "ResourceVersion": 2,
+  "ShowInMenu": false,
+  "MenuPath": null,
+  "MenuIcon": null,
+  "DontBreakAsTemplate": false,
+  "__references": [],
+  "__version": 2
+}

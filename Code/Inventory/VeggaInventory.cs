@@ -258,7 +258,8 @@ public sealed class VeggaInventory : Component
 			{
 				// Guard against stale caches across respawn/scene reloads.
 				// If we return a proxy inventory, client-side actions (drop/move) can become delayed.
-				if ( _local.Network?.IsProxy == false && _local.Network?.Owner == localConn )
+				var owner = _local.GameObject?.Network?.Owner;
+				if ( _local.Network?.IsProxy == false && owner == localConn )
 					return _local;
 				_local = null;
 			}
@@ -268,7 +269,7 @@ public sealed class VeggaInventory : Component
 			{
 				foreach ( var inv in scene.GetAllComponents<VeggaInventory>() )
 				{
-					if ( inv != null && inv.IsValid() && inv.Network?.Owner == localConn )
+					if ( inv != null && inv.IsValid() && inv.GameObject?.Network?.Owner == localConn )
 					{
 						_local = inv;
 						return _local;

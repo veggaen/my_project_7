@@ -1,0 +1,14 @@
+{
+  "Name": "Enemy",
+  "IsSelectable": false,
+  "SelfRelationship": "Ally",
+  "DefaultRelationship": "Enemy",
+  "Relationships": [
+    {
+      "Team": "data/teams/player.team",
+      "Relationship": "Enemy"
+    }
+  ],
+  "__references": [],
+  "__version": 0
+}

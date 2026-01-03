@@ -1,0 +1,144 @@
+{
+  "RootObject": {
+    "__guid": "1bab51ce-6af7-4603-8f7e-e3cb4dc26f5d",
+    "__version": 1,
+    "Flags": 0,
+    "Name": "arm",
+    "Position": "0,0,0",
+    "Rotation": "0,0,0,1",
+    "Scale": "1,1,1",
+    "Tags": "",
+    "Enabled": true,
+    "NetworkMode": 2,
+    "NetworkInterpolation": true,
+    "NetworkOrphaned": 0,
+    "NetworkTransmit": true,
+    "OwnerTransfer": 1,
+    "Components": [
+      {
+        "__type": "Playground.ArmJoint",
+        "__guid": "c9b92d8e-a091-4641-82fa-249362f6f89b",
+        "__enabled": true,
+        "Flags": 0,
+        "ClassId": "arm",
+        "ClassName": null,
+        "IsClass": false,
+        "IsNetworkingForced": true,
+        "Joint": {
+          "_type": "component",
+          "component_id": "b7b0d581-2761-4d63-9507-2d71c563dec4",
+          "go": "b39ddaea-b5d8-409d-9f34-e6cf402a02f7",
+          "component_type": "BallJoint"
+        },
+        "NetworkAutomatically": true,
+        "NetworkId": "c9b92d8e-a091-4641-82fa-249362f6f89b",
+        "NetworkingMode": "Object",
+        "NetworkOrphanedMode": "ClearOwner",
+        "NetworkOwner": null,
+        "NetworkTransferMode": "Fixed",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "Settings": {
+          "Speed": 0,
+          "KeyPitchUp": null,
+          "KeyPitchDown": null,
+          "KeyYawUp": null,
+          "KeyYawDown": null
+        },
+        "SteerAngles": "0,0,0",
+        "TargetAngles": "0,0,0"
+      }
+    ],
+    "Children": [
+      {
+        "__guid": "b39ddaea-b5d8-409d-9f34-e6cf402a02f7",
+        "__version": 1,
+        "Flags": 0,
+        "Name": "Joint",
+        "Position": "0,0,0",
+        "Rotation": "0,-0.7071067,0,0.7071068",
+        "Scale": "1,1,1",
+        "Tags": "",
+        "Enabled": true,
+        "NetworkMode": 2,
+        "NetworkInterpolation": true,
+        "NetworkOrphaned": 0,
+        "NetworkTransmit": true,
+        "OwnerTransfer": 1,
+        "Components": [
+          {
+            "__type": "Sandbox.BallJoint",
+            "__guid": "b7b0d581-2761-4d63-9507-2d71c563dec4",
+            "__enabled": true,
+            "Flags": 0,
+            "Attachment": "Auto",
+            "Body": null,
+            "BreakForce": 0,
+            "BreakTorque": 0,
+            "DampingRatio": 10,
+            "EnableCollision": false,
+            "Frequency": 10,
+            "Friction": 0.5,
+            "LocalFrame1": {
+              "Position": "0,0,0",
+              "Scale": "0,0,0",
+              "Rotation": "0,0,0,0"
+            },
+            "LocalFrame2": {
+              "Position": "0,0,0",
+              "Scale": "0,0,0",
+              "Rotation": "0,0,0,0"
+            },
+            "MaxTorque": 0,
+            "Motor": "TargetRotation",
+            "OnBreak": null,
+            "OnComponentDestroy": null,
+            "OnComponentDisabled": null,
+            "OnComponentEnabled": null,
+            "OnComponentFixedUpdate": null,
+            "OnComponentStart": null,
+            "OnComponentUpdate": null,
+            "StartBroken": false,
+            "SwingLimit": "0,0",
+            "SwingLimitEnabled": false,
+            "TargetRotation": "0,0,0,0",
+            "TargetVelocity": "0,0,0",
+            "TwistLimit": "-5,5",
+            "TwistLimitEnabled": false
+          }
+        ],
+        "Children": []
+      }
+    ],
+    "__properties": {
+      "NetworkInterpolation": true,
+      "TimeScale": 1,
+      "WantsSystemScene": true,
+      "Metadata": {},
+      "NavMesh": {
+        "Enabled": false,
+        "IncludeStaticBodies": true,
+        "IncludeKeyframedBodies": true,
+        "EditorAutoUpdate": true,
+        "AgentHeight": 64,
+        "AgentRadius": 16,
+        "AgentStepSize": 18,
+        "AgentMaxSlope": 40,
+        "ExcludedBodies": "",
+        "IncludedBodies": ""
+      }
+    },
+    "__variables": []
+  },
+  "ResourceVersion": 2,
+  "ShowInMenu": false,
+  "MenuPath": null,
+  "MenuIcon": null,
+  "DontBreakAsTemplate": false,
+  "__references": [],
+  "__version": 2
+}

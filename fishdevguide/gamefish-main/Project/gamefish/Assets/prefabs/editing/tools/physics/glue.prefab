@@ -1,0 +1,132 @@
+{
+  "RootObject": {
+    "__guid": "1bab51ce-6af7-4603-8f7e-e3cb4dc26f5d",
+    "__version": 1,
+    "Flags": 0,
+    "Name": "glue",
+    "Position": "0,0,0",
+    "Rotation": "0,0,0,1",
+    "Scale": "1,1,1",
+    "Tags": "",
+    "Enabled": true,
+    "NetworkMode": 2,
+    "NetworkInterpolation": true,
+    "NetworkOrphaned": 0,
+    "NetworkTransmit": true,
+    "OwnerTransfer": 1,
+    "Components": [
+      {
+        "__type": "Playground.GlueJoint",
+        "__guid": "04bb548b-fa86-4d69-8ef7-9c7d8d6d9082",
+        "__enabled": true,
+        "Flags": 0,
+        "ClassId": "weld",
+        "ClassName": null,
+        "IsClass": false,
+        "IsNetworkingForced": true,
+        "Joint": {
+          "_type": "component",
+          "component_id": "7be39d4c-73bc-46c1-baa1-924cb835ada3",
+          "go": "b39ddaea-b5d8-409d-9f34-e6cf402a02f7",
+          "component_type": "FixedJoint"
+        },
+        "NetworkAutomatically": true,
+        "NetworkId": "04bb548b-fa86-4d69-8ef7-9c7d8d6d9082",
+        "NetworkingMode": "Object",
+        "NetworkOrphanedMode": "ClearOwner",
+        "NetworkOwner": null,
+        "NetworkTransferMode": "Fixed",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "Settings": {
+          "Strength": 15,
+          "Damping": 1
+        }
+      }
+    ],
+    "Children": [
+      {
+        "__guid": "b39ddaea-b5d8-409d-9f34-e6cf402a02f7",
+        "__version": 1,
+        "Flags": 0,
+        "Name": "Joint",
+        "Position": "0,0,0",
+        "Rotation": "0,0,0,1",
+        "Scale": "1,1,1",
+        "Tags": "",
+        "Enabled": true,
+        "NetworkMode": 2,
+        "NetworkInterpolation": true,
+        "NetworkOrphaned": 0,
+        "NetworkTransmit": true,
+        "OwnerTransfer": 1,
+        "Components": [
+          {
+            "__type": "Sandbox.FixedJoint",
+            "__guid": "7be39d4c-73bc-46c1-baa1-924cb835ada3",
+            "__enabled": true,
+            "Flags": 0,
+            "AngularDamping": 2,
+            "AngularFrequency": 15,
+            "Attachment": "Auto",
+            "Body": null,
+            "BreakForce": 0,
+            "BreakTorque": 0,
+            "EnableCollision": false,
+            "LinearDamping": 2,
+            "LinearFrequency": 15,
+            "LocalFrame1": {
+              "Position": "0,0,0",
+              "Scale": "0,0,0",
+              "Rotation": "0,0,0,0"
+            },
+            "LocalFrame2": {
+              "Position": "0,0,0",
+              "Scale": "0,0,0",
+              "Rotation": "0,0,0,0"
+            },
+            "OnBreak": null,
+            "OnComponentDestroy": null,
+            "OnComponentDisabled": null,
+            "OnComponentEnabled": null,
+            "OnComponentFixedUpdate": null,
+            "OnComponentStart": null,
+            "OnComponentUpdate": null,
+            "StartBroken": false
+          }
+        ],
+        "Children": []
+      }
+    ],
+    "__properties": {
+      "NetworkInterpolation": true,
+      "TimeScale": 1,
+      "WantsSystemScene": true,
+      "Metadata": {},
+      "NavMesh": {
+        "Enabled": false,
+        "IncludeStaticBodies": true,
+        "IncludeKeyframedBodies": true,
+        "EditorAutoUpdate": true,
+        "AgentHeight": 64,
+        "AgentRadius": 16,
+        "AgentStepSize": 18,
+        "AgentMaxSlope": 40,
+        "ExcludedBodies": "",
+        "IncludedBodies": ""
+      }
+    },
+    "__variables": []
+  },
+  "ResourceVersion": 2,
+  "ShowInMenu": false,
+  "MenuPath": null,
+  "MenuIcon": null,
+  "DontBreakAsTemplate": false,
+  "__references": [],
+  "__version": 2
+}

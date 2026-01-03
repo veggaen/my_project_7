@@ -437,6 +437,23 @@ public sealed class PlayerVeggaMovement : Component
 	{
 		if ( animationHelper is null ) return;
 
+		var equipment = Components.Get<Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
+		if ( equipment != null && equipment.IsValid() )
+		{
+			animationHelper.HoldType = equipment.HoldType switch
+			{
+				Sandbox.VeggaHoldType.Pistol => CitizenAnimationHelper.HoldTypes.Pistol,
+				Sandbox.VeggaHoldType.Rifle => CitizenAnimationHelper.HoldTypes.Rifle,
+				Sandbox.VeggaHoldType.Tool => CitizenAnimationHelper.HoldTypes.HoldItem,
+				Sandbox.VeggaHoldType.Melee => CitizenAnimationHelper.HoldTypes.Punch,
+				_ => CitizenAnimationHelper.HoldTypes.None
+			};
+
+			animationHelper.AimEyesWeight = equipment.IsAiming ? 1f : 0f;
+			animationHelper.AimHeadWeight = equipment.IsAiming ? 1f : 0f;
+			animationHelper.AimBodyWeight = equipment.IsAiming ? 1f : 0f;
+		}
+
 		// 🎯 MULTIPLAYER: Use synced head rotation for animations
 		var headRotation = TargetHeadAngle.ToRotation();
 
@@ -455,13 +472,34 @@ public sealed class PlayerVeggaMovement : Component
 
 	/// <summary>
 	/// 🎯 MULTIPLAYER: Control body renderer visibility.
-	/// For now we want to always see our own player model too, so we render
-	/// full bodies for both local and remote players.
+	/// Local player: hide the body in first-person to avoid seeing eyes/mouth.
+	/// Remote players: always visible.
 	/// </summary>
 	void UpdateBodyRendererVisibility()
 	{
 		if ( _bodyRenderer == null ) return;
 
-		_bodyRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
+		// Proxies should always be visible.
+		if ( IsProxy )
+		{
+			_bodyRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
+			return;
+		}
+
+		bool firstPerson = false;
+		try
+		{
+			var cam = Scene?.Components?.GetAll<CameraVeggaMovement>()?.FirstOrDefault();
+			if ( cam != null && cam.IsValid() )
+				firstPerson = cam.InFirstPerson;
+		}
+		catch
+		{
+			firstPerson = false;
+		}
+
+		_bodyRenderer.RenderType = firstPerson
+			? ModelRenderer.ShadowRenderType.ShadowsOnly
+			: ModelRenderer.ShadowRenderType.On;
 	}
 }

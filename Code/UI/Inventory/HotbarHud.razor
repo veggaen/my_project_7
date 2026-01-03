@@ -6,13 +6,17 @@
 
 <root>
 	<div class="hotbar-root">
+		@if ( InventoryHudSlot.DebugInput )
+		{
+			<div class="hotbar-debug">@_debugText</div>
+		}
 		@for ( int i = 0; i < 9; i++ )
 		{
 			int slotIndex = i;
 			<InventoryHudSlot Inventory="@_inventory"
 						 SlotIndex="@slotIndex"
-						 IsSelected="@false"
-						 OnSelected="@((Action<int>)null)" />
+						 IsSelected="@(_equipment?.ActiveHotbarSlot == slotIndex)"
+						 OnSelected="@(OnSlotSelected)" />
 		}
 	</div>
 </root>
@@ -20,10 +24,60 @@
 @code
 {
 	global::Sandbox.VeggaInventory _inventory;
+	global::Sandbox.VeggaEquipmentController _equipment;
+	string _debugText;
+	TimeSince _sinceDebugUpdate;
+
+	private static global::Sandbox.VeggaEquipmentController FindLocalEquipmentController()
+	{
+		var local = Connection.Local;
+		if ( local == null )
+			return null;
+
+		// Fast path: if local stats knows the player root.
+		var stats = global::Sandbox.PlayerVeggaStats.Local;
+		var go = stats?.GameObject;
+		if ( go != null && go.IsValid() )
+		{
+			var eq = go.Components.Get<global::Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
+			if ( eq != null && eq.IsValid() )
+				return eq;
+		}
+
+		// Robust fallback: scan scene for the locally-owned controller.
+		var scene = Game.ActiveScene;
+		if ( scene == null )
+			return null;
+
+		foreach ( var eq in scene.GetAllComponents<global::Sandbox.VeggaEquipmentController>() )
+		{
+			if ( eq == null || !eq.IsValid() )
+				continue;
+			if ( eq.Network?.IsProxy == true )
+				continue;
+			if ( eq.GameObject?.Network?.Owner == local )
+				return eq;
+		}
+
+		return null;
+	}
+
+	private void OnSlotSelected( int slot )
+	{
+		// When the bag is open, clicking the hotbar should inspect items (show details)
+		// rather than equipping.
+		if ( InventoryHud.IsOpenGlobal )
+		{
+			InventoryHud.InspectSlot( slot );
+			return;
+		}
+
+		_equipment?.SetActiveHotbarSlot( slot );
+	}
 
 	protected override int BuildHash()
 	{
-		return HashCode.Combine( _inventory?.Revision ?? 0, InventoryHudSlot.HeldUiRevision, InventoryHud.IsOpenGlobal );
+		return HashCode.Combine( _inventory?.Revision ?? 0, _equipment?.ActiveHotbarSlot ?? -1, InventoryHudSlot.HeldUiRevision, InventoryHud.IsOpenGlobal );
 	}
 
 	protected override void OnUpdate()
@@ -46,7 +100,49 @@
 			Panel.Style.ZIndex = VeggaHudLayoutState.IsActive && VeggaHudLayoutState.SelectedElement == key ? 2601 : 0;
 		}
 
-		if ( _inventory == null || !_inventory.IsValid() || _inventory.Network?.Owner != Connection.Local || _inventory.Network?.IsProxy == true )
+		var invOwner = _inventory?.GameObject?.Network?.Owner;
+		if ( _inventory == null || !_inventory.IsValid() || invOwner != Connection.Local || _inventory.Network?.IsProxy == true )
 			_inventory = VeggaInventory.Local;
+
+		if ( _inventory != null && _inventory.IsValid() )
+		{
+			// Try to resolve equipment controller near the inventory.
+			// Inventory may live on a child object while equipment is on the player root,
+			// so search ancestors too.
+			_equipment = _inventory.GameObject?.Components.Get<global::Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InAncestors | FindMode.InDescendants );
+		}
+
+		// If that failed, find it via local-player fallbacks.
+		if ( _equipment == null || !_equipment.IsValid() )
+			_equipment = FindLocalEquipmentController();
+
+		if ( InventoryHudSlot.DebugInput && _sinceDebugUpdate > 0.05f )
+		{
+			_sinceDebugUpdate = 0;
+			bool p1 = Input.Keyboard.Pressed( "1" );
+			bool p2 = Input.Keyboard.Pressed( "2" );
+			bool p3 = Input.Keyboard.Pressed( "3" );
+			bool p4 = Input.Keyboard.Pressed( "4" );
+			bool p5 = Input.Keyboard.Pressed( "5" );
+			bool p6 = Input.Keyboard.Pressed( "6" );
+			bool p7 = Input.Keyboard.Pressed( "7" );
+			bool p8 = Input.Keyboard.Pressed( "8" );
+			bool p9 = Input.Keyboard.Pressed( "9" );
+
+			int slot = _equipment?.ActiveHotbarSlot ?? -999;
+			bool wantsMouse = VeggaUiMouse.WantsUiMouse;
+			bool invOpen = InventoryHud.IsOpenGlobal;
+			bool hasInv = _inventory != null && _inventory.IsValid();
+			bool hasEq = _equipment != null && _equipment.IsValid();
+			bool hasStats = global::Sandbox.PlayerVeggaStats.Local != null && global::Sandbox.PlayerVeggaStats.Local.IsValid();
+			string invGo = _inventory?.GameObject?.Name ?? "null";
+			string eqGo = _equipment?.GameObject?.Name ?? "null";
+
+			string pressed = (p1||p2||p3||p4||p5||p6||p7||p8||p9)
+				? $"pressed={(p1?"1":"")}{(p2?"2":"")}{(p3?"3":"")}{(p4?"4":"")}{(p5?"5":"")}{(p6?"6":"")}{(p7?"7":"")}{(p8?"8":"")}{(p9?"9":"")}"
+				: "pressed=none";
+
+			_debugText = $"dbg inv={(hasInv?1:0)}({invGo}) eq={(hasEq?1:0)}({eqGo}) stats={(hasStats?1:0)} slot={slot} uiMouse={(wantsMouse?1:0)} bag={(invOpen?1:0)} {pressed}";
+		}
 	}
 }

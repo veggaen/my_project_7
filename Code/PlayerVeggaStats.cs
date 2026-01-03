@@ -103,7 +103,7 @@ public sealed class PlayerVeggaStats : Component
 		{
 			// Check if cached local is still valid AND still owned by our local connection
 			var localConn = Connection.Local;
-			if ( localConn != null && _local != null && _local.IsValid() && _local.Network.Owner == localConn )
+			if ( localConn != null && _local != null && _local.IsValid() && _local.GameObject?.Network?.Owner == localConn )
 				return _local;
 
 			// Clear invalid cache
@@ -117,7 +117,7 @@ public sealed class PlayerVeggaStats : Component
 			{
 				foreach ( var stats in scene.GetAllComponents<PlayerVeggaStats>() )
 				{
-					if ( stats.IsValid() && stats.Network.Owner == localConn )
+					if ( stats.IsValid() && stats.GameObject?.Network?.Owner == localConn )
 					{
 						_local = stats;
 						return _local;
@@ -131,8 +131,9 @@ public sealed class PlayerVeggaStats : Component
 				if ( !stats.IsValid() )
 					continue;
 
+				var goNet = stats.GameObject?.Network;
 				var net = stats.Network;
-				if ( net != null && net.Owner == null && !net.IsProxy )
+				if ( goNet != null && goNet.Owner == null && (net == null || !net.IsProxy) )
 				{
 					_local = stats;
 					return _local;

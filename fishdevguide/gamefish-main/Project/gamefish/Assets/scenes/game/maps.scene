@@ -1,0 +1,179 @@
+{
+  "__guid": "325a4042-0696-43dd-a79d-dcc314299ba3",
+  "GameObjects": [
+    {
+      "__guid": "edf4e718-6fa1-4e76-9ad8-f23929e8b5d4",
+      "__version": 1,
+      "Flags": 0,
+      "Name": "Scene",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkInterpolation": true,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [],
+      "Children": [
+        {
+          "__guid": "52f678f2-d7d5-4f27-8abb-ad673b472eff",
+          "__version": 1,
+          "Flags": 0,
+          "Name": "Information",
+          "Position": "0,0,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkInterpolation": true,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [
+            {
+              "__type": "Sandbox.SceneInformation",
+              "__guid": "6534f2ec-c177-4758-9a9b-ea06e167ee7e",
+              "__enabled": true,
+              "Author": "yart",
+              "Changes": null,
+              "Description": "The scene for loading maps from the menu.",
+              "Group": "Game Fish",
+              "OnComponentDestroy": null,
+              "OnComponentDisabled": null,
+              "OnComponentEnabled": null,
+              "OnComponentFixedUpdate": null,
+              "OnComponentStart": null,
+              "OnComponentUpdate": null,
+              "SceneTags": "",
+              "Title": "Maps Scene",
+              "Version": "0.69a"
+            }
+          ],
+          "Children": []
+        },
+        {
+          "__guid": "bf27a2cf-021d-415c-81cc-70b03e24a43b",
+          "__version": 1,
+          "Flags": 0,
+          "Name": "Settings",
+          "Position": "0,0,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkInterpolation": true,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [
+            {
+              "__type": "GameFish.SceneSettings",
+              "__guid": "cdb9944f-1081-4d46-a0e3-d097760b936c",
+              "__enabled": true,
+              "ClassId": null,
+              "ClassName": null,
+              "DepthLevel": -1570.6641,
+              "DepthSettings": {
+                "Players": "Teleport",
+                "Actors": "Destroy",
+                "Physics": "Destroy"
+              },
+              "EnableBoundaries": true,
+              "EnableDepth": true,
+              "GameManagerPrefabOverride": null,
+              "GameManagerStateOverride": null,
+              "IsClass": false,
+              "IsMainMenu": false,
+              "IsNetworkingForced": true,
+              "NetworkAutomatically": true,
+              "NetworkId": "cdb9944f-1081-4d46-a0e3-d097760b936c",
+              "NetworkingMode": "Object",
+              "NetworkOrphanedMode": "Host",
+              "NetworkOwner": null,
+              "NetworkTransferMode": "Fixed",
+              "OnComponentDestroy": null,
+              "OnComponentDisabled": null,
+              "OnComponentEnabled": null,
+              "OnComponentFixedUpdate": null,
+              "OnComponentStart": null,
+              "OnComponentUpdate": null,
+              "SpawnGameManager": true
+            }
+          ],
+          "Children": []
+        },
+        {
+          "__guid": "bdbbaf79-e48c-4a93-8185-a7cd8dcac676",
+          "__version": 1,
+          "Flags": 0,
+          "Name": "Map",
+          "Position": "0,0,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkInterpolation": true,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [
+            {
+              "__type": "Sandbox.MapInstance",
+              "__guid": "a5636600-26c5-47d2-8e7c-39044505cc80",
+              "__enabled": true,
+              "__version": 1,
+              "EnableCollision": true,
+              "MapName": null,
+              "NoOrigin": false,
+              "OnComponentDestroy": null,
+              "OnComponentDisabled": null,
+              "OnComponentEnabled": null,
+              "OnComponentFixedUpdate": null,
+              "OnComponentStart": null,
+              "OnComponentUpdate": null,
+              "OnMapLoaded": null,
+              "OnMapUnloaded": null,
+              "UseMapFromLaunch": true
+            }
+          ],
+          "Children": []
+        }
+      ]
+    }
+  ],
+  "SceneProperties": {
+    "NetworkInterpolation": true,
+    "TimeScale": 1,
+    "WantsSystemScene": true,
+    "Metadata": {
+      "Title": "Maps Scene",
+      "Description": "The scene for loading maps from the menu.",
+      "Group": "Game Fish",
+      "Version": "0.69a",
+      "Author": "yart"
+    },
+    "NavMesh": {
+      "Enabled": false,
+      "IncludeStaticBodies": true,
+      "IncludeKeyframedBodies": true,
+      "EditorAutoUpdate": true,
+      "AgentHeight": 64,
+      "AgentRadius": 16,
+      "AgentStepSize": 18,
+      "AgentMaxSlope": 40,
+      "ExcludedBodies": "",
+      "IncludedBodies": ""
+    }
+  },
+  "ResourceVersion": 3,
+  "Title": "Maps Scene",
+  "Description": "The scene for loading maps from the menu.",
+  "__references": [],
+  "__version": 3
+}

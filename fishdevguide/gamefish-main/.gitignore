@@ -1,0 +1,15 @@
+﻿*.vs
+*.vscode
+*.code-workspace
+
+*.los
+*.sln
+*.slnx
+*.csproj
+
+obj
+bin
+*.bin/
+
+# Local Storage
+Archive

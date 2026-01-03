@@ -1,0 +1,539 @@
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc29:version{3cec427c-1b0e-4d48-a90a-0436f33a6041} -->
+{
+	rootNode = 
+	{
+		_class = "RootNode"
+		children = 
+		[
+			{
+				_class = "MaterialGroupList"
+				children = 
+				[
+					{
+						_class = "DefaultMaterialGroup"
+						remaps = [  ]
+						use_global_default = true
+						global_default_material = "models/axis/axis.vmat"
+					},
+				]
+			},
+			{
+				_class = "PhysicsShapeList"
+				children = 
+				[
+					{
+						_class = "PhysicsHullFile"
+						name = "axis"
+						parent_bone = "axis"
+						surface_prop = "chair_foam"
+						collision_tags = "solid"
+						recenter_on_parent_bone = false
+						offset_origin = [ 0.0, 0.0, 0.0 ]
+						offset_angles = [ 0.0, 0.0, 0.0 ]
+						align_origin_x_type = "None"
+						align_origin_y_type = "None"
+						align_origin_z_type = "None"
+						filename = "models/axis/axis.fbx"
+						import_scale = 1.0
+						faceMergeAngle = 10.0
+						maxHullVertices = 0
+						import_mode = "HullPerElement"
+						optimization_algorithm = "QEM"
+						import_filter = 
+						{
+							exclude_by_default = true
+							exception_list = 
+							[
+								"axis_hull",
+							]
+						}
+					},
+					{
+						_class = "PhysicsShapeCylinder"
+						parent_bone = "axis"
+						surface_prop = "chair_foam"
+						collision_tags = "solid"
+						radius = 17.0
+						point0 = [ -0.150112, 0.0, 0.0 ]
+						point1 = [ 0.159351, 0.0, 0.0 ]
+					},
+					{
+						_class = "PhysicsShapeCylinder"
+						parent_bone = "axis"
+						surface_prop = "chair_foam"
+						collision_tags = "solid"
+						radius = 17.0
+						point0 = [ 0.0, -0.165089, 0.0 ]
+						point1 = [ 0.0, 0.174554, 0.0 ]
+					},
+					{
+						_class = "PhysicsShapeCylinder"
+						parent_bone = "axis"
+						surface_prop = "chair_foam"
+						collision_tags = "solid"
+						radius = 17.0
+						point0 = [ 0.0, 0.0, 0.168527 ]
+						point1 = [ 0.0, 0.0, -0.161676 ]
+					},
+				]
+			},
+			{
+				_class = "RenderMeshList"
+				children = 
+				[
+					{
+						_class = "RenderMeshFile"
+						filename = "models/axis/axis.fbx"
+						import_translation = [ 0.0, 0.0, 0.0 ]
+						import_rotation = [ 0.0, 0.0, 0.0 ]
+						import_scale = 1.0
+						align_origin_x_type = "None"
+						align_origin_y_type = "None"
+						align_origin_z_type = "None"
+						parent_bone = ""
+						import_filter = 
+						{
+							exclude_by_default = true
+							exception_list = 
+							[
+								"axis",
+							]
+						}
+					},
+				]
+			},
+			{
+				_class = "AnimConstraintList"
+				children = 
+				[
+					{
+						_class = "Folder"
+						name = "TiltTwist"
+						note = "Takes a rotation from any of the parent\'s axis, and translates it into rotation for any of the slave\'s axis.\nChiefly used for Hand to Wrist rotations."
+						children = 
+						[
+							{
+								_class = "AnimConstraintTiltTwist"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "x"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								input_axis = 0
+								slave_axis = 0
+							},
+							{
+								_class = "AnimConstraintTiltTwist"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 90.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "y"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								input_axis = 1
+								slave_axis = 0
+							},
+							{
+								_class = "AnimConstraintTiltTwist"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "z"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								input_axis = 2
+								slave_axis = 0
+							},
+						]
+					},
+					{
+						_class = "Folder"
+						name = "Aim"
+						note = "Makes the bones point towards the parent, useful for machinery pistons."
+						children = 
+						[
+							{
+								_class = "AnimConstraintAim"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "x"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								aim_offset = [ 0.0, 0.0, 90.0 ]
+								up_type = 1
+								up_vector = [ 0.0, 0.0, 0.0 ]
+							},
+							{
+								_class = "AnimConstraintAim"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "y"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								aim_offset = [ 0.0, 0.0, 90.0 ]
+								up_type = 1
+								up_vector = [ 0.0, 0.0, 0.0 ]
+							},
+							{
+								_class = "AnimConstraintAim"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "z"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								aim_offset = [ 0.0, 0.0, 90.0 ]
+								up_type = 1
+								up_vector = [ 0.0, 0.0, 0.0 ]
+							},
+						]
+						disabled = true
+					},
+					{
+						_class = "Folder"
+						name = "Parent"
+						note = "Copies the location and all transforms of the parent, only requires an Input. \nIn this example I offset the arms to float above the axis, as by default they\'d be moved inside the axis.."
+						children = 
+						[
+							{
+								_class = "AnimConstraintParent"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ -10.0, 10.0, 0.0 ]
+										relative_angles = [ -90.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								constrained_bone = "x"
+								weight = 1.0
+								translation_offset = [ 0.0, 0.0, 0.0 ]
+								rotation_offset_xyz = [ 0.0, 0.0, 0.0 ]
+							},
+							{
+								_class = "AnimConstraintParent"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ -10.0, 0.0, 0.0 ]
+										relative_angles = [ -90.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								constrained_bone = "y"
+								weight = 1.0
+								translation_offset = [ 0.0, 0.0, 0.0 ]
+								rotation_offset_xyz = [ 0.0, 0.0, 0.0 ]
+							},
+							{
+								_class = "AnimConstraintParent"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ -10.0, -10.0, 0.0 ]
+										relative_angles = [ -90.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+								constrained_bone = "z"
+								weight = 1.0
+								translation_offset = [ 0.0, 0.0, 0.0 ]
+								rotation_offset_xyz = [ 0.0, 0.0, 0.0 ]
+							},
+						]
+						disabled = true
+					},
+					{
+						_class = "Folder"
+						name = "Orient"
+						note = "Copies the rotations of the parent, in this example I offset the rotations of the arms to make them point down first."
+						children = 
+						[
+							{
+								_class = "AnimConstraintOrient"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ -90.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "x"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+							},
+							{
+								_class = "AnimConstraintOrient"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ -90.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "y"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+							},
+							{
+								_class = "AnimConstraintOrient"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ -90.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "z"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+							},
+						]
+						disabled = true
+					},
+					{
+						_class = "Folder"
+						name = "Point"
+						note = "The slaves are parented to the parent, but keep their individual rotations."
+						children = 
+						[
+							{
+								_class = "AnimConstraintPoint"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ -10.0, 5.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "x"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+							},
+							{
+								_class = "AnimConstraintPoint"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ -10.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "y"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+							},
+							{
+								_class = "AnimConstraintPoint"
+								children = 
+								[
+									{
+										_class = "AnimConstraintBoneInput"
+										parent_bone = "axis"
+										relative_origin = [ -10.0, -5.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+									{
+										_class = "AnimConstraintSlave"
+										parent_bone = "z"
+										relative_origin = [ 0.0, 0.0, 0.0 ]
+										relative_angles = [ 0.0, 0.0, 0.0 ]
+										weight = 1.0
+									},
+								]
+							},
+						]
+						disabled = true
+					},
+				]
+			},
+			{
+				_class = "PhysicsJointList"
+				children = 
+				[
+					{
+						_class = "PhysicsJointPrismatic"
+						name = "prismatic"
+						note = "Moves along an axis, instead of rotating."
+						disabled = true
+						parent_body = "!fixed"
+						child_body = "axis"
+						anchor_origin = [ -0.000006, 0.000006, 38.29987 ]
+						anchor_angles = [ 90.0, 90.0, 0.0 ]
+						collision_enabled = false
+						linear_strength = 0.0
+						angular_strength = 0.0
+						friction = 0.0
+						enable_limit = false
+						min_offset = 0.0
+						max_offset = 0.0
+					},
+					{
+						_class = "PhysicsJointRevolute"
+						name = "revolute"
+						note = "Rotates around a single axis, like a revolving door."
+						disabled = true
+						parent_body = "!fixed"
+						child_body = "axis"
+						anchor_origin = [ -0.000006, 0.000006, 38.29987 ]
+						anchor_angles = [ 0.0, 0.0, 90.0 ]
+						collision_enabled = false
+						linear_strength = 0.0
+						angular_strength = 0.0
+						friction = 0.0
+						enable_limit = false
+						min_angle = 0.0
+						max_angle = 0.0
+					},
+					{
+						_class = "PhysicsJointConical"
+						name = "conical"
+						note = "Swings around 2 axis, and can also twist around a third axis."
+						parent_body = "!fixed"
+						child_body = "axis"
+						anchor_origin = [ -0.000006, 0.000006, 38.29987 ]
+						anchor_angles = [ 90.0, 0.0, 0.0 ]
+						collision_enabled = false
+						linear_strength = 0.0
+						angular_strength = 0.0
+						friction = 2.0
+						enable_swing_limit = true
+						swing_limit = 90.0
+						swing_offset_angle = [ 0.0, 0.0, 0.0 ]
+						enable_twist_limit = true
+						min_twist_angle = -30.0
+						max_twist_angle = 30.0
+					},
+					{
+						_class = "PhysicsJointSpherical"
+						name = "sphere"
+						note = "Rotates around a point with no limits."
+						disabled = true
+						parent_body = "!fixed"
+						child_body = "axis"
+						anchor_origin = [ -0.000006, 0.000006, 38.29987 ]
+						anchor_angles = [ 0.0, 0.0, 90.0 ]
+						collision_enabled = false
+						linear_strength = 0.0
+						angular_strength = 0.0
+					},
+				]
+			},
+		]
+		model_archetype = ""
+		primary_associated_entity = ""
+		anim_graph_name = ""
+		base_model_name = ""
+	}
+}

@@ -1,0 +1,59 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using GameFish;
+
+@inherits Panel
+
+@namespace Playground.Razor
+
+@{
+	var groupTools = Tools;
+
+	if (groupTools is null || !groupTools.Any())
+	{
+		return;
+	}
+}
+
+<root>
+
+	@if (!Header.IsBlank())
+	{
+		<p class="group-bar" @onclick=@(() => Toggle())>
+			<label class="group-name"> @Header </label>
+			<label class="tool-count"> @groupTools.Count() </label>
+		</p>
+	}
+
+	@if (IsCollapsed)
+	{
+		return;
+	}
+
+	<div class="tool-list">
+
+		@foreach (var tool in groupTools)
+		{
+			if (!tool.IsValid())
+			{
+				continue;
+			}
+
+			var selClass = tool == ActiveTool ? "selected" : "";
+
+			var icon = tool.ToolEmoji.IsBlank()
+			? EditorTool.DEFAULT_EMOJI
+			: tool.ToolEmoji;
+
+			<div class="tool-button @selClass" tooltip="@tool.ToolDescription" @onclick=@(() => Select(tool))>
+
+				<label class="tool-icon"> @icon </label>
+
+				@tool.ToolName
+
+			</div>
+		}
+
+	</div>
+
+</root>

@@ -1,0 +1,728 @@
+{
+  "__guid": "325a4042-0696-43dd-a79d-dcc314299ba3",
+  "GameObjects": [
+    {
+      "__guid": "edf4e718-6fa1-4e76-9ad8-f23929e8b5d4",
+      "__version": 1,
+      "Flags": 0,
+      "Name": "Scene",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkInterpolation": true,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [],
+      "Children": [
+        {
+          "__guid": "52f678f2-d7d5-4f27-8abb-ad673b472eff",
+          "__version": 1,
+          "Flags": 0,
+          "Name": "Information",
+          "Position": "0,0,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkInterpolation": true,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [
+            {
+              "__type": "Sandbox.SceneInformation",
+              "__guid": "6534f2ec-c177-4758-9a9b-ea06e167ee7e",
+              "__enabled": true,
+              "Flags": 0,
+              "Author": "yart",
+              "Changes": null,
+              "Description": "It's for showing off and testing stuff.",
+              "Group": "Game Fish",
+              "OnComponentDestroy": null,
+              "OnComponentDisabled": null,
+              "OnComponentEnabled": null,
+              "OnComponentFixedUpdate": null,
+              "OnComponentStart": null,
+              "OnComponentUpdate": null,
+              "SceneTags": "example,test,debug",
+              "Title": "Example Scene",
+              "Version": "0.69a"
+            }
+          ],
+          "Children": []
+        },
+        {
+          "__guid": "bf27a2cf-021d-415c-81cc-70b03e24a43b",
+          "__version": 1,
+          "Flags": 0,
+          "Name": "Settings",
+          "Position": "0,0,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkInterpolation": true,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [
+            {
+              "__type": "GameFish.SceneSettings",
+              "__guid": "cdb9944f-1081-4d46-a0e3-d097760b936c",
+              "__enabled": true,
+              "Flags": 0,
+              "ClassId": null,
+              "ClassName": null,
+              "DepthLevel": -7100.5234,
+              "DepthSettings": {
+                "Players": "Teleport",
+                "Actors": "Destroy",
+                "Physics": "Destroy"
+              },
+              "EnableBoundaries": true,
+              "EnableDepth": true,
+              "GameManagerPrefabOverride": null,
+              "GameManagerStateOverride": null,
+              "IsClass": false,
+              "IsMainMenu": false,
+              "IsNetworkingForced": true,
+              "NetworkAutomatically": true,
+              "NetworkId": "cdb9944f-1081-4d46-a0e3-d097760b936c",
+              "NetworkingMode": "Object",
+              "NetworkOrphanedMode": "Host",
+              "NetworkOwner": null,
+              "NetworkTransferMode": "Fixed",
+              "OnComponentDestroy": null,
+              "OnComponentDisabled": null,
+              "OnComponentEnabled": null,
+              "OnComponentFixedUpdate": null,
+              "OnComponentStart": null,
+              "OnComponentUpdate": null,
+              "SpawnGameManager": true
+            }
+          ],
+          "Children": []
+        },
+        {
+          "__guid": "fda8f8d3-7e45-43af-a138-6f9b259dee97",
+          "__version": 1,
+          "Flags": 0,
+          "Name": "Lighting",
+          "Position": "0,0,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkInterpolation": true,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [],
+          "Children": [
+            {
+              "__guid": "bfc59c12-1ed2-4f91-8956-a95a315eac3c",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Sun",
+              "Position": "0,0,0",
+              "Rotation": "-0.0729315,0.4822396,0.1305433,0.8631827",
+              "Scale": "1,1,1",
+              "Tags": "light_directional,light",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.DirectionalLight",
+                  "__guid": "d3659344-a90d-48fa-927a-095f70fe041f",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "FogMode": "Enabled",
+                  "FogStrength": 1,
+                  "LightColor": "0.78912,0.84308,0.87907,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "Shadows": true,
+                  "SkyColor": "0,0,0,0"
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "00344a8c-fa5e-45ae-b12a-10bb781a1dc3",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "2D Skybox",
+              "Position": "0,0,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "skybox",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SkyBox2D",
+                  "__guid": "de79e9e0-5c37-4c54-ac67-bfcdb1d5483b",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "SkyIndirectLighting": true,
+                  "SkyMaterial": "materials/skybox/skybox_day_01.vmat",
+                  "Tint": "1,1,1,1"
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "b002eb65-26b5-417e-a69c-3d4f238f2b59",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Ambient Lighting",
+              "Position": "0,0,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.AmbientLight",
+                  "__guid": "e3896103-ff79-4f75-8e07-186514eb5573",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.50233,0.48317,0.40653,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "__guid": "457f9da8-6873-4f61-a12c-2273317879f8",
+      "__version": 1,
+      "Flags": 0,
+      "Name": "Dusty",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "2.5,2.5,0.9999999",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkInterpolation": true,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [],
+      "Children": [
+        {
+          "__guid": "f41c08b4-31c5-4dfa-a2cb-28b6a1e9e2e6",
+          "__version": 1,
+          "__Prefab": "prefabs/editing/tools/voxel/voxel_world.prefab",
+          "__PrefabInstancePatch": {
+            "AddedObjects": [],
+            "RemovedObjects": [],
+            "PropertyOverrides": [
+              {
+                "Target": {
+                  "Type": "GameObject",
+                  "IdValue": "2d0ddc99-76b3-4bc1-881a-109a9bd26b02"
+                },
+                "Property": "Position",
+                "Value": "-819.2,-819.2,0"
+              },
+              {
+                "Target": {
+                  "Type": "GameObject",
+                  "IdValue": "2d0ddc99-76b3-4bc1-881a-109a9bd26b02"
+                },
+                "Property": "Scale",
+                "Value": "0.4,0.4,1"
+              },
+              {
+                "Target": {
+                  "Type": "Component",
+                  "IdValue": "a96e820a-e828-4478-9dea-97964fde0e5d"
+                },
+                "Property": "MapPath",
+                "Value": "voxel\\maps\\bnb\\yart_dusty.vox"
+              }
+            ],
+            "MovedObjects": []
+          },
+          "__PrefabIdToInstanceId": {
+            "2d0ddc99-76b3-4bc1-881a-109a9bd26b02": "f41c08b4-31c5-4dfa-a2cb-28b6a1e9e2e6",
+            "a96e820a-e828-4478-9dea-97964fde0e5d": "a2505e10-48a5-4738-a90f-3bd1a392fe95"
+          }
+        },
+        {
+          "__guid": "54747f2c-9b14-4b2d-9d10-5521f3c1e427",
+          "__version": 1,
+          "Flags": 0,
+          "Name": "Player Spawns",
+          "Position": "-819.2,-768,-256",
+          "Rotation": "0,0,0,1",
+          "Scale": "0.4,0.4,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkInterpolation": true,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [],
+          "Children": [
+            {
+              "__guid": "1a70b995-d218-4d0e-a36c-b9e59ca0ffbb",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "1536,96,1344",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "12a8877e-9442-485e-903b-b87cc5c66980",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "4ceb7d3e-fd84-4fcb-bd28-85bea2b70b1b",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "3776,928,1248",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "6c8135dd-a342-4060-8070-4ec6de079340",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "9a8314d8-95c0-4157-8fb3-3a8cc092c006",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "2848,2560,704",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "b190870c-907e-4f11-ba1d-aed7a5f3304e",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "fe905869-ed45-41a9-8095-4b0b13345480",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "2626.617,3316.906,1568",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "3ca10ea7-d296-4fad-bcfb-4102fdc84386",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "39a16662-0dce-4a82-9e2c-bc6fd9d0269c",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "1088,448,768",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "77dcd3c1-925a-4c9e-a9c3-3e7d9a1145f7",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "e56073f3-00bb-483a-bc3d-0efcf46a5304",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "2880,512,1312",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "0412cf6d-6647-4153-a4ac-42c5c3dbc7af",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "495d2053-da4d-4757-ac2b-37163fe9b3ac",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "1760,2400,1504",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "0cd8db5e-6e06-4b1e-bba6-06eb7ed4213e",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "3ddcad7e-8ac7-4f3a-8c79-a2eaca529212",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "3712,3584,800",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "f61cc45c-3299-46a2-8de7-6107604a2765",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "3e06628e-616b-4a84-8084-b6263fd8c674",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "2400,3136,1408",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "2510d489-29eb-46e3-92c3-8c1caa3e1677",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "b467e2b6-a5c7-4910-9f8d-5429ce94223b",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "1344,2752,768",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "2db0be92-a474-4943-b9d0-8d8ed716a31e",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "b1d256f5-5e72-45b2-b010-fc3107d3f1fd",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "160,2560,1024",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "5f005159-9b96-4f02-879a-81195618e419",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "37e08747-0c41-41d6-a1c6-bb0a279207b6",
+              "__version": 1,
+              "Flags": 0,
+              "Name": "Player Spawn",
+              "Position": "160,832,768",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkInterpolation": true,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.SpawnPoint",
+                  "__guid": "1a915863-db16-470c-8749-6660092e0a7f",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "Color": "0.8902,0.31765,0.05098,1",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null
+                }
+              ],
+              "Children": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "SceneProperties": {
+    "NetworkInterpolation": true,
+    "TimeScale": 1,
+    "WantsSystemScene": true,
+    "Metadata": {
+      "Title": "Example Scene",
+      "Description": "It's for showing off and testing stuff.",
+      "Group": "Game Fish",
+      "Version": "0.69a",
+      "Author": "yart",
+      "Tags": "example,test,debug"
+    },
+    "NavMesh": {
+      "Enabled": false,
+      "IncludeStaticBodies": true,
+      "IncludeKeyframedBodies": true,
+      "EditorAutoUpdate": true,
+      "AgentHeight": 64,
+      "AgentRadius": 16,
+      "AgentStepSize": 18,
+      "AgentMaxSlope": 40,
+      "ExcludedBodies": "",
+      "IncludedBodies": ""
+    }
+  },
+  "ResourceVersion": 3,
+  "Title": "Example Scene",
+  "Description": "It's for showing off and testing stuff.",
+  "__references": [],
+  "__version": 3
+}

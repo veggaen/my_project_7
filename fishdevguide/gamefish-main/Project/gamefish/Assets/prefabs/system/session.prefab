@@ -1,0 +1,85 @@
+{
+  "RootObject": {
+    "__guid": "768a43a6-b436-4c6e-aaf6-46b36462396e",
+    "__version": 1,
+    "Flags": 4096,
+    "Name": "session",
+    "Position": "0,0,0",
+    "Rotation": "0,0,0,1",
+    "Scale": "1,1,1",
+    "Tags": "",
+    "Enabled": true,
+    "NetworkMode": 1,
+    "NetworkInterpolation": true,
+    "NetworkOrphaned": 1,
+    "NetworkTransmit": true,
+    "OwnerTransfer": 1,
+    "Components": [
+      {
+        "__type": "GameFish.Session",
+        "__guid": "78f924f5-6d37-4e7b-9589-6527173c9a3e",
+        "__enabled": true,
+        "AutoStart": true,
+        "ClassId": "session",
+        "ClassName": null,
+        "IsClass": false,
+        "IsNetworkingForced": true,
+        "NetworkAutomatically": true,
+        "NetworkId": "78f924f5-6d37-4e7b-9589-6527173c9a3e",
+        "NetworkingMode": "Object",
+        "NetworkOrphanedMode": "Host",
+        "NetworkOwner": null,
+        "NetworkTransferMode": "Fixed",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      }
+    ],
+    "Children": [
+      {
+        "__guid": "0ca26edc-2a2b-4eaa-94f1-062c2eea1519",
+        "__version": 1,
+        "__Prefab": "prefabs/system/lobby.prefab",
+        "__PrefabInstancePatch": {
+          "AddedObjects": [],
+          "RemovedObjects": [],
+          "PropertyOverrides": [],
+          "MovedObjects": []
+        },
+        "__PrefabIdToInstanceId": {
+          "353cb8bc-813f-483d-8418-eb86a327c5e1": "0ca26edc-2a2b-4eaa-94f1-062c2eea1519",
+          "6235b85f-a60e-4471-8946-56113928de1e": "3bf61573-2839-4533-ae5f-ee846f343b70"
+        }
+      }
+    ],
+    "__properties": {
+      "NetworkInterpolation": true,
+      "TimeScale": 1,
+      "WantsSystemScene": true,
+      "Metadata": {},
+      "NavMesh": {
+        "Enabled": false,
+        "IncludeStaticBodies": true,
+        "IncludeKeyframedBodies": true,
+        "EditorAutoUpdate": true,
+        "AgentHeight": 64,
+        "AgentRadius": 16,
+        "AgentStepSize": 18,
+        "AgentMaxSlope": 40,
+        "ExcludedBodies": "",
+        "IncludedBodies": ""
+      }
+    },
+    "__variables": []
+  },
+  "ResourceVersion": 2,
+  "ShowInMenu": false,
+  "MenuPath": null,
+  "MenuIcon": null,
+  "DontBreakAsTemplate": false,
+  "__references": [],
+  "__version": 2
+}

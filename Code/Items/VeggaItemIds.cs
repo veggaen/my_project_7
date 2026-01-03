@@ -41,4 +41,14 @@ public static class VeggaItemIds
 
 	// Crafted
 	public const int GoldGoblet = 400;
+
+	// Weapons / tools
+	public const int Pistol9mm = 500;
+	public const int Rifle556 = 501;
+	public const int Knife = 520;
+	public const int BuildHammer = 540;
+
+	// Ammo
+	public const int Ammo9mm = 600;
+	public const int Ammo556 = 601;
 }

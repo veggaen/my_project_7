@@ -1,0 +1,34 @@
+// @import "../global.scss";
+
+Keybind {
+	height: 50px;
+
+	gap: 5;
+
+	align-self: center;
+
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+
+	.keybind-text {
+		height: auto;
+		width: auto;
+
+		flex-shrink: 1;
+
+		text-align: center;
+		align-self: center;
+	}
+
+	.glyph {
+		height: auto;
+		width: auto;
+
+		flex-shrink: 0;
+
+		align-self: center;
+		align-items: center;
+		justify-content: center;
+	}
+}

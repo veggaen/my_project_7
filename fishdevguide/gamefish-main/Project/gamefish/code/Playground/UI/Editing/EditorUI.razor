@@ -1,0 +1,24 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using GameFish;
+
+@inherits Panel
+
+@namespace Playground.Razor
+
+@if (!HasEditor)
+{
+	return;
+}
+
+<root>
+
+	<EditorPicker />
+
+	<EditorHUD />
+
+	<EditorHints />
+
+	<EditorMenu />
+
+</root>

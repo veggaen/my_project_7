@@ -1,0 +1,17 @@
+@import "../../../../global.scss";
+
+ToolHints {
+	height: 50;
+
+	gap: 5;
+	padding: 10;
+	padding-left: 5;
+
+	align-self: flex-start;
+
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+
+	background-color: $bg-black4;
+}

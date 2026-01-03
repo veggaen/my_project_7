@@ -1,0 +1,31 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using GameFish;
+
+@inherits EditorBar
+
+@namespace Playground.Razor
+
+@{
+}
+
+<root>
+
+	<EditorMenuPanel @PanelTitle="Options">
+		<ChildContent>
+
+			<ToolOptions />
+
+		</ChildContent>
+	</EditorMenuPanel>
+
+	<EditorMenuPanel @PanelTitle="Tools">
+		<ChildContent>
+
+			<ToolList />
+
+		</ChildContent>
+	</EditorMenuPanel>
+
+</root>

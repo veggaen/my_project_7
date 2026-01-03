@@ -1,0 +1,61 @@
+@import "../../global.scss";
+
+EditorMenu {
+	z-index: 500;
+
+	position: absolute;
+
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+
+	align-items: center;
+	justify-content: flex-start;
+
+	flex-direction: column;
+
+	&.hide {
+		display: none;
+	}
+
+	&.show {
+		display: flex;
+	}
+
+	.top {
+		position: relative;
+
+		width: 100%;
+		height: auto;
+
+		flex-shrink: 0;
+
+		align-self: flex-start;
+		align-content: center;
+
+		background-color: $bg-black1;
+
+		.bar {
+			padding: 5;
+			padding-left: 15;
+
+			.game-title {
+				font-weight: 600;
+				text-align: center;
+
+				align-items: center;
+				justify-content: center;
+
+				text-shadow: $shadow-lite;
+			}
+		}
+	}
+
+	.middle {
+		position: relative;
+		width: 100%;
+
+		flex-grow: 1;
+	}
+}

@@ -1,0 +1,52 @@
+{
+  "RootObject": {
+    "__guid": "353cb8bc-813f-483d-8418-eb86a327c5e1",
+    "__version": 1,
+    "Flags": 4096,
+    "Name": "server",
+    "Position": "0,0,0",
+    "Rotation": "0,0,0,1",
+    "Scale": "1,1,1",
+    "Tags": "",
+    "Enabled": true,
+    "NetworkMode": 1,
+    "NetworkInterpolation": true,
+    "NetworkOrphaned": 1,
+    "NetworkTransmit": true,
+    "OwnerTransfer": 1,
+    "Components": [
+      {
+        "__type": "GameFish.Server",
+        "__guid": "6235b85f-a60e-4471-8946-56113928de1e",
+        "__enabled": true,
+        "ClassId": "server",
+        "ClassName": null,
+        "DefaultPawnPrefab": "prefabs/player/spectator.prefab",
+        "IsClass": false,
+        "IsNetworkingActive": false,
+        "IsNetworkingForced": true,
+        "NetworkAutomatically": true,
+        "NetworkId": "6235b85f-a60e-4471-8946-56113928de1e",
+        "NetworkingMode": "Object",
+        "NetworkOrphanedMode": "Host",
+        "NetworkOwner": null,
+        "NetworkTransferMode": "Fixed",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "PlayerClientPrefab": "prefabs/system/clients/client.prefab"
+      }
+    ],
+    "Children": []
+  },
+  "ResourceVersion": 2,
+  "ShowInMenu": false,
+  "MenuPath": null,
+  "MenuIcon": null,
+  "DontBreakAsTemplate": false,
+  "__references": [],
+  "__version": 2
+}
