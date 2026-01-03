@@ -8,10 +8,10 @@ namespace Sandbox.Money;
 /// <summary>
 /// CashMoneyVeggaSystem - Money prop with visual tiers and anti-exploit protection.
 ///
-/// Visual Tiers:
-/// - $1-10,000: models/money/batch_used.vmdl
-/// - $10,000-100,000: models/money/batch_clean.vmdl
-/// - $100,000+: models/money/box.vmdl
+/// Visual Tiers (via VeggaCurrency):
+/// - $1-$999,999: models/money/batch_clean.vmdl
+/// - $1,000,000-$9,999,999: models/money/batch_used.vmdl
+/// - $10,000,000+: models/money/box.vmdl
 /// </summary>
 public sealed class CashMoneyVeggaSystem : Component
 {

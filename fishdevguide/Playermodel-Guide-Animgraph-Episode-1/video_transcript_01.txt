@@ -1,0 +1,545 @@
+welcome to the sandbox comprehensive
+0:01
+player model guide I'm grber and we're
+0:03
+finally diving into animating your model
+0:06
+although a lot has happened since last
+0:08
+episode about two games worth because of
+0:10
+this we will be switching out from the
+0:12
+sauna PSX character in favor of the
+0:14
+voxel character we've been using it has
+0:16
+more and better animations so this
+0:18
+should make for a more thorough series
+0:20
+I've taken the liberty of setting up the
+0:22
+new model already so go ahead and delete
+0:24
+the previews if any download the files
+Set up
+0:26
+from the link in the description and
+0:28
+place them in your projects assets
+0:30
+models folders before starting check the
+0:33
+pin comment to see if there's any
+0:34
+correction sbox is always changing so
+0:37
+some things may not apply since the
+0:38
+release of this
+0:41
+video even the asset browser got a new
+Asset Browser
+0:44
+look since last time let's flat in
+0:46
+folders by pressing this folder icon so
+0:48
+only the files are shown and add a
+0:50
+filter for model and aning graph only
+0:52
+now you can find the anim graph on the
+0:55
+left like all of the other tools you
+0:56
+could open it here but I find it faster
+0:59
+to open it to model dock if you open
+1:01
+your model you have an anim graph
+Create Animgraph
+1:03
+section here in the nodes outliner and
+1:05
+if you want your model to use an anim
+1:07
+graph you'll have to find it and select
+1:09
+it as I often forgot this step I instead
+1:11
+started creating them from here press
+1:13
+new and the window will appear prompting
+1:16
+you to name your anra it also created a
+1:18
+new folder for you to put it in although
+1:20
+I prefer to keep an anra in the
+1:22
+respective models folder to keep
+1:24
+everything tidier so do just that and
+1:27
+now the aning graph is connected to the
+1:29
+model to open open it you can press the
+1:31
+edit button despite being created from
+Animgraph Introduction
+1:33
+the model it's still empty on the left
+1:35
+you can configure which model to use so
+1:38
+press the empty model to bring up aars
+1:40
+find your player and select it time to
+1:43
+give you an introduction of the anim
+1:44
+graph viewport it is heavily
+1:46
+customizable so I'll be going over the
+1:48
+most important panels individually on
+1:50
+the left is a preview panel where your
+1:52
+model and animations are rendered if you
+1:55
+have material groups or body groups you
+1:57
+can change them here in the material
+1:59
+groups and preview State we don't have
+2:01
+any currently all of the controls inside
+2:03
+the preview panel are similar to the
+2:05
+model docs viewport you can move the
+2:07
+panels around by holding left click on
+2:09
+the name resize them by dragging the
+2:11
+borders group them together by placing
+2:14
+them on top one another remove them by
+2:16
+pressing the X and just like in model do
+2:19
+you can add panels back through the view
+2:22
+drop down here on the top down here I've
+2:24
+grouped up many panels I don't need to
+2:26
+be seeing all the time the first is the
+2:28
+parameters which is what you use to
+2:30
+control the animations next are the
+2:32
+animation Clips where you have quick
+2:34
+access to all animations in your model
+2:36
+bone merge allows you to add other
+2:38
+models onto the scene think clothing and
+2:40
+weapons tags are a little complicated so
+2:43
+we'll skip this one for now on the right
+2:45
+I place the properties panel basically
+2:47
+the no editor of the anim graph here at
+2:49
+the bottom I've squished the console
+2:51
+because all it's useful for is telling
+2:53
+you when and where something went wrong
+2:55
+you can clear it by pressing clear the
+2:58
+large Checker square is your work work
+3:00
+space it's not act a panel but it's
+3:02
+where you'll be adding all of your notes
+3:04
+which unlike model do where they are
+3:06
+ordered vertically in a list they are
+3:09
+instead placed in this 2D grid and
+3:11
+ordered left to right down the grid you
+3:13
+have the controls we'll go through this
+3:15
+later since currently we've got nothing
+3:18
+let's do something about that now before
+Final Pose Node
+3:20
+there were animations there was nothing
+3:23
+and before there was nothing there was
+3:25
+the final POS node this is where all of
+3:28
+your anim graph must lead to you still
+Adding Nodes
+3:30
+have to add it first to create nodes
+3:32
+right click on the grid create node and
+3:34
+now you are presented with a drop down
+3:36
+of all the nodes available by the end of
+3:38
+the guide you'll understand most of
+3:40
+these and the ones you want are probably
+3:43
+not that useful let's add our final POS
+3:45
+node and now let's connect an animation
+Adding Animations
+3:48
+to it create nodes animation animation
+3:51
+clip and with the no selected go to the
+3:54
+node properties on the right and from
+3:56
+the drop down select Idol now we must
+Connecting Nodes
+3:58
+connect the two drag the out Arrow where
+4:01
+it says in of the final POS now our
+4:04
+player should start idling and we can
+4:06
+preview how the unra would run by
+4:08
+pressing the big running blue man button
+4:11
+it s is idling but let's get a move on
+4:14
+now we're back in model dock let's add a
+Adding Walk Animations
+4:16
+new simple animation animations select
+4:19
+all of the work animations with shift
+4:22
+and as it has detected work in the name
+4:24
+of the file it will ask you whether you
+4:26
+want to set up motion frames as well as
+4:28
+looping press yes if you look at these
+Root Motion
+4:30
+animations you'll see the platform
+4:32
+underneath is acting like a treadmill
+4:34
+this is the work of the extract motion
+4:36
+node that was added on Import in the F
+4:39
+itself the player is just walking away
+4:41
+from the center with root motion the
+4:43
+motion from the root bone is taken into
+4:46
+account resulting in a model
+4:47
+realistically moving around the world
+4:49
+instead of working off screen back to
+4:51
+the anagraph head set his new animations
+4:53
+through the clips panel dragging the
+4:55
+walk North animation and connect it to
+4:58
+the final pose your play will now be
+Looping Animations
+5:00
+working oh seems I forgot to set the
+5:02
+animation to Loop even though it is set
+5:04
+to looping in model dog check the loop
+5:07
+box in the properties do the same for
+5:09
+the idol animation and voila you can
+Speed Up Animations
+5:11
+even turn up the playback speed over
+5:13
+here if you want him to go faster set it
+5:15
+to two and now he's zooming we can't
+5:18
+keep walking forever we want to stop at
+5:20
+some point we need a way to switch
+5:22
+between Idol and walk there are multiple
+5:24
+nodes that can perform this task but the
+5:27
+most versatile is the state machine cre
+State Machines
+5:29
+nod and state machine right now it seems
+5:32
+like a useless node with no in
+5:34
+connection however do not this little
+5:37
+arrow in the top right of the node this
+5:39
+symbol indicates that this is a node
+5:41
+that can be opened if you double press
+5:43
+you'll jump inside the state machine
+Exiting Nodes
+5:45
+which is empty at the moment to get out
+5:47
+of the no your press this up Arrow or
+5:50
+the back arrow to go back to where you
+5:52
+came from the house icon will bring you
+5:54
+back to the start regardless once inside
+5:56
+the state machine you can right click to
+Adding States
+5:58
+create a new state not not a nod they
+6:00
+are State machines not node machines
+6:02
+let's rename these to Idol through the
+6:04
+properties panel now create a work state
+6:07
+you can drag them around with left click
+State Transitions
+6:09
+while if you hold right click over a
+6:10
+state you will create a transition drag
+6:12
+it over a state to connect the two this
+6:14
+will create a transition which goes from
+6:16
+idle to working and if you select the
+6:18
+transition Arrow you can set under what
+6:21
+condition the transition will occur
+6:23
+currently there is no condition so it
+6:25
+will instantly go into work press the
+Time in State Condition
+6:27
+plus drop down to add a condition and
+6:29
+for now select time condition after 1
+6:32
+second it will make the switch we'll
+6:34
+also want a way to go back into Idol
+6:36
+drag a transition from work into Idol
+6:38
+you can copy the condition from another
+6:40
+arrow with contrl c and then contrl V
+6:43
+onto the new Arrow now let's get out of
+6:45
+the state machine and connect the nod
+6:47
+order them accordingly and if you want
+Grid Snapping
+6:49
+the KN to snap to the Grid in a really
+6:51
+satisfying way go on top edit options
+6:54
+General and G snapping my setting is 16
+6:58
+idle to idle work to walk State machine
+7:00
+to final pause let's run the simulation
+7:03
+oh we got a warning on the console a
+State Machine Missing a Start State
+7:06
+state machine has no starting State you
+7:08
+can double click the warning to go right
+7:10
+into the offending node oh we need to
+7:12
+define a state as the default State
+7:15
+obviously that will be the idol so
+7:16
+select it and check the start State box
+7:19
+W it's green now we'll get to what the
+7:21
+other boxes do you can hover them to
+7:23
+read their description but as it stands
+7:25
+a lot of the stuff is going to fly over
+7:27
+your head start the preview now and we
+7:29
+see that every second he switches States
+Random Time Between
+7:32
+you can even set a random timer with
+7:34
+random time between to make it so it
+7:36
+switches at random intervals it still
+7:38
+needs to clear the condition in this
+7:40
+case at least one second must have
+7:42
+passed so even if it picks a random
+7:44
+number lower than one it will only
+7:46
+switch after 1 second passes as it will
+7:48
+have cleared all the checks right select
+7:51
+your condition and remove it with a
+7:53
+trash can we will be adding a parameter
+7:55
+condition instead parameters are value
+Parameter Condition
+7:57
+State control and anra they are call
+7:59
+upon through game code but we can
+8:01
+preview them in the aning graph from the
+8:03
+parameters panel create a new parameter
+8:06
+using the plus icon and select uh
+8:09
+integer Flo B oh no this is some
+Parameter Types
+8:13
+programming stuff okay so Boolean is
+8:15
+either on or off so a binary like zero
+8:18
+or one a numerator allows you to have
+8:20
+multiple named options like a list flat
+8:23
+is a defined number range with a minimum
+8:25
+and maximum and everything in between
+8:27
+integer is like a flot but only for
+8:29
+whole numbers so basically enums but for
+8:32
+numbers instead of names cion is a whole
+8:35
+Rabbit Hole basically angles but with
+8:37
+another value W Vector is angles X YZ
+8:42
+although you don't have to use them just
+8:43
+for rotations but positions too and
+8:46
+lastly you can reset the parameters
+8:48
+values with a blue arrow since for now
+Boolean Parameter
+8:50
+we only need to go from Idol to walk I
+8:53
+say a bullan is enough select Bull and
+8:55
+name it walk now we can finally assign
+8:57
+the parameter in the condition select a
+9:00
+transition arrow and in a condition
+9:02
+select work to the right is a check boox
+9:05
+which is whether the parameter is equal
+9:07
+to off or on we want it to switch when
+9:09
+you turn it on so we check the box you
+9:11
+can also press the equals to change the
+9:14
+conditions into exclamation point equal
+9:16
+which will switch when it is not equal
+9:18
+to kind of useless for bull as it only
+9:20
+has two options crl C and then crl V the
+9:23
+condition onto the other arrow and
+9:25
+untick the box so it switches when it's
+9:27
+off and now if we start a view the guy
+9:30
+starts and stops at our building he do
+9:33
+be stopping on a dime though let's slow
+9:35
+down his roll a little however that's
+Outro
+9:37
+all the time we have today I'm told to
+9:40
+keep the first episode short so tune in
+9:42
+next episode to learn about blending
+9:44
+animations together

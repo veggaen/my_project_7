@@ -163,6 +163,7 @@
           "__guid": "5880b540-a939-4415-a82c-4e3cee70e814",
           "__enabled": true,
           "BoxHudPanel": null,
+          "CashDropProgressBarPanel": null,
           "ChatPanel": null,
           "CrosshairMenuPanel": null,
           "CrosshairPanel": null,
@@ -598,7 +599,7 @@
           "MaterialGroup": null,
           "MaterialOverride": null,
           "Materials": null,
-          "Model": "models/money/batch_used.vmdl",
+          "Model": "models/money/single_clean.vmdl",
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -963,6 +964,14 @@
             },
             "Property": "Rotation",
             "Value": "0,0,-0.3826834,0.9238796"
+          },
+          {
+            "Target": {
+              "Type": "Component",
+              "IdValue": "8d839f4e-77cd-4a1b-8f7f-3d6e4a1a32da"
+            },
+            "Property": "InteractRange",
+            "Value": 100
           }
         ],
         "MovedObjects": []
@@ -987,7 +996,7 @@
       }
     },
     {
-      "__guid": "2a2a860f-4795-424b-b4d3-13383e1683b1",
+      "__guid": "42fb3efc-8915-4847-a855-5a77ee97be94",
       "__version": 1,
       "__Prefab": "saunalog.prefab",
       "__PrefabInstancePatch": {
@@ -997,7 +1006,7 @@
         "MovedObjects": []
       },
       "__PrefabIdToInstanceId": {
-        "2ec487bd-a2d0-4e55-b405-0de190e6783c": "c46f0352-6fcb-4053-89cc-f904db0f6a3e"
+        "a56d11eb-cb59-4dc9-84f8-2b689ebc1962": "d9d62337-99fb-4f63-bd1e-10921c922fea"
       }
     },
     {
@@ -1105,38 +1114,6 @@
             },
             "Property": "Position",
             "Value": "25.78847,-9.498795,16.0001"
-          },
-          {
-            "Target": {
-              "Type": "Component",
-              "IdValue": "eb34670f-f8e8-4b87-89d4-d1e805bf6b21"
-            },
-            "Property": "PlayerBumpMinSpeed",
-            "Value": 22
-          },
-          {
-            "Target": {
-              "Type": "Component",
-              "IdValue": "eb34670f-f8e8-4b87-89d4-d1e805bf6b21"
-            },
-            "Property": "PlayerBumpRadius",
-            "Value": 28
-          },
-          {
-            "Target": {
-              "Type": "Component",
-              "IdValue": "eb34670f-f8e8-4b87-89d4-d1e805bf6b21"
-            },
-            "Property": "PlayerBumpStrength",
-            "Value": 185
-          },
-          {
-            "Target": {
-              "Type": "Component",
-              "IdValue": "eb34670f-f8e8-4b87-89d4-d1e805bf6b21"
-            },
-            "Property": "PlayerBumpUpStrength",
-            "Value": 40
           }
         ],
         "MovedObjects": []
@@ -1676,6 +1653,22 @@
             },
             "Property": "Position",
             "Value": "33.78831,-316.1517,0.2193111"
+          },
+          {
+            "Target": {
+              "Type": "Component",
+              "IdValue": "caa88f72-f4a6-4c69-a870-1ddf3b0e33f1"
+            },
+            "Property": "InteractRange",
+            "Value": 100
+          },
+          {
+            "Target": {
+              "Type": "Component",
+              "IdValue": "caa88f72-f4a6-4c69-a870-1ddf3b0e33f1"
+            },
+            "Property": "Slots",
+            "Value": 48
           }
         ],
         "MovedObjects": []

@@ -130,11 +130,13 @@
 {
 	static FurnaceHud _instance;
 	static bool _open;
+	static bool _wasOpen;
 	static Guid _activeId;
 	string LayoutKey => VeggaHudLayoutState.KeyFurnaceMenu;
 	string SelectedElement => VeggaHudLayoutState.SelectedElement;
 
 	bool _isOpen => _open;
+	public static bool IsOpenGlobal => _open;
 	VeggaFurnace _furnace;
 
 	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
@@ -143,44 +145,57 @@
 	{
 		_instance = this;
 		VeggaHudLayoutState.RegisterElement( LayoutKey, "Forge Menu", VeggaHudLayoutState.GetDefaultPosition( LayoutKey ) );
+		_wasOpen = _open;
+		VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyFurnaceMenu, _open, CloseSelfFromEscape );
 	}
 
 	public static void Open( Guid furnaceId )
 	{
+		// Ensure the container is the last-opened UI layer (ESC closes it before the bag).
+		InventoryHud.ForceOpen();
 		_open = true;
 		_activeId = furnaceId;
 		WorldContainerUiContext.SetActive( WorldContainerKind.Furnace, furnaceId );
-		InventoryHud.ForceOpen();
+		VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyFurnaceMenu, true, () => _instance?.CloseSelfFromEscape() );
+		_wasOpen = true;
 		_instance?.StateHasChanged();
 	}
 
 	public static void ForceClose()
 	{
+		_instance?.CloseSelfFromEscape();
+	}
+
+	void CloseSelfFromEscape()
+	{
 		_open = false;
+		_wasOpen = false;
 		_activeId = Guid.Empty;
 		WorldContainerUiContext.Clear();
-		_instance?.StateHasChanged();
+		VeggaUiCloseStack.Remove( VeggaHudLayoutState.KeyFurnaceMenu );
+		StateHasChanged();
 	}
 
 	protected override void OnUpdate()
 	{
 		if ( Panel != null )
 		{
-			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_open ? PointerEvents.All : PointerEvents.None);
+			bool cursorEnabled = VeggaHudLayoutState.GetCursorMode( VeggaHudLayoutState.KeyFurnaceMenu, defaultValue: true ) || VeggaUiFreeCursor.IsActive;
+			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_open && cursorEnabled ? PointerEvents.All : PointerEvents.None);
 			Panel.Style.ZIndex = (IsLayoutActive && SelectedElement == LayoutKey) ? 2601 : 0;
 		}
 		VeggaHudLayoutApply.Apply( Panel, LayoutKey, VeggaHudLayoutState.GetDefaultPosition( LayoutKey ), 1f );
+
+		if ( _open != _wasOpen )
+		{
+			VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyFurnaceMenu, _open, CloseSelfFromEscape );
+			_wasOpen = _open;
+		}
 
 		if ( !_open )
 			return;
 		if ( IsLayoutActive )
 			return;
-
-		if ( Input.Pressed( "InventoryClose" ) )
-		{
-			Close();
-			return;
-		}
 
 		var scene = Scene ?? Game.ActiveScene;
 		if ( scene == null )
@@ -210,8 +225,10 @@
 	void Close()
 	{
 		_open = false;
+		_wasOpen = false;
 		_activeId = Guid.Empty;
 		WorldContainerUiContext.Clear();
+		VeggaUiCloseStack.Remove( VeggaHudLayoutState.KeyFurnaceMenu );
 		StateHasChanged();
 	}
 
@@ -231,7 +248,7 @@
 		if ( _furnace == null ) return "";
 		int id = _furnace.GetSlotItemId( slot );
 		int count = _furnace.GetSlotCount( slot );
-		if ( id <= 0 || count <= 0 ) return "(empty)";
+		if ( id <= 0 || count <= 0 ) return "";
 
 		var def = VeggaItemRegistry.Get( id );
 		string name = def?.Name ?? $"Item {id}";

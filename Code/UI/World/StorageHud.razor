@@ -25,7 +25,7 @@
 						<div class="storage-grid">
 							@for ( int i = 0; i < _slots; i++ )
 							{
-								<div class="storage-slot empty">(empty)</div>
+								<div class="storage-slot empty"></div>
 							}
 						</div>
 				}
@@ -40,10 +40,6 @@
 								int count = _box?.GetSlotCount( slot ) ?? 0;
 								bool empty = id <= 0 || count <= 0;
 								<div class="storage-slot @(empty ? "empty" : "")" onclick="@(() => Withdraw( slot ))">
-									@if ( empty )
-									{
-										@( "(empty)" )
-									}
 									<div class="sloticon storage-sloticon-@slot"></div>
 									@if ( !empty && count > 1 )
 									{
@@ -62,11 +58,13 @@
 {
 	static StorageHud _instance;
 	static bool _open;
+	static bool _wasOpen;
 	static Guid _activeId;
 	string LayoutKey => VeggaHudLayoutState.KeyStorageMenu;
 	string SelectedElement => VeggaHudLayoutState.SelectedElement;
 
 	bool _isOpen => _open;
+	public static bool IsOpenGlobal => _open;
 	VeggaStorageBox _box;
 	int _slots = 24;
 
@@ -76,44 +74,57 @@
 	{
 		_instance = this;
 		VeggaHudLayoutState.RegisterElement( LayoutKey, "Storage Menu", VeggaHudLayoutState.GetDefaultPosition( LayoutKey ) );
+		_wasOpen = _open;
+		VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyStorageMenu, _open, CloseSelfFromEscape );
 	}
 
 	public static void Open( Guid boxId )
 	{
+		// Ensure the container is the last-opened UI layer (ESC closes it before the bag).
+		InventoryHud.ForceOpen();
 		_open = true;
 		_activeId = boxId;
 		WorldContainerUiContext.SetActive( WorldContainerKind.StorageBox, boxId );
-		InventoryHud.ForceOpen();
+		VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyStorageMenu, true, () => _instance?.CloseSelfFromEscape() );
+		_wasOpen = true;
 		_instance?.StateHasChanged();
 	}
 
 	public static void ForceClose()
 	{
+		_instance?.CloseSelfFromEscape();
+	}
+
+	void CloseSelfFromEscape()
+	{
 		_open = false;
+		_wasOpen = false;
 		_activeId = Guid.Empty;
 		WorldContainerUiContext.Clear();
-		_instance?.StateHasChanged();
+		VeggaUiCloseStack.Remove( VeggaHudLayoutState.KeyStorageMenu );
+		StateHasChanged();
 	}
 
 	protected override void OnUpdate()
 	{
 		if ( Panel != null )
 		{
-			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_open ? PointerEvents.All : PointerEvents.None);
+			bool cursorEnabled = VeggaHudLayoutState.GetCursorMode( VeggaHudLayoutState.KeyStorageMenu, defaultValue: true ) || VeggaUiFreeCursor.IsActive;
+			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_open && cursorEnabled ? PointerEvents.All : PointerEvents.None);
 			Panel.Style.ZIndex = (IsLayoutActive && SelectedElement == LayoutKey) ? 2601 : 0;
 		}
 		VeggaHudLayoutApply.Apply( Panel, LayoutKey, VeggaHudLayoutState.GetDefaultPosition( LayoutKey ), 1f );
+
+		if ( _open != _wasOpen )
+		{
+			VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyStorageMenu, _open, CloseSelfFromEscape );
+			_wasOpen = _open;
+		}
 
 		if ( !_open )
 			return;
 		if ( IsLayoutActive )
 			return;
-
-		if ( Input.Pressed( "InventoryClose" ) )
-		{
-			Close();
-			return;
-		}
 
 		var scene = Scene ?? Game.ActiveScene;
 		if ( scene == null )
@@ -144,8 +155,10 @@
 	void Close()
 	{
 		_open = false;
+		_wasOpen = false;
 		_activeId = Guid.Empty;
 		WorldContainerUiContext.Clear();
+		VeggaUiCloseStack.Remove( VeggaHudLayoutState.KeyStorageMenu );
 		StateHasChanged();
 	}
 
@@ -159,7 +172,7 @@
 		if ( _box == null ) return "";
 		int id = _box.GetSlotItemId( slot );
 		int count = _box.GetSlotCount( slot );
-		if ( id <= 0 || count <= 0 ) return "(empty)";
+		if ( id <= 0 || count <= 0 ) return "";
 		var def = VeggaItemRegistry.Get( id );
 		string name = def?.Name ?? $"Item {id}";
 		return count > 1 ? $"{name} x{count}" : name;

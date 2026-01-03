@@ -79,28 +79,11 @@ public sealed class VeggaInventory : Component
 		if ( count <= 0 )
 			return chunks;
 
-		// Cash world-drops are represented as OSRS-style piles:
-		// - 100k boxes
-		// - 10k bundles
-		// - remainder (<10k)
-		// Gold coins and other stackables should NOT be chunked unless their effective max stack requires it.
+		// Cash: spawn exactly ONE world entity that represents the full amount.
+		// (Visuals are still chosen by amount via VeggaCurrency.GetCashPrefabPathForAmount.)
 		if ( itemId == Sandbox.Money.VeggaCurrency.CashItemId )
 		{
-			int remaining = count;
-			const int box = 100_000;
-			const int bundle = 10_000;
-			while ( remaining >= box )
-			{
-				chunks.Add( box );
-				remaining -= box;
-			}
-			while ( remaining >= bundle )
-			{
-				chunks.Add( bundle );
-				remaining -= bundle;
-			}
-			if ( remaining > 0 )
-				chunks.Add( remaining );
+			chunks.Add( count );
 			return chunks;
 		}
 
@@ -117,12 +100,34 @@ public sealed class VeggaInventory : Component
 		return chunks;
 	}
 
-	static Vector3 GetMultiDropEndPos( Vector3 baseEndPos, Rotation basis, int index, int total )
+	static Vector3 GetCashBoxPalletEndPos( Vector3 baseEndPos, Rotation basis, int boxIndex, int boxCount )
 	{
-		if ( total <= 1 )
+		if ( boxCount <= 1 )
 			return baseEndPos;
-		float centered = index - (total - 1) * 0.5f;
-		return baseEndPos + basis.Right * (centered * 26f);
+
+		// Make a compact pallet-style grid that grows with count.
+		// For very large counts, increase footprint so the stack isn't absurdly tall.
+		int targetGrid = (int)MathF.Ceiling( MathF.Sqrt( MathF.Min( boxCount, 100 ) ) );
+		int cols = Math.Clamp( targetGrid, 3, 10 );
+		int rows = cols;
+		int perLayer = cols * rows;
+		int layer = boxIndex / perLayer;
+		int within = boxIndex % perLayer;
+		int row = within / cols;
+		int col = within % cols;
+
+		// Tuned spacing for money box collider scale.
+		// SpacingZ too high makes upper layers float; spacingX/Y too small makes boxes overlap.
+		const float spacingX = 33.0f;
+		const float spacingY = 19.0f;
+		const float spacingZ = 30.2f;
+
+		float centeredX = col - (cols - 1) * 0.5f;
+		float centeredY = row - (rows - 1) * 0.5f;
+		var offset = basis.Right * (centeredX * spacingX) + basis.Forward * (centeredY * spacingY) + Vector3.Up * (layer * spacingZ);
+
+		// Lift slightly so boxes don't spawn intersecting terrain seams.
+		return baseEndPos + offset + Vector3.Up * 3.0f;
 	}
 
 	internal static int GetEffectiveMaxStackForItem( int itemId, VeggaItemDef def = null )
@@ -756,6 +761,16 @@ public sealed class VeggaInventory : Component
 		if ( lookRot != default )
 			spawnRot = lookRot;
 
+		// Cash boxes should never inherit camera pitch (looking up/down) for rotation.
+		// Keep cash facing based on BODY yaw only.
+		Rotation cashFacingRot = default;
+		if ( itemId == Sandbox.Money.VeggaCurrency.CashItemId )
+		{
+			var movementForCash = stats?.GameObject?.Components.Get<PlayerVeggaMovement>();
+			float bodyYaw = movementForCash != null ? movementForCash.TargetBodyAngle.yaw : stats.WorldRotation.Yaw();
+			cashFacingRot = new Angles( 0f, bodyYaw, 0f ).ToRotation();
+		}
+
 		// Ores and goblet mould use tight/simple colliders; drop a touch higher to avoid starting intersecting the ground.
 		if ( VeggaOreVisuals.IsOre( itemId ) || itemId == VeggaItemIds.MouldGoblet )
 			spawnPos += Vector3.Up * 8f;
@@ -789,20 +804,24 @@ public sealed class VeggaInventory : Component
 		for ( int i = 0; i < dropChunks.Count; i++ )
 		{
 			int chunkCount = dropChunks[i];
-			// All chunks land at the normal crosshair target; only the throw timing is staggered.
+			// Default: all chunks land at the crosshair target; only throw timing is staggered.
 			var endPos = spawnPos;
 			float startDelaySeconds = dropChunks.Count > 1 ? i * 0.07f : 0f;
 
 			if ( itemId == Sandbox.Money.VeggaCurrency.CashItemId )
 			{
-				var cashGo = Sandbox.Money.CashWorldDrop.Spawn( worldScene, startPos, spawnRot, chunkCount, requesterId );
+				var palletRot = cashFacingRot != default ? cashFacingRot : new Angles( 0f, spawnRot.Yaw(), 0f ).ToRotation();
+
+				var vel = (chunkCount >= Sandbox.Money.VeggaCurrency.CashBoxAmount) ? Vector3.Zero : dropVelocity;
+
+				var cashGo = Sandbox.Money.CashWorldDrop.Spawn( worldScene, startPos, palletRot, chunkCount, requesterId );
 				if ( cashGo == null || !cashGo.IsValid() )
 				{
 					RpcDropRejected( requesterId, dropToken );
 					return;
 				}
 				var anim = cashGo.Components.Create<VeggaDropThrowAnimator>();
-				anim.Begin( stats.GameObject, rayOrigin, endPos, spawnRot, dropVelocity,
+				anim.Begin( stats.GameObject, rayOrigin, endPos, palletRot, vel,
 					registerPersistence: false,
 					itemId: Sandbox.Money.VeggaCurrency.CashItemId,
 					count: chunkCount,
@@ -1085,6 +1104,14 @@ public sealed class VeggaInventory : Component
 		var ray = GetBestLocalDropRay();
 		var pos = GetDropSpawnPosition( scene, stats, ray.Position, ray.Forward, out var rot );
 		if ( rot == default ) rot = GameObject.WorldRotation;
+
+		// Cash should not inherit camera pitch/roll. Force yaw-only rotation.
+		if ( itemId == Sandbox.Money.VeggaCurrency.CashItemId )
+		{
+			var movementForCash = (stats?.GameObject ?? GameObject)?.Components.Get<PlayerVeggaMovement>();
+			float bodyYaw = movementForCash != null ? movementForCash.TargetBodyAngle.yaw : (stats != null ? stats.WorldRotation.Yaw() : GameObject.WorldRotation.Yaw());
+			rot = new Angles( 0f, bodyYaw, 0f ).ToRotation();
+		}
 		// Ores and goblet mould use tight/simple colliders; drop a touch higher to avoid starting intersecting the ground.
 		if ( VeggaOreVisuals.IsOre( itemId ) || itemId == VeggaItemIds.MouldGoblet )
 			pos += Vector3.Up * 8f;
@@ -1125,7 +1152,8 @@ public sealed class VeggaInventory : Component
 				if ( cashGo == null || !cashGo.IsValid() )
 					return;
 				var anim = cashGo.Components.Create<VeggaDropThrowAnimator>();
-				anim.Begin( stats?.GameObject ?? GameObject, ray.Position, endPos, rot, dropVelocity,
+				var vel = (chunkCount >= Sandbox.Money.VeggaCurrency.CashBoxAmount) ? Vector3.Zero : dropVelocity;
+				anim.Begin( stats?.GameObject ?? GameObject, ray.Position, endPos, rot, vel,
 					registerPersistence: false,
 					itemId: Sandbox.Money.VeggaCurrency.CashItemId,
 					count: chunkCount,

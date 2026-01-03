@@ -1,0 +1,70 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/ui/cashdropprogressbar.razor.scss" )]
+
+<root>
+	<div class="cash-drop-progress-wrapper @((_isLayoutMode || _isActive) ? "active" : "") @(_isLayoutMode ? "layout-mode" : "")">
+		<div class="cash-drop-progress-frame">
+			<div class="cash-drop-progress-title">DROPPING CASH</div>
+			<div class="cash-drop-progress-bar">
+				<div @ref="_fillRef" class="cash-drop-progress-fill"></div>
+				<div class="cash-drop-progress-text">@_text</div>
+			</div>
+		</div>
+	</div>
+</root>
+
+@code
+{
+	Panel _fillRef;
+	bool _registered;
+	bool _isLayoutMode;
+	bool _isActive;
+	float _progress01;
+	string _text = "0%";
+
+	protected override void OnUpdate()
+	{
+		if ( !_registered )
+		{
+			_registered = true;
+			VeggaHudLayoutState.RegisterElement(
+				VeggaHudLayoutState.KeyCashDropProgress,
+				"Cash Drop Progress",
+				VeggaHudLayoutState.GetDefaultPosition( VeggaHudLayoutState.KeyCashDropProgress )
+			);
+		}
+
+		_isLayoutMode = VeggaHudLayoutState.IsActive;
+
+		var stats = PlayerVeggaStats.Local;
+		if ( stats != null && stats.IsValid() )
+		{
+			_isActive = stats.CashDropBuildActive;
+			_progress01 = stats.CashDropBuildProgress01.Clamp( 0f, 1f );
+		}
+		else
+		{
+			_isActive = false;
+			_progress01 = 0f;
+		}
+
+		// In layout mode, show a stable preview.
+		float display01 = _isLayoutMode ? 0.5f : _progress01;
+		int pct = (int)MathF.Round( display01 * 100f );
+		pct = Math.Clamp( pct, 0, 100 );
+		_text = $"{pct}%";
+
+		_fillRef?.Style.Set( "width", $"{pct}%" );
+
+		VeggaHudLayoutApply.Apply( Panel, VeggaHudLayoutState.KeyCashDropProgress, VeggaHudLayoutState.GetDefaultPosition( VeggaHudLayoutState.KeyCashDropProgress ), 1f );
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine( _isLayoutMode, _isActive, _text );
+	}
+}

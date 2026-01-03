@@ -1,0 +1,1266 @@
+welcome to the sandbox comprehensive
+0:01
+player model guide I'm grber and today
+0:04
+we'll give our character a way to fight
+0:06
+back with a pistol a rifle and a shotgun
+0:09
+this is going to be a long one so you
+0:11
+know the drill by now check for a pin
+0:13
+comment download the model in the
+0:15
+description place it in your model's
+0:16
+folder let's just go
+0:18
+man great we can look around and stuff
+0:22
+but this gun is not just for show let's
+0:24
+add shooting in model do add the ranged
+Shooting Animation
+0:27
+shooting animation looks scaffed well it
+0:30
+doesn't matter since we'll add the
+0:31
+Motions on top so add a linear Delta
+0:34
+markup and in anim graph get into the
+Shooting in Animgraph
+0:36
+rifle group and create an ad node let's
+0:39
+place this after everything if we place
+0:41
+it before the Lucas any rotation of the
+0:44
+gun will get corrected like when we had
+0:46
+to mask out the arms way add our
+0:48
+shooting Delta make it Loop connect
+0:51
+everything and wow that was easy let's
+0:54
+turn up the playback speed hell yeah
+0:56
+okay now you can stop dude hey stop chat
+Shooting State Machine
+1:00
+we got to stop this guy let's quickly
+1:02
+add a state machine in it two states
+1:05
+Idol as the starting State and shooting
+1:07
+connected to now make a new bullan
+1:10
+called bcore attack why the B because
+1:14
+the parameters are ordered
+1:16
+alphabetically and the citizen has so
+1:18
+many of them they had B at the start of
+1:20
+a buan so they are all grouped together
+1:22
+and easier to find now at a parameter
+1:25
+condition select the attack bullan when
+1:28
+it's on it goes into shooting copy and
+1:30
+paste it onto the other arrow and check
+1:32
+the box so when it's off it goes into
+1:34
+idle connect the state machine to the
+1:36
+output put the shooting additive into
+1:38
+the shooting State and before it into
+1:40
+the idol if we try we can now stop and
+1:44
+start H the first shot looks kind of
+1:47
+weak why world all right the blend time
+Blend Time
+1:50
+if you go back in the state Machine by
+1:52
+default all transitions have a 2 second
+1:55
+blend into the new state which will EAS
+1:58
+in the animation set Idol to shooting's
+2:01
+blend time to zero so it's instantaneous
+2:04
+instead there we go now if we only shoot
+2:06
+once the first shot is nice and strong I
+2:09
+can't quite get just one shot what if we
+2:12
+only wanted to shoot once clearly we
+Parameter Auto Reset
+2:14
+can't do that as long as our bullion is
+2:16
+a toggle so select your attack parameter
+2:19
+and check the autor reset box now it's
+2:22
+only on for a single frame okay now it
+2:25
+resets too fast it's not even playing
+2:28
+the full animation let's change the
+On Finished Condition
+2:30
+shooting into Idol blend condition from
+2:32
+parameter to a finished condition this
+2:35
+way it goes back to Idol at the end of
+2:37
+the shoot animation and bro stop I guess
+2:41
+that's my fault if the animation is set
+2:43
+to looping it never finishes so disable
+2:46
+the loop and there well it works but I'm
+2:49
+spamming this button and he's not
+2:51
+shooting that fast again my fault for
+2:54
+letting it finish the animation first
+2:56
+now I don't recommend you use this often
+Always Evaluate State
+2:59
+but in the idle State turn on always
+3:02
+evaluate and it becomes purple this
+3:04
+means that no matter what state you're
+3:06
+currently in this state is always ready
+3:09
+to transition out would any of its
+3:11
+conditions be met in our case whether
+3:13
+the attack bullan is on I say be careful
+3:16
+with this option because it's very easy
+3:18
+to get infinite loops and crush your
+3:20
+editor if we try it now we can spam to
+3:22
+our heart's desire even if the animation
+3:24
+is not done playing call the state
+3:26
+machine shooting machine and will just
+3:29
+leave it to the programmer to deal with
+3:30
+a fire rate let's try something fun
+3:33
+remember anim events back when we had to
+3:35
+add footstep events you know make sounds
+Adding a Muzzleflash
+3:38
+with body groups create particles we can
+3:40
+use any particle from our project or
+3:43
+that comes with sandbox to spawn a
+3:44
+muzzle Flesh on an attachment like our
+3:47
+gun forward or even search for particles
+3:49
+in the ug look there we are okay doesn't
+3:53
+seem like we find anything useful
+3:55
+actually never mind then delete this
+3:57
+anime event this is so ass is
+4:00
+probably getting replaced along with the
+4:02
+Legacy particles while we're here in
+Reload Animation
+4:04
+model do let us add something important
+4:07
+simple animation and reload specifically
+4:10
+the one for the SMG beautiful if you
+4:12
+want the magazine to detach as part of
+Swapping Magazines
+4:14
+the animation you can do that if you
+4:17
+switch to a body group that has the
+4:18
+magazine rigged to the left hand or you
+4:21
+can even have the animation in the gun
+4:23
+itself and use anime events to switch
+4:25
+body groups automatically bmer moders
+4:28
+can have their own separate animations
+4:30
+playing even using bones that are
+4:32
+exclusive to them and not included in
+4:35
+the model your bone merging them into
+4:37
+for example if you want to have a spring
+4:39
+bone on the gun for when the lever gets
+4:42
+pulled back whether you do the switch by
+4:44
+asking the programmer to play an
+4:46
+animation in the bone Mer's model or by
+4:48
+telling them to switch the body groups
+4:50
+for you you won't have a hand in the
+4:52
+final product so for the rest of the
+4:54
+guide you'll have to suffer through the
+4:56
+magazine not the touching now the
+4:58
+question how do we even blend is in
+5:00
+we're in a Cuts 22 because if you place
+5:02
+it before the L cut it's going to go
+5:04
+crazy trying to keep the gun straight
+5:06
+but if we do it after we're going to
+5:08
+need to do a lot of Corrections with all
+5:10
+those look directions man what a but
+5:12
+let's just blend it before the lookas
+Reloading in Animgraph
+5:15
+all the way to the left is our cute pose
+5:17
+that gets added on top of the movement
+5:19
+let's blend the reload here the pose was
+5:21
+a Delta of the idol so copy the anim
+5:24
+subtract from the ranged animation into
+5:26
+the reload add the reload Delta which
+5:28
+will be added on to the movement just
+5:30
+like our pause did they're going to
+5:32
+share these ad nod so make the state
+5:34
+machine to the left of them connect it
+5:37
+where the pause was and in it two states
+5:39
+idle and reload idle being the start
+5:42
+connect the two create a bore reload
+5:45
+buan and make it AO reset use that as a
+5:48
+parameter condition for Idol into reload
+5:50
+check the box as for the reload into
+5:53
+Idol blend we'll use a finished
+5:55
+condition connect them up and okay yeah
+5:57
+that was to be expected the Lookouts are
+5:59
+keeping the gun trained onto the target
+6:01
+you know what how about we just disable
+6:04
+the luat lats do have a weight parameter
+6:07
+but aim mes don't well so much for that
+6:10
+guess it's state machine time again call
+Disable Lookats
+6:12
+this one disable Lookouts and place it
+6:15
+just after the look at chains so connect
+6:18
+it create two states enabled as the
+6:20
+start and disabled connect the two
+6:23
+connect the Lookouts to enable and
+6:25
+before the Lookouts to disabled now for
+6:27
+the conditions enable to disabled we'll
+6:30
+use the reload parameter and then
+6:32
+disabled to enable we'll use the the uh
+6:35
+how do we know when the reload is over
+6:38
+normally we just use a finished
+6:40
+condition but the animation is like six
+6:42
+KN behind we need a way for the anim
+6:44
+graph to communicate with itself through
+6:46
+long distances we need tags if you don't
+Tags
+6:49
+have the window enable it and place it
+6:51
+somewhere create a new tag with a PL and
+6:54
+you are presented with two types event
+6:57
+tags are to communicate outside the anra
+6:59
+like which part of an animation deals
+7:02
+damage while internal tags are for the
+7:04
+anim graph to communicate with itself
+7:06
+which is what will use C these disabled
+7:09
+Lookouts now to set our tags we have a
+7:12
+few ways to do so one of them is to set
+7:14
+them in the states if you go into our
+Adding Tags to States
+7:17
+reload State machine and select the
+7:19
+reload State we have the option to add
+7:21
+one or more tags here on the right in
+7:23
+the drop down we can also specify when
+7:26
+it's active like only when entering or
+7:28
+exiting but let's let's keep while
+7:30
+current now while in the reload State
+7:32
+the tag will be active great now we can
+7:35
+go back to our disable look at State
+7:37
+machine and add tag conditions delete
+Tag Condition
+7:40
+the reload parameter condition and
+7:42
+instead use Tag conditions enable to
+7:45
+disable check disable to enable uncheck
+7:48
+and if we try it out in the
+7:50
+preview it only works for a split second
+7:53
+we see in the N preview that it's a
+7:55
+state machine doing it ah I see by
+Reset Destination
+7:58
+default switching to a state resets the
+8:01
+state this means that when we reload it
+8:03
+triggers this state machine which
+8:06
+switches State and then resets
+8:08
+everything before it including the
+8:10
+reload State machine back into the idle
+8:13
+State and out of the disable Lookout tag
+8:16
+how deuse select both connections and
+8:19
+uncheck the reset destination box and
+8:21
+now yeah it works but I don't like how
+8:24
+fast it Blends out let's double the
+8:26
+blend time to4 seconds okay okay okay
+8:30
+why is it waiting to blend out now it's
+8:32
+that down reload animation it's holding
+8:35
+up the tag let's get into the state
+On Almost Finished Condition
+8:37
+machine we can actually change the
+8:39
+finished condition by pressing on it and
+8:41
+on almost finished instead of blending 2
+8:44
+seconds after the animation is finished
+8:47
+it Blends 2 seconds before the animation
+8:49
+is finished let's try it out and it's
+8:52
+barely noticeable let's double no triple
+8:55
+the blend time so now it Blends out 6
+8:58
+seconds before the animation is finished
+9:00
+still doesn't feel Snapp enough let's
+Transition Curve
+9:03
+change how it's Blended out with a
+9:05
+transition curve the default is is in
+9:08
+and is out which means that it starts
+9:10
+slow picks up speed and then slows down
+9:13
+this is fine for most animations but
+9:15
+let's try een in so it starts F and then
+9:18
+slows down to iin looks better I guess
+9:22
+the shooting machine also resets the
+9:24
+animations let's quickly turn that off
+9:26
+too okay now the shooting doesn't even
+9:29
+work this is because we actually need a
+9:31
+reset here if we don't reset a
+9:33
+non-looping animation it's only ever
+9:35
+going to play once when the preview
+9:37
+starts and never again so check the
+9:39
+reset destination from idle to shooting
+9:42
+and now well it works again but it still
+9:44
+resets everything before it it's this
+9:46
+damn ad no that connects the shooting to
+9:49
+the rest of the anim graph luckily you
+Reset Base Child
+9:51
+can just uncheck the reset based s box
+9:54
+to block any reset signal for the base
+9:56
+now we can shoot while reloading okay
+9:59
+I'll stop ignoring it the left hand
+10:01
+never leaves the gun of course this is
+10:03
+due to the al2 r ik chain let's use
+10:06
+another tag to disable it so create a
+10:08
+new one called disable ALR this time
+Disable LtoR
+10:11
+let's add the tag in the reloading
+10:13
+animation itself you can see that even
+10:15
+animation Clips have an arrow in the top
+Adding Tags to Animations
+10:17
+right which reveals to us a menu to add
+10:20
+tags and specify the time frame they are
+10:22
+active I've disabled the anim
+10:24
+subtracting model dock for visibility
+10:26
+let's see he initially removes the left
+10:28
+hand so so that's where the tag starts
+10:30
+and he starts reaching back about here
+10:33
+he takes around 7 Seconds to grab the
+10:36
+gun will keep that in mind reenable the
+10:39
+anim subtract go to our R to R add a
+10:42
+state machine in it enabled and disabled
+Disable LtoR State Machine
+10:45
+States disabled is our start state
+10:47
+connected to and it transitions into
+10:50
+enabled when not disabled by the tag of
+10:52
+course set the blend time to 7 Seconds
+10:55
+like we said earlier 10 into disabled
+10:57
+for when it is disabled by the disabled
+11:00
+al2 R tag also uncheck reset destination
+11:03
+for both of the Transitions and make
+11:05
+this a group let's try it out and
+11:08
+perfect compared to adding the tags in
+Tags in States vs in Animations
+11:10
+states where the tag is turned off when
+11:12
+exiting the state having the tags in the
+11:15
+animations means tags will be held on
+11:17
+until the animation is fully Blended out
+11:20
+as tags can only be either on or off you
+11:22
+can prevent that by checking the block
+Block Tags from Waning States
+11:25
+tags from waning States box which will
+11:28
+turn off any tag from animations that
+11:30
+are being Blended out we're not using
+11:32
+this now but I thought I should mention
+11:34
+it since this is the tags episode lastly
+11:38
+the players should be lowering their gun
+11:39
+when sprinting so add the ranged run
+Gun Lowering
+11:42
+animation we'll have to decline the
+11:44
+motion frames wizard this time we blend
+11:47
+this like we did with the reload so copy
+11:49
+the anim subtract from the reload
+11:51
+animation since we want to be able to
+11:53
+reload when sprinting we could make a
+11:56
+state machine that switches between only
+11:58
+the idol L run pause but let's reuse the
+12:01
+reloading State machine make a new state
+12:04
+called run connect it to the other two
+12:06
+states now for idoling to run transition
+12:09
+we will still use our root motion speed
+Using Speed as a condition
+12:12
+add a control value condition and select
+12:14
+our root motion speed let's do 200
+12:17
+change the comparison to greater than
+12:19
+200 copy and paste this condition into
+12:21
+the run to idle transition and change it
+12:24
+to less than or equal to then copy idle
+12:27
+to reload for run to reload since the
+12:29
+condition is the same copy reload to
+12:32
+Idol and use it for reload to run but at
+12:35
+the root motion greater T to 100
+12:37
+condition so if the reload ends while
+12:40
+you're sprinting it will go here instead
+12:42
+of passing through the idle first add a
+12:44
+single frame of the range run animation
+12:47
+and connect it to the Run State now if
+12:49
+you go over 200 oh God damn it the look
+12:52
+at I don't want to disable it while
+12:54
+running guess I'll have to make another
+12:57
+state machine we'll have to fited after
+Gun Lower Lookats
+13:00
+the Lookouts but before the enable
+13:02
+Lookout State machine two states gun the
+13:05
+start and gun lower connect gun to lower
+13:08
+uses the route motion speed condition
+13:10
+greater than 200 the other less than
+13:13
+remember to uncheck the reset
+13:15
+destination for both connect the look at
+13:17
+chains into gun and gun lower copy the
+13:20
+look at but we'll use the eye attachment
+13:22
+instead of can forward works pretty good
+13:25
+although it's using the strong look at
+13:27
+chain with a full pelvis in influence
+13:29
+let's go back in model doc copy it and
+13:32
+call this one look at weak lower the
+13:34
+pelvis influence and use this for the
+13:36
+gun lower Lookout perfect and we can
+13:39
+also reload did you see that that was a
+13:42
+fast blend out from reload there it is
+13:44
+quick pause let's use the recording
+Animgraph Record controls
+13:46
+feature to debug this by now surely
+13:49
+you've noticed this bar filling up every
+13:51
+time you start a preview this records
+13:53
+your last 10 seconds of the anim graph
+13:55
+you can use it to go back and forth the
+13:57
+recording press and pause and the last
+13:59
+10 seconds will be on a loop and when
+14:01
+you're done you can press this red
+14:03
+record button to go back to the preview
+14:05
+let's slow down the playback speed and
+14:07
+try to catch the cause of that fast
+14:09
+blend in the reload State machine aha
+14:12
+it's passing through the idol and then
+14:14
+quickly into the Run skipping the longer
+14:16
+blend time even if it meets this
+Transition Order
+14:18
+condition there is an order at which
+14:21
+transitions are checked here in the
+14:22
+bottom right it first checks for the
+14:25
+idle transition which it clears to we
+14:27
+could add a root motion than condition
+14:30
+but instead let's just reorder them so
+14:33
+it checks for the run before the idol
+14:35
+perfect I think we're just about done
+14:37
+with the rifle let's add other weapons
+Unarmed
+14:40
+like the non weapon we'll only use a
+14:42
+weak lookout for this group if we made a
+14:44
+state machine to switch to all the
+14:46
+different weapons we'd have to add so
+14:48
+many states and transitions you have two
+14:50
+other nods we can use to switch through
+14:52
+many states choice and selector the
+Choice Node
+14:55
+choice node chooses the input for us
+14:58
+either random L based on a weight you
+15:00
+assign to the inputs or sequentially
+15:02
+with it rate this is good for random
+15:04
+selection or going down a list of anims
+15:07
+but not what we want for that we'll use
+15:10
+the selector which switches to different
+Selector Node
+15:13
+inputs based on a parameter so let's
+Holdtype Enum parameter
+15:15
+make a new inum the one where you can
+15:17
+assign names to values call it hold type
+15:20
+and add two options the first is none
+15:23
+and the second is rifle use this
+15:25
+parameter for the selector and the
+15:27
+inputs will appear connect a weak look
+15:29
+at to nonone and the rifle group to
+15:31
+Rifle turn the selector to the model
+15:34
+space legs corrective and oh Al is on at
+15:38
+least it works clearly we need to tell
+15:41
+it which group uses the AL this calls
+15:44
+for another tag call this one alar go to
+LtoR tag
+15:47
+the I case group and into the state
+15:50
+machine let's add that altar must be on
+15:53
+to switch into to enable this imitates
+15:55
+an end gate both conditions must clear
+15:58
+to enable it but we can't do or Gates
+16:01
+where it switches out if either one or
+16:03
+the other condition passes to do that we
+16:06
+must use an additional transition copy
+16:08
+the condition from the other out and
+16:10
+change the tag to Al to R and disable it
+16:13
+so now it switches off whether either Al
+16:15
+to R is disabled or disable Al to R is
+16:19
+enabled what a mouthful now we need to
+16:21
+tell it which group uses this tag
+16:23
+luckily for us we can set that in the
+Adding Tags to Selector
+16:25
+selector here on the right the rifle
+16:28
+group will turn on on the AL to tag
+16:30
+while it's current that seems to have
+16:32
+done it let's try our hand at making a
+16:34
+one-handed weapon like a pistol at the
+Pistol Animations
+16:37
+animations in model doc we got the a
+16:39
+matrix the reload and the ramp pause
+16:42
+politely decline the wizard okay it's
+16:45
+getting crowded here group all of the
+Grouping in Modeldoc
+16:47
+two-handed animations into a group and
+16:49
+do the same for the one-handed
+16:51
+animations duplicate the pose for the a
+16:53
+matrix and rename it as such and
+16:56
+subtract the idol to all of the pistol
+16:59
+except for the Matrix where we subtract
+17:02
+itself since we're adding this after to
+17:04
+other poses and change the frame to
+17:06
+forward the neutral look Direction now
+Pistol Holdtype
+17:09
+add a new value to the hold type inum
+17:11
+called the pistol copy and paste the
+17:13
+rifle group call it pistol and let's
+17:16
+switch out the animations the single
+17:18
+frame pose the reload animation the run
+17:21
+and even the sequence that's used in the
+17:23
+aim Matrix let's also bone merge the
+17:26
+revolver there we go oh what is this
+17:28
+Airsoft let's not use the rifles
+17:31
+shooting animation after all kind of
+17:33
+spoilers but at the shotguns shooting
+17:35
+animation since it's stronger damn look
+17:38
+at that recoil the head even detaches
+17:41
+from the body let's just trim out the
+17:43
+part where he pumps H but now it doesn't
+17:46
+Loop well you can fix that by adding an
+Make Animations Loop
+17:49
+anim smooth Loop markup wherein it will
+17:52
+try to make the animation Loop by
+17:54
+gradually pushing the bones towards the
+17:56
+first or last frame the start is fine so
+17:59
+no Corrections there let's correct the
+18:02
+last two frames there we go smooth Loop
+18:05
+let's also add a linear Delta since this
+18:07
+is a shooting animation and C is range
+18:10
+the one8 shoot we are lazy India we
+18:13
+reuse animations you see change out the
+18:15
+pistol shooting animation to this new
+18:17
+animation and set the playback speed
+18:19
+back to one it's better but why is the
+18:22
+knock back more like a knock right I
+18:25
+guess this is what we get for being lazy
+18:27
+India and using an additive from a pose
+18:30
+that's too different mainly the pelvis
+18:33
+in the pistol pose it's rotated to the
+18:35
+left as opposed to the right like the
+18:37
+two-handed weapons so the parent of the
+18:39
+head is giving us problems huh if only I
+18:42
+could just blend the motions and ignore
+18:44
+the parent rotations wait a minute do
+18:47
+they have it yes Mod Space subtract
+AnimSubtractModelSpace
+18:50
+let's try this instead of the linear
+18:52
+Delta select itself as the Target and in
+18:55
+the ad node you have to specify to do a
+18:58
+model space addition through this check
+19:00
+boox there we go and for last the
+19:03
+shotgun will only add two new animations
+Shotgun Animations
+19:06
+shotgun shoot and reload move them to
+19:08
+the two-handed group copy the an markup
+19:11
+from the other animations linear Delta
+19:14
+for shoot and subtract idle for reload
+Shotgun Holdtype
+19:17
+go add the new hold type shotgun to the
+19:19
+enom copy the rifle group and rename it
+19:22
+to shotgun connect it and inside change
+19:25
+the reload animation and then the shoot
+19:27
+animation again slow it down back to one
+19:30
+playback speed bmer the shotgun let's
+19:33
+try oh the hand is slipping this group
+19:36
+needs the AL to R tag in the selector
+19:39
+awesome and since the shoot animations
+19:41
+are placed after the Lookouts it doesn't
+19:44
+try to point the gun forward when
+19:46
+pumping okay final stretch we see that
+19:48
+the shotgun only reloads one bullet in
+19:51
+the animation in order hold types
+19:53
+reloading switches out to a new magazine
+19:55
+you get all of the bullets in one go but
+19:58
+here we need a way to keep adding
+Shotgun Reload animations
+20:00
+bullets a good way to do that is to
+20:02
+separate the animation in three parts
+20:05
+start Loop and end right let's disable
+20:08
+the subtract so we can see what we're
+20:10
+doing copy and paste the reload three
+20:12
+times and add start to the name Loop to
+20:15
+another and end to the last and heck
+20:18
+let's group them together as well now to
+20:20
+trim the animations for the start we
+20:23
+want up to when he grabs the bullet
+20:25
+around frame 26 this means loop with
+20:28
+start at 26 and then just about after he
+20:32
+pushed the bullettin about 50 there we
+20:35
+could add a smooth Loop to make it Loop
+20:37
+but we leave the smoothing to the state
+20:39
+machine blending what we need most is
+20:41
+for the animations to match meaning the
+20:43
+end will start at frame 50 now that we
+20:46
+got this three reenable the anim
+20:48
+subtracts back in the shotgun anim graph
+Shotgun Reload State Machine
+20:51
+group we'll need a state machine for
+20:53
+this complex reloading Behavior
+20:55
+connected to the reload slot in it three
+20:58
+states start Loop and end start being
+21:01
+the starting State obviously and end
+21:04
+being the cryptic end State now this is
+End State
+21:07
+new what does it mean to be an end State
+21:10
+well in the state machine in front the
+21:13
+reloading state uses a finished
+21:15
+condition to know when to switch out
+21:17
+it's easy to know when an animation is
+21:19
+finished not so much when it's behind
+21:21
+another state Machine by marking a state
+21:24
+as the end State when it is reached the
+21:26
+state machine sends a finished signal
+21:29
+which will allow us to use a finished
+21:31
+condition in successive State machines
+Timing Control
+21:33
+hey our shooting animation is behind an
+21:36
+ad node and that never gave us a problem
+21:39
+what gives that's because by default ad
+21:42
+nod and masks use the timing of the
+21:44
+child here and that's fine for most
+21:46
+cases let's connect them up start to
+21:49
+Loop to end no need to connect end to
+21:52
+start because the state machine resets
+21:54
+anyway at this point and since all the
+21:57
+states match we don't need a blend so
+21:59
+set the blend time to zero let's use a
+22:01
+finished condition just to see if this
+22:03
+works replace the animation with three
+22:06
+new animation Clips start Loop and end
+22:09
+connect them up and let's see oh the AL
+22:12
+to R chain let's add the disable Al to
+22:14
+our tag to the start and loop State not
+22:17
+to end since that's when he pumps the
+22:19
+shotgun anyways perfect or not I guess
+22:23
+we can put a little of the tag in the
+22:24
+end animation too there we go how to
+22:27
+Loop now let's try making the loop
+22:30
+animation Loop finished condition will
+22:32
+never happen dot dot dot how ominos
+connected to looping animation loop has a finished condition; transition will never happen....
+22:35
+guess we can't do that how about we have
+22:38
+two Loop States constantly going into
+22:40
+each other copy and paste the loop State
+22:42
+and connect the two with each other add
+22:44
+a finished condition and for now disable
+22:47
+the transition to end just to test them
+22:49
+out connect a loop animation to this new
+Reorder States
+22:52
+Loop nod and I guess move it above the
+22:54
+end State let's try how OD it's not
+22:57
+blending even though I have 2 seconds of
+23:00
+blend time let's increase it
+23:02
+to3 still not I guess since we have to
+23:06
+reset the animation to make it start you
+23:08
+fundamentally cannot blend an animation
+Blend animation with itself
+23:10
+with itself if that's the case let's
+23:13
+just make a copy of the animation and
+23:15
+use that okay okay it kind of works but
+23:18
+how annoying the blend takes 3 seconds
+23:21
+the animation is so short that by then
+23:23
+it is already almost finished I'll have
+23:26
+to start the animation. 3 seconds early
+23:28
+to compensate let's see animation is 60
+23:32
+FPS / by 10 that's 6 * 3 18 I'll have to
+23:37
+start 18 whole frames earlier so at
+23:40
+frame 8 and the start animation as well
+23:44
+needs to end at only frame eight
+23:46
+whatever let's try now sure this looks
+23:49
+possible now we need to let it know when
+23:51
+to stop instead of adding another bullan
+23:54
+let's reuse the reload instead currently
+23:57
+it Auto resets but if we make it a
+Toggle Reload Parameter
+23:59
+toggle we can use it for a parameter
+24:02
+condition set to force remember to
+24:04
+reorder the transition order so that t
+24:06
+is the first it checks reenable the
+24:09
+transitions now as long as reload is on
+24:12
+it will keep reloading to stop it turn
+24:14
+off reload and like we said once we
+24:17
+reach the end State the state machine in
+24:19
+front of it switches back to Idol ready
+24:21
+for the next reload if we didn't have
+24:24
+the end State we wouldn't be able to
+24:26
+reload ever again as it never gets reset
+Bullet Reloaded Event Tag
+24:29
+you can even use an event tag when
+24:31
+exiting the state to signal to the
+24:32
+programmer when a bullet has been loaded
+24:35
+in get rid of the finished condition and
+24:37
+let them decide when the reloading stops
+24:39
+I guess while we reloading we can use
+Lookat while Reloading
+24:41
+the weak head Lookout so plug in the
+24:44
+weak look at to the look at disabled
+24:46
+State kind of false advertisement but we
+24:49
+can make exceptions we now have three
+Outro
+24:51
+great hold types that Encompass most
+24:53
+strange weapon you would want to have
+24:55
+all we have left to do now is a melee
+24:57
+system

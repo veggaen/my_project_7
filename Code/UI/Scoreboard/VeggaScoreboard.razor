@@ -6,10 +6,16 @@
 @inherits PanelComponent
 
 <root>
-	@if ( _isOpen )
+	@if ( _isOpen || IsLayoutActive )
 	{
-		<div class="scoreboard-overlay">
-			<div class="scoreboard-container">
+		<div class="scoreboard-overlay @(IsLayoutActive ? "layout-preview" : "")">
+			<div @ref="_containerPanel" class="scoreboard-container">
+				@if ( IsLayoutActive )
+				{
+					<div class="scoreboard-footer">
+						<span class="footer-text">Layout preview ・ press TAB in-game to view</span>
+					</div>
+				}
 				<!-- Header -->
 				<div class="scoreboard-header">
 					<div class="header-left">
@@ -118,6 +124,7 @@
 	}
 
 	bool _isOpen = false;
+	bool _wasOpen = false;
 	bool _isLocked = false; // Locked when user clicks on scoreboard
 	int _playerCount = 0;
 	string _sortColumn = "money";
@@ -128,13 +135,65 @@
 	float _lastUpdateTime = 0f;
 	const float UPDATE_INTERVAL = 1f; // Update every 1 second instead of 60 times/sec
 
+	public static bool IsOpenGlobal { get; private set; }
+	public static bool WantsCursorGlobal { get; private set; }
+	static VeggaScoreboard _instance;
+	Panel _containerPanel;
+
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
+
 	protected override void OnStart()
 	{
-		Log.Info( "✅ VeggaScoreboard: Started!" );
+		_instance = this;
+		IsOpenGlobal = _isOpen;
+		_wasOpen = _isOpen;
+		WantsCursorGlobal = false;
+		VeggaHudLayoutState.RegisterElement( VeggaHudLayoutState.KeyScoreboard, "Scoreboard (TAB)" );
+		VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyScoreboard, _isOpen, CloseSelfFromEscape );
+	}
+
+	protected override void OnDestroy()
+	{
+		base.OnDestroy();
+		if ( _instance == this )
+			_instance = null;
+		IsOpenGlobal = false;
+		WantsCursorGlobal = false;
+		VeggaUiCloseStack.Remove( VeggaHudLayoutState.KeyScoreboard );
+	}
+
+	public static void ForceClose()
+	{
+		_instance?.CloseSelfFromEscape();
+	}
+
+	void CloseSelfFromEscape()
+	{
+		_isOpen = false;
+		_wasOpen = false;
+		_isLocked = false;
+		IsOpenGlobal = false;
+		WantsCursorGlobal = false;
+		VeggaUiCloseStack.Remove( VeggaHudLayoutState.KeyScoreboard );
+		StateHasChanged();
 	}
 
 	protected override void OnUpdate()
 	{
+		// Keep global flags in sync.
+		IsOpenGlobal = _isOpen;
+		bool cursorSetting = VeggaHudLayoutState.GetCursorMode( VeggaHudLayoutState.KeyScoreboard, defaultValue: false );
+		WantsCursorGlobal = _isOpen && cursorSetting;
+
+		// Apply layout to the scoreboard *container* (not the overlay), so the dim background stays full-screen.
+		VeggaHudLayoutApply.Apply( _containerPanel, VeggaHudLayoutState.KeyScoreboard, VeggaHudLayoutState.GetDefaultPosition( VeggaHudLayoutState.KeyScoreboard ), 1f );
+
+		if ( Panel != null )
+		{
+			// When not in cursor mode, avoid swallowing mouse input.
+			Panel.Style.PointerEvents = (WantsCursorGlobal || VeggaUiFreeCursor.IsActive) ? PointerEvents.All : PointerEvents.None;
+		}
+
 		// Toggle with Tab key
 		if ( Input.Pressed( "score" ) || Input.Pressed( "tab" ) )
 		{
@@ -157,6 +216,13 @@
 			}
 
 			StateHasChanged();
+		}
+
+		if ( _isOpen != _wasOpen )
+		{
+			VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyScoreboard, _isOpen, CloseSelfFromEscape );
+			_wasOpen = _isOpen;
+			IsOpenGlobal = _isOpen;
 		}
 
 		// Update while open (TypeScript: if (isOpen && now - lastUpdate > interval))

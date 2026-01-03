@@ -33,11 +33,15 @@ public static class VeggaHudLayoutApply
 			VeggaHudLayoutState.KeyPlayerHud => new Vector2( 340f, 220f ),
 			// XP bar is a slim horizontal widget.
 			VeggaHudLayoutState.KeyXpBar => new Vector2( 520f, 90f ),
+			// Cash drop progress bar is a slim horizontal widget.
+			VeggaHudLayoutState.KeyCashDropProgress => new Vector2( 360f, 70f ),
 			// Minimap is typically square-ish.
 			VeggaHudLayoutState.KeyMinimap => new Vector2( 260f, 260f ),
 			// World container menus.
 			VeggaHudLayoutState.KeyFurnaceMenu => new Vector2( 560f, 520f ),
 			VeggaHudLayoutState.KeyStorageMenu => new Vector2( 560f, 520f ),
+			// Scoreboard: wide panel.
+			VeggaHudLayoutState.KeyScoreboard => new Vector2( 1400f, 800f ),
 			_ => FallbackSizePx
 		};
 	}
@@ -91,6 +95,33 @@ public static class VeggaHudLayoutApply
 	static readonly System.Collections.Generic.Dictionary<string, LastApplied> _lastApplied = new();
 	static readonly System.Collections.Generic.Dictionary<string, System.WeakReference<Panel>> _panels = new();
 	static readonly System.Collections.Generic.HashSet<string> _loggedParentMismatch = new();
+	static readonly System.Collections.Generic.Dictionary<string, Vector2> _dragBaseSizeOverridePx = new();
+
+	public static void BeginDrag( string key )
+	{
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return;
+
+		Vector2 baseSizePx;
+		if ( _lastApplied.TryGetValue( key, out var prev ) && (prev.HasValidSize || (prev.SizePxScaled.x > 1f && prev.SizePxScaled.y > 1f)) )
+		{
+			var invScale = prev.Scale <= 0.0001f ? 1f : prev.Scale;
+			baseSizePx = prev.SizePxScaled / invScale;
+		}
+		else
+		{
+			baseSizePx = GetFallbackSizePxForKey( key );
+		}
+
+		_dragBaseSizeOverridePx[key] = baseSizePx;
+	}
+
+	public static void EndDrag( string key )
+	{
+		if ( string.IsNullOrWhiteSpace( key ) )
+			return;
+		_dragBaseSizeOverridePx.Remove( key );
+	}
 
 	public static bool TryGetLastApplied( string key, out LastApplied info )
 	{
@@ -150,12 +181,18 @@ public static class VeggaHudLayoutApply
 		var anchor = VeggaHudLayoutState.GetAnchor( key );
 
 		// Determine a stable size for anchoring.
-		// If the panel hasn't measured yet, use cached size (if available) or a safe fallback.
+		// While dragging in the layout editor, freeze the size to avoid jitter for variable-height panels.
 		var measuredSizePx = panel.Box.Rect.Size;
 		bool measuredValid = measuredSizePx.x > 1f && measuredSizePx.y > 1f;
 		Vector2 baseSizePx = measuredValid ? measuredSizePx : GetFallbackSizePxForKey( key );
 		bool hadCachedValid = false;
-		if ( !measuredValid && _lastApplied.TryGetValue( key, out var prev ) && prev.HasValidSize )
+		if ( _dragBaseSizeOverridePx.TryGetValue( key, out var dragOverride ) && dragOverride.x > 1f && dragOverride.y > 1f )
+		{
+			baseSizePx = dragOverride;
+			hadCachedValid = true;
+			measuredValid = false;
+		}
+		else if ( !measuredValid && _lastApplied.TryGetValue( key, out var prev ) && prev.HasValidSize )
 		{
 			var prevScale = prev.Scale <= 0.0001f ? 1f : prev.Scale;
 			baseSizePx = prev.SizePxScaled / prevScale;

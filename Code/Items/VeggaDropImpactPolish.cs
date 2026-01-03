@@ -31,6 +31,11 @@ public sealed class VeggaDropImpactPolish : Component, Component.ICollisionListe
 		CaptureBaseline();
 	}
 
+	public void RefreshBaseline()
+	{
+		CaptureBaseline();
+	}
+
 	protected override void OnUpdate()
 	{
 		if ( _settleUntil <= 0f )

@@ -247,7 +247,6 @@
 	public static bool IsOpenGlobal { get; private set; }
 	static VeggaPauseMenu _instance;
 	MenuView _currentView = MenuView.Main;
-	bool _hasLoggedStart;
 
 	// Auto-accept trades setting (mirrors TradeManager)
 	bool _autoAcceptTrades
@@ -279,51 +278,8 @@
 	protected override void OnUpdate()
 	{
 		_instance ??= this;
-		if ( !_hasLoggedStart )
-		{
-			_hasLoggedStart = true;
-			Log.Info( "[VeggaPauseMenu] OnUpdate started (menu component is running)." );
-		}
-
 		// Keep the global flag in sync every frame (prevents "stuck UI mouse" after hot reload).
 		IsOpenGlobal = _isOpen;
-
-		if ( Input.EscapePressed )
-		{
-			Input.EscapePressed = false;
-			bool layoutActive = IsLayoutActive;
-			Log.Info( $"[VeggaPauseMenu] ESC pressed. isOpen={_isOpen}, view={_currentView}, layoutActive={layoutActive}" );
-
-			// If in layout mode, ESC exits layout and reopens menu to HUD settings
-			if ( layoutActive )
-			{
-				SetLayoutActive( false );
-				// Professional behavior: ESC just exits layout mode.
-				_isOpen = false;
-				_currentView = MenuView.Main;
-				Log.Info( "[VeggaPauseMenu] ESC: Exited layout mode." );
-			}
-			// If on a subpage, go back to main menu
-			else if ( _isOpen && _currentView != MenuView.Main )
-			{
-				_currentView = MenuView.Main;
-				Log.Info( "[VeggaPauseMenu] ESC: Went back to main menu." );
-			}
-			// Otherwise toggle menu open/close
-			else
-			{
-				_isOpen = !_isOpen;
-				if ( _isOpen )
-				{
-					_currentView = MenuView.Main;
-				}
-				Log.Info( $"[VeggaPauseMenu] ESC: Toggled menu. Now isOpen={_isOpen}" );
-			}
-
-			IsOpenGlobal = _isOpen;
-
-			StateHasChanged();
-		}
 	}
 
 	protected override void OnDestroy()
@@ -342,6 +298,16 @@
 		if ( _instance == null ) return;
 		_instance._isOpen = false;
 		_instance._currentView = MenuView.Main;
+		_instance.StateHasChanged();
+	}
+
+	public static void ToggleFromEscape()
+	{
+		if ( _instance == null ) return;
+
+		_instance._isOpen = !_instance._isOpen;
+		_instance._currentView = MenuView.Main;
+		IsOpenGlobal = _instance._isOpen;
 		_instance.StateHasChanged();
 	}
 

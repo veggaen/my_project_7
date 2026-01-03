@@ -1,4 +1,5 @@
 using Sandbox;
+using Sandbox.Money;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -71,6 +72,43 @@ public static class WorldDropPersistence
 		{
 			Log.Warning( $"[WorldDropPersistence] Failed to write {FilePath}: {e.Message}" );
 		}
+	}
+
+	/// <summary>
+	/// Host-only: remove all persisted drops from disk and (optionally) destroy any in-scene objects that were persisted.
+	/// Useful when iterating on collider/physics policies.
+	/// </summary>
+	public static void WipeAllDrops( Scene scene, bool destroySpawned = true )
+	{
+		if ( !Networking.IsHost )
+		{
+			Log.Warning( "[WorldDropPersistence] WipeAllDrops is host-only." );
+			return;
+		}
+
+		EnsureLoaded();
+		_data.Drops.Clear();
+		SaveNow();
+
+		if ( !destroySpawned )
+			return;
+		if ( scene == null )
+			scene = Game.ActiveScene;
+		if ( scene == null )
+			return;
+
+		int destroyed = 0;
+		foreach ( var pickup in scene.GetAllComponents<VeggaPickupItem>() )
+		{
+			if ( pickup == null || !pickup.IsValid() ) continue;
+			if ( pickup.PersistId == Guid.Empty ) continue;
+			var go = pickup.GameObject;
+			if ( go == null || !go.IsValid() ) continue;
+			go.Destroy();
+			destroyed++;
+		}
+
+		Log.Info( $"[WorldDropPersistence] Wiped drops.json and destroyed {destroyed} persisted drop objects." );
 	}
 
 	static bool IsExpired( DropSave save, DateTime utcNow, float ttlSeconds )
@@ -168,6 +206,8 @@ public static class WorldDropPersistence
 				continue;
 			}
 
+			bool isCash = save.ItemId == VeggaCurrency.CashItemId;
+
 			// Ensure pickup has the persist id so we can remove it on pickup.
 			var rootPickup = go.Components.Get<VeggaPickupItem>();
 			if ( rootPickup != null && rootPickup.IsValid() )
@@ -199,18 +239,64 @@ public static class WorldDropPersistence
 			if ( prop != null && prop.IsValid() )
 				prop.IsStatic = false;
 
+			var renderer = go.Components.Get<ModelRenderer>()
+				?? go.Components.GetAll<ModelRenderer>( FindMode.InDescendants ).FirstOrDefault();
 			var modelCollider = go.Components.Get<ModelCollider>()
 				?? go.Components.GetAll<ModelCollider>( FindMode.InDescendants ).FirstOrDefault();
+			if ( modelCollider == null )
+				modelCollider = go.Components.Create<ModelCollider>();
+				bool isCashBox = isCash && save.Count >= VeggaCurrency.CashBoxAmount;
 			if ( modelCollider != null && modelCollider.IsValid() )
 			{
-				var renderer = go.Components.Get<ModelRenderer>()
-					?? go.Components.GetAll<ModelRenderer>( FindMode.InDescendants ).FirstOrDefault();
 				if ( renderer != null && renderer.IsValid() && renderer.Model != null )
 					modelCollider.Model = renderer.Model;
-
-				modelCollider.Enabled = true;
+				// Cash models are inconsistent about having a usable physics mesh.
+				// Prefer a primitive collider for cash so drops never become "ghost" after restart.
+				modelCollider.Enabled = false;
 				modelCollider.IsTrigger = false;
 				modelCollider.Static = false;
+			}
+
+			// Cash: enforce a simple box collider so it always collides.
+			if ( isCash )
+			{
+				// Disable any model colliders in the prefab hierarchy.
+				foreach ( var mc in go.Components.GetAll<ModelCollider>( FindMode.InDescendants ) )
+				{
+					if ( mc == null || !mc.IsValid() ) continue;
+					mc.Enabled = false;
+				}
+				var rootMc = go.Components.Get<ModelCollider>();
+				if ( rootMc != null && rootMc.IsValid() ) rootMc.Enabled = false;
+
+				var box = go.Components.Get<BoxCollider>()
+					?? go.Components.GetAll<BoxCollider>( FindMode.InDescendants ).FirstOrDefault();
+				if ( box == null )
+					box = go.Components.Create<BoxCollider>();
+				if ( box != null && box.IsValid() )
+				{
+					box.Enabled = true;
+					box.IsTrigger = false;
+					box.Static = false;
+					box.Scale = VeggaCurrency.GetCashBoxColliderScaleForAmount( save.Count );
+					if ( save.Count >= VeggaCurrency.CashBoxAmount ) { box.Friction = 1.4f; box.RollingResistance = 1.1f; }
+					else if ( save.Count >= VeggaCurrency.CashBundleAmount ) { box.Friction = 1.5f; box.RollingResistance = 1.25f; }
+					else { box.Friction = 1.2f; box.RollingResistance = 1.0f; }
+				}
+
+				foreach ( var bc in go.Components.GetAll<BoxCollider>( FindMode.InDescendants ) )
+				{
+					if ( bc == null || !bc.IsValid() ) continue;
+					if ( box != null && bc == box ) continue;
+					bc.Enabled = false;
+				}
+				foreach ( var sc in go.Components.GetAll<SphereCollider>( FindMode.InDescendants ) )
+				{
+					if ( sc == null || !sc.IsValid() ) continue;
+					sc.Enabled = false;
+				}
+				var rootSphere = go.Components.Get<SphereCollider>();
+				if ( rootSphere != null && rootSphere.IsValid() ) rootSphere.Enabled = false;
 			}
 
 			// Some item models might not provide a usable physics mesh; ensure a simple collider exists.
@@ -271,8 +357,14 @@ public static class WorldDropPersistence
 					rb.LinearDamping = 0.35f;
 					rb.AngularDamping = 4f;
 				}
+				else if ( isCash )
+				{
+					VeggaCurrency.ApplyCashRigidbodyTuning( rb, save.Count );
+				}
 				rb.Velocity = save.Velocity;
 			}
+
+			// Cash-specific collider policy is handled above (ModelCollider preferred, BoxCollider disabled).
 		}
 
 		if ( toRemove.Count > 0 )

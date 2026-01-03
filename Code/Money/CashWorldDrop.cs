@@ -7,7 +7,8 @@ namespace Sandbox.Money
 {
 	public static class CashWorldDrop
 	{
-		private const string PrefabPath = "droppedcash.prefab";
+		private const string DefaultPrefabPath = "moneyveggabundle.prefab";
+		private const float DefaultPickupDelay = 0.25f;
 
 		public static GameObject Spawn( Scene scene, Vector3 position, Rotation rotation, int amount, Guid droppedById, string ownerSteamId = null )
 		{
@@ -19,9 +20,12 @@ namespace Sandbox.Money
 			GameObject go = null;
 			try
 			{
-				// Spawn the actual prefab so it stays in sync with Assets/droppedcash.prefab
+				// Spawn the actual prefab so it stays in sync with Assets/*.prefab
 				// and serializes as a prefab instance.
-				go = GameObject.Clone( PrefabPath, new Transform( position, rotation ), scene, startEnabled: false, name: "droppedcash" );
+				var prefabPath = VeggaCurrency.GetCashPrefabPathForAmount( amount );
+				if ( string.IsNullOrWhiteSpace( prefabPath ) )
+					prefabPath = DefaultPrefabPath;
+				go = GameObject.Clone( prefabPath, new Transform( position, rotation ), scene, startEnabled: false, name: "droppedcash" );
 			}
 			catch
 			{
@@ -46,24 +50,28 @@ namespace Sandbox.Money
 				var pickupFallback = go.Components.Create<VeggaPickupItem>();
 				pickupFallback.ItemId = VeggaCurrency.CashItemId;
 				pickupFallback.Quantity = amount;
-				pickupFallback.PickupDelay = 0.25f;
+				pickupFallback.PickupDelay = DefaultPickupDelay;
 				if ( droppedById != Guid.Empty )
 					pickupFallback.DroppedById = droppedById;
 				pickupFallback.DroppedAtTime = Time.Now;
+				pickupFallback.PlayerBumpRadius = 28f;
+				pickupFallback.PlayerBumpMinSpeed = 22f;
+				pickupFallback.PlayerBumpStrength = 185f;
+				pickupFallback.PlayerBumpUpStrength = 40f;
 
 
-				// Paper-thin model colliders can behave badly (spins/launches). Use a simple box instead.
+				// Prefer a box collider so we never end up with a "ghost" drop due to missing physics meshes.
 				var colliderFallback = go.Components.Create<BoxCollider>();
-				colliderFallback.Scale = new Vector3( 8f, 4f, 1f );
 				colliderFallback.IsTrigger = false;
+				colliderFallback.Static = false;
+				colliderFallback.Scale = VeggaCurrency.GetCashBoxColliderScaleForAmount( amount );
+				colliderFallback.Friction = 1.4f;
+				colliderFallback.RollingResistance = 1.1f;
 
 				var rbFallback = go.Components.Create<Rigidbody>();
 				rbFallback.MotionEnabled = true;
 				rbFallback.Gravity = true;
-				// Match the "heavy" feel used by gold bars (prevents floaty bills if we hit this fallback path).
-				rbFallback.MassOverride = 25;
-				rbFallback.LinearDamping = 0.25f;
-				rbFallback.AngularDamping = 1f;
+				VeggaCurrency.ApplyCashRigidbodyTuning( rbFallback, amount );
 
 				return go;
 			}
@@ -77,6 +85,54 @@ namespace Sandbox.Money
 					yield return child;
 			}
 
+			BoxCollider EnsureCashBoxColliderEnabled()
+			{
+				var box = go.Components.Get<BoxCollider>()
+					?? go.Components.GetAll<BoxCollider>( FindMode.InDescendants ).FirstOrDefault();
+				if ( box == null )
+					box = go.Components.Create<BoxCollider>();
+				if ( box == null || !box.IsValid() )
+					return null;
+
+				box.Enabled = true;
+				box.IsTrigger = false;
+				box.Static = false;
+				// Respect prefab-authored size. If it's missing/invalid, fall back to a safe default.
+				if ( box.Scale.x <= 0f || box.Scale.y <= 0f || box.Scale.z <= 0f )
+					box.Scale = VeggaCurrency.GetCashBoxColliderScaleForAmount( amount );
+				box.Friction ??= 1.4f;
+				box.RollingResistance ??= 1.1f;
+
+				EnforceSingleBoxCollider( box );
+				foreach ( var mc in SelfAndDescendants<ModelCollider>() )
+				{
+					if ( mc == null || !mc.IsValid() ) continue;
+					mc.Enabled = false;
+				}
+				return box;
+			}
+
+			void EnforceSingleRigidbody( Rigidbody keep )
+			{
+				foreach ( var other in SelfAndDescendants<Rigidbody>() )
+				{
+					if ( other == null || !other.IsValid() ) continue;
+					if ( keep != null && other == keep ) continue;
+					other.MotionEnabled = false;
+					other.Enabled = false;
+				}
+			}
+
+			void EnforceSingleBoxCollider( BoxCollider keep )
+			{
+				foreach ( var other in SelfAndDescendants<BoxCollider>() )
+				{
+					if ( other == null || !other.IsValid() ) continue;
+					if ( keep != null && other == keep ) continue;
+					other.Enabled = false;
+				}
+			}
+
 			// Apply runtime overrides to the prefab instance.
 			var cash = go.Components.Get<CashMoneyVeggaSystem>()
 				?? go.Components.GetAll<CashMoneyVeggaSystem>( FindMode.InDescendants ).FirstOrDefault();
@@ -86,62 +142,75 @@ namespace Sandbox.Money
 				if ( !string.IsNullOrWhiteSpace( ownerSteamId ) )
 					cash.SetOwner( ownerSteamId );
 			}
-
-
-			foreach ( var pickup in SelfAndDescendants<VeggaPickupItem>() )
-			{
-				if ( pickup == null ) continue;
-				pickup.ItemId = VeggaCurrency.CashItemId;
-				pickup.Quantity = amount;
-				if ( pickup.PickupDelay <= 0 )
-					pickup.PickupDelay = 0.25f;
-				if ( droppedById != Guid.Empty )
-					pickup.DroppedById = droppedById;
-				pickup.DroppedAtTime = Time.Now;
-			}
-
-			// Enforce stable physics settings even if the prefab gets edited later.
-			var rb = go.Components.Get<Rigidbody>()
-				?? go.Components.GetAll<Rigidbody>( FindMode.InDescendants ).FirstOrDefault();
-			if ( rb != null )
-			{
-				rb.MotionEnabled = true;
-				rb.Gravity = true;
-				rb.MassOverride = 25;
-				rb.LinearDamping = 0.25f;
-				rb.AngularDamping = 1f;
-			}
-
-			// Replace thin model collider with a simple box to avoid “flying away” on collision.
-			var existingBox = go.Components.Get<BoxCollider>()
-				?? go.Components.GetAll<BoxCollider>( FindMode.InDescendants ).FirstOrDefault();
-			// Ensure we have at least one SOLID collider. Trigger-only colliders will fall through the world.
-			if ( existingBox != null )
-			{
-				existingBox.Enabled = true;
-				existingBox.IsTrigger = false;
-				// Ensure non-zero thickness so it doesn't tunnel through terrain seams.
-				var s = existingBox.Scale;
-				if ( s.z < 2f )
-					existingBox.Scale = new Vector3( MathF.Max( 8f, s.x ), MathF.Max( 4f, s.y ), 3f );
-			}
 			else
 			{
-				var modelCollider = go.Components.Get<ModelCollider>()
-					?? go.Components.GetAll<ModelCollider>( FindMode.InDescendants ).FirstOrDefault();
-				if ( modelCollider != null )
-					modelCollider.Enabled = false;
-
-				var box = go.Components.Create<BoxCollider>();
-				box.Scale = new Vector3( 9f, 6f, 3f );
-				box.IsTrigger = false;
+				cash = go.Components.Create<CashMoneyVeggaSystem>();
+				cash.Amount = amount;
+				if ( !string.IsNullOrWhiteSpace( ownerSteamId ) )
+					cash.SetOwner( ownerSteamId );
 			}
+
+
+			var pickup = go.Components.Get<VeggaPickupItem>()
+				?? go.Components.GetAll<VeggaPickupItem>( FindMode.InDescendants ).FirstOrDefault();
+			if ( pickup == null )
+				pickup = go.Components.Create<VeggaPickupItem>();
+			pickup.ItemId = VeggaCurrency.CashItemId;
+			pickup.Quantity = amount;
+			if ( pickup.PickupDelay <= 0 )
+				pickup.PickupDelay = DefaultPickupDelay;
+			if ( droppedById != Guid.Empty )
+				pickup.DroppedById = droppedById;
+			pickup.DroppedAtTime = Time.Now;
+			// Make cash gently pushable by walking into it.
+			// Large cash uses a huge box collider, so we need a larger bump radius
+			// (distance is measured from player position to item origin).
+			bool isMassiveCash = amount >= VeggaCurrency.CashBoxAmount;
+			pickup.PlayerBumpRadius = isMassiveCash ? 72f : 34f;
+			pickup.PlayerBumpMinSpeed = 22f;
+			pickup.PlayerBumpStrength = 185f;
+			pickup.PlayerBumpUpStrength = 40f;
+
+			// Enforce stable physics settings even if the prefab gets edited later.
+			var prop = go.Components.Get<Prop>()
+				?? go.Components.GetAll<Prop>( FindMode.InDescendants ).FirstOrDefault();
+			if ( prop != null && prop.IsValid() )
+				prop.IsStatic = false;
+
+			var rb = go.Components.Get<Rigidbody>()
+				?? go.Components.GetAll<Rigidbody>( FindMode.InDescendants ).FirstOrDefault();
+			if ( rb == null )
+				rb = go.Components.Create<Rigidbody>();
+			if ( rb != null && rb.IsValid() )
+			{
+				rb.Enabled = true;
+				rb.MotionEnabled = true;
+				rb.Gravity = true;
+				VeggaCurrency.ApplyCashRigidbodyTuning( rb, amount );
+			}
+			EnforceSingleRigidbody( rb );
+
+			// Collider policy: always ensure a box collider exists for cash.
+			EnsureCashBoxColliderEnabled();
 
 			// Enable after configuration to avoid one-frame defaults.
 			go.Enabled = true;
+			go.WorldRotation = rotation;
+			EnsureCashBoxColliderEnabled();
+			EnforceSingleRigidbody( rb );
 
 			// Some prefab/component lifecycles can apply defaults on enable.
 			// Re-apply after enabling so the drop amount is always authoritative.
+			if ( rb != null && rb.IsValid() )
+			{
+				rb.Enabled = true;
+				rb.MotionEnabled = true;
+				rb.Gravity = true;
+				VeggaCurrency.ApplyCashRigidbodyTuning( rb, amount );
+			}
+			foreach ( var polish in SelfAndDescendants<VeggaDropImpactPolish>() )
+				polish?.RefreshBaseline();
+			EnforceSingleRigidbody( rb );
 			cash = go.Components.Get<CashMoneyVeggaSystem>()
 				?? go.Components.GetAll<CashMoneyVeggaSystem>( FindMode.InDescendants ).FirstOrDefault();
 			if ( cash != null )

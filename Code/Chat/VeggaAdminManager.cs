@@ -1,6 +1,7 @@
 using Sandbox;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Sandbox.Admin;
 
@@ -187,11 +188,28 @@ public static class VeggaAdminManager
 
 			if ( IsProtectedOwner( target, executor ) ) return;
 
-			if ( !int.TryParse( args[1], out int amount ) )
+			static bool TryParseAmount64( string raw, out long value )
+			{
+				value = 0;
+				if ( string.IsNullOrWhiteSpace( raw ) ) return false;
+				raw = raw.Trim().Replace( "_", "" ).Replace( ",", "" );
+				return long.TryParse( raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out value );
+			}
+
+			if ( !TryParseAmount64( args[1], out long amount64 ) )
 			{
 				ChatMsg( executor, "Invalid amount.", ChatMessageType.Error );
 				return;
 			}
+			if ( amount64 < 0 )
+			{
+				ChatMsg( executor, "Amount must be >= 0.", ChatMessageType.Error );
+				return;
+			}
+
+			int amount = amount64 >= int.MaxValue ? int.MaxValue : (int)amount64;
+			if ( amount64 > int.MaxValue )
+				ChatMsg( executor, $"Amount too large for current money system; clamped to ${int.MaxValue}.", ChatMessageType.Error );
 
 			target.AddMoney( amount );
 			ChatMsg( executor, $"Gave ${amount} to {target.Network.Owner.DisplayName}.", ChatMessageType.Admin );
@@ -215,11 +233,28 @@ public static class VeggaAdminManager
 
 			if ( IsProtectedOwner( target, executor ) ) return;
 
-			if ( !int.TryParse( args[1], out int amount ) )
+			static bool TryParseAmount64( string raw, out long value )
+			{
+				value = 0;
+				if ( string.IsNullOrWhiteSpace( raw ) ) return false;
+				raw = raw.Trim().Replace( "_", "" ).Replace( ",", "" );
+				return long.TryParse( raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out value );
+			}
+
+			if ( !TryParseAmount64( args[1], out long amount64 ) )
 			{
 				ChatMsg( executor, "Invalid amount.", ChatMessageType.Error );
 				return;
 			}
+			if ( amount64 < 0 )
+			{
+				ChatMsg( executor, "Amount must be >= 0.", ChatMessageType.Error );
+				return;
+			}
+
+			int amount = amount64 >= int.MaxValue ? int.MaxValue : (int)amount64;
+			if ( amount64 > int.MaxValue )
+				ChatMsg( executor, $"Amount too large for current money system; clamped to ${int.MaxValue}.", ChatMessageType.Error );
 
 			// PlayerVeggaStats.Money has a private setter; use SetMoney helper
 			target.SetMoney( amount );

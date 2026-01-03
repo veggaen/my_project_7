@@ -40,6 +40,12 @@ public sealed class HUDManagerScene : Component
 	public XPBar XpBarPanel { get; set; }
 
 	/// <summary>
+	/// Link to the CashDropProgressBar component. Set this in the inspector!
+	/// </summary>
+	[Property, Group( "Links" )]
+	public CashDropProgressBar CashDropProgressBarPanel { get; set; }
+
+	/// <summary>
 	/// Link to the CrossVeggaHair component. Set this in the inspector!
 	/// </summary>
 	[Property, Group( "Links" )]
@@ -194,6 +200,22 @@ public sealed class HUDManagerScene : Component
 					Log.Info( "[HUDManagerScene] Disabled external XPBar (different GameObject)." );
 				}
 				XpBarPanel = Components.Create<XPBar>();
+			}
+		}
+
+		if ( CashDropProgressBarPanel == null )
+		{
+			// Same-canvas preference for progress bar.
+			CashDropProgressBarPanel = Components.Get<CashDropProgressBar>();
+			if ( CashDropProgressBarPanel == null )
+			{
+				var existing = Scene.GetAllComponents<CashDropProgressBar>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					existing.Enabled = false;
+					Log.Info( "[HUDManagerScene] Disabled external CashDropProgressBar (different GameObject)." );
+				}
+				CashDropProgressBarPanel = Components.Create<CashDropProgressBar>();
 			}
 		}
 

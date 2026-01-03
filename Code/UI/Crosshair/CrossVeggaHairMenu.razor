@@ -10,7 +10,7 @@
 		<div class="crosshair-menu-simple">
 			<h1>CROSSHAIR MENU (WIP)</h1>
 			<p>Advanced settings UI is disabled for now to keep the game compiling cleanly.</p>
-			<button class="close-btn" onclick="@Toggle">Close</button>
+			<button class="close-btn" @onclick=@Toggle>Close</button>
 		</div>
 	}
 </root>
@@ -18,6 +18,8 @@
 @code
 {
 	static CrossVeggaHairMenu _instance;
+	public const string CloseStackKey = "crosshair_menu";
+	public static bool IsOpenGlobal { get; private set; }
 
 	bool _isOpen = false;
 
@@ -27,10 +29,23 @@
 	protected override void OnStart()
 	{
 		_instance = this;
+		IsOpenGlobal = _isOpen;
+		VeggaUiCloseStack.SetOpen( CloseStackKey, _isOpen, CloseSelfFromEscape );
 	}
 
 	protected override void OnUpdate()
 	{
+		IsOpenGlobal = _isOpen;
+		if ( _isOpen )
+		{
+			// Register every frame so hot reloads don't desync the stack.
+			VeggaUiCloseStack.SetOpen( CloseStackKey, true, CloseSelfFromEscape );
+		}
+		else
+		{
+			VeggaUiCloseStack.Remove( CloseStackKey );
+		}
+
 		// Toggle with Shift+Tab (Run + Score)
 		if ( Input.Pressed( "Score" ) && Input.Down( "Run" ) )
 		{
@@ -46,6 +61,8 @@
 	void ToggleInternal()
 	{
 		_isOpen = !_isOpen;
+		IsOpenGlobal = _isOpen;
+		VeggaUiCloseStack.SetOpen( CloseStackKey, _isOpen, CloseSelfFromEscape );
 		// Don't hide the cursor if HUD layout mode is active.
 		if ( _isOpen )
 		{
@@ -55,6 +72,16 @@
 		{
 			Panel.Style.PointerEvents = PointerEvents.None;
 		}
+		StateHasChanged();
+	}
+
+	void CloseSelfFromEscape()
+	{
+		_isOpen = false;
+		IsOpenGlobal = false;
+		VeggaUiCloseStack.Remove( CloseStackKey );
+		if ( Panel != null && !IsLayoutActive )		
+			Panel.Style.PointerEvents = PointerEvents.None;
 		StateHasChanged();
 	}
 

@@ -239,7 +239,7 @@ public sealed class PlayerVeggaSkills : Component
 
 		int idx = (int)skill;
 		int oldXp = _xp[idx];
-		int maxXp = SkillXpTable.GetXpForLevel( SkillXpTable.MaxLevel );
+		int maxXp = SkillXpTable.MaxXp;
 
 		int newXp = (oldXp + amount).Clamp( 0, maxXp );
 		_xp[idx] = newXp;

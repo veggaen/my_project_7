@@ -7,54 +7,70 @@
 @attribute [StyleSheet( "/code/ui/skills/skillspanel.razor.scss" )]
 
 <root>
-	<div class="skills-panel">
-		<div class="skills-header">
-			<div class="skills-title">Skills</div>
-			<div class="skills-subtitle">Skills Interface: lists skills and progress. Hover for XP details.</div>
-		</div>
-
-		@if ( _hasSkills )
-		{
-			<div class="skills-list">
-				@foreach ( var skill in _skills )
-				{
-					var level = _skillsComp.GetLevel( skill.Id );
-					var xp = _skillsComp.GetXp( skill.Id );
-					var max = SkillXpTable.MaxLevel;
-					var nextLevel = Math.Min( level + 1, max );
-					var xpCur = SkillXpTable.GetXpForLevel( level );
-					var xpNext = SkillXpTable.GetXpForLevel( nextLevel );
-					var denom = Math.Max( 1, xpNext - xpCur );
-					var frac = (level >= max) ? 1f : (float)(xp - xpCur) / denom;
-					frac = frac.Clamp( 0f, 1f );
-					var pct = frac * 100f;
-					var remaining = Math.Max( 0, xpNext - xp );
-
-					<div class="skill-row">
-						<div class="skill-top">
-							<div class="skill-name">@skill.Name</div>
-							<div class="skill-level">@level</div>
-						</div>
-						<div class="skill-barframe">
-							<div class="skill-barfill" style="width: @($"{pct:0.##}%")"></div>
-							<div class="skill-bartext">@FormatXp(xp) / @FormatXp(xpNext)</div>
-						</div>
-
-						<div class="skill-tooltip">
-							<div class="tt-title">@skill.Name</div>
-							<div class="tt-row"><span class="k">Current XP</span><span class="v">@xp.ToString("N0")</span></div>
-							<div class="tt-row"><span class="k">Next level XP</span><span class="v">@xpNext.ToString("N0")</span></div>
-							<div class="tt-row"><span class="k">Remaining</span><span class="v">@remaining.ToString("N0")</span></div>
-						</div>
-					</div>
-				}
+	@if ( _isOpen || IsLayoutActive )
+	{
+		<div class="skills-panel">
+			<div class="skills-header">
+				<div class="skills-titlebar">
+					<div class="skills-title">Skills</div>
+					@if ( _hasSkills )
+					{
+						<div class="skills-summary">Total @GetTotalLevel() | Combat @_skillsComp.CombatLevel (@_skillsComp.CombatType)</div>
+					}
+				</div>
+				<div class="skills-subtitle">Hover a skill for exact XP numbers.</div>
 			</div>
-		}
-		else
-		{
-			<div class="skills-empty">Waiting for skills…</div>
-		}
-	</div>
+
+			@if ( _hasSkills )
+			{
+				<div class="skills-list">
+					@foreach ( var skill in _skills )
+					{
+						var level = _skillsComp.GetLevel( skill.Id );
+						var xp = _skillsComp.GetXp( skill.Id );
+						var max = SkillXpTable.MaxLevel;
+						var nextLevel = Math.Min( level + 1, max );
+						var xpCur = SkillXpTable.GetXpForLevel( level );
+						var xpNext = SkillXpTable.GetXpForLevel( nextLevel );
+						var denom = Math.Max( 1, xpNext - xpCur );
+						var frac = (level >= max) ? 1f : (float)(xp - xpCur) / denom;
+						frac = frac.Clamp( 0f, 1f );
+						var pct = frac * 100f;
+						var remaining = Math.Max( 0, xpNext - xp );
+
+						<div class="skill-row">
+							<div class="skill-top">
+								<div class="skill-left">
+									<div class="skill-icon">@GetSkillIcon( skill.Id )</div>
+									<div class="skill-name">@skill.Name</div>
+								</div>
+								<div class="skill-level">@level</div>
+							</div>
+							<div class="skill-subrow">
+								<div class="skill-subtext">Next: @FormatXp( remaining ) XP</div>
+								<div class="skill-subpct">@($"{pct:0}%")</div>
+							</div>
+							<div class="skill-barframe">
+								<div class="skill-barfill" style="width: @($"{pct:0.##}%")"></div>
+								<div class="skill-bartext">@FormatXp(xp) / @FormatXp(xpNext)</div>
+							</div>
+
+							<div class="skill-tooltip">
+								<div class="tt-title">@skill.Name</div>
+								<div class="tt-row"><span class="k">Current XP</span><span class="v">@($"{pct:0}%") @xp.ToString("N0")</span></div>
+								<div class="tt-row"><span class="k">Next level</span><span class="v">@xpNext.ToString("N0")</span></div>
+								<div class="tt-row"><span class="k">Remaining</span><span class="v">@remaining.ToString("N0")</span></div>
+							</div>
+						</div>
+					}
+				</div>
+			}
+			else
+			{
+				<div class="skills-empty">Waiting for skills…</div>
+			}
+		</div>
+	}
 </root>
 
 @code
@@ -96,11 +112,58 @@
 	};
 
 	bool _registered;
+	bool _isOpen = false;
+	bool _wasOpen = false;
+	public static bool IsOpenGlobal { get; private set; }
+	static SkillsPanel _instance;
+	bool IsLayoutActive => VeggaHudLayoutState.IsActive;
 	bool _hasSkills;
 	PlayerVeggaSkills _skillsComp;
 
+	protected override void OnStart()
+	{
+		_instance = this;
+		// Statics can survive hot reloads; ensure we start from a sane state.
+		IsOpenGlobal = _isOpen;
+		_wasOpen = _isOpen;
+		VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeySkillsPanel, _isOpen, CloseSelfFromEscape );
+	}
+
+	protected override void OnDestroy()
+	{
+		base.OnDestroy();
+		if ( _instance == this )
+			_instance = null;
+		IsOpenGlobal = false;
+		_isOpen = false;
+		_wasOpen = false;
+		VeggaUiCloseStack.Remove( VeggaHudLayoutState.KeySkillsPanel );
+	}
+
+	public static void ForceClose()
+	{
+		_instance?.CloseSelfFromEscape();
+	}
+
+	void CloseSelfFromEscape()
+	{
+		_isOpen = false;
+		_wasOpen = false;
+		IsOpenGlobal = false;
+		VeggaUiCloseStack.Remove( VeggaHudLayoutState.KeySkillsPanel );
+		StateHasChanged();
+	}
+
 	protected override void OnUpdate()
 	{
+		// Keep the global flag in sync every frame (prevents "stuck UI mouse" after hot reload).
+		IsOpenGlobal = _isOpen;
+		if ( _isOpen != _wasOpen )
+		{
+			VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeySkillsPanel, _isOpen, CloseSelfFromEscape );
+			_wasOpen = _isOpen;
+		}
+
 		if ( !_registered )
 		{
 			_registered = true;
@@ -111,14 +174,29 @@
 			);
 		}
 
+		// Toggle with Y (ProjectSettings/Input.config: SkillsToggle)
+		if ( !IsLayoutActive && !VeggaChat.IsChatInputOpenGlobal && Input.Pressed( "SkillsToggle" ) )
+		{
+			_isOpen = !_isOpen;
+			IsOpenGlobal = _isOpen;
+			VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeySkillsPanel, _isOpen, CloseSelfFromEscape );
+			_wasOpen = _isOpen;
+			StateHasChanged();
+		}
+
 		VeggaHudLayoutApply.Apply( Panel, VeggaHudLayoutState.KeySkillsPanel, VeggaHudLayoutState.GetDefaultPosition( VeggaHudLayoutState.KeySkillsPanel ), 1f );
 
 		// Disable interactions while editing the HUD.
 		if ( Panel != null )
 		{
-			Panel.Style.PointerEvents = VeggaHudLayoutState.IsActive ? PointerEvents.None : PointerEvents.All;
+			bool cursorEnabled = VeggaHudLayoutState.GetCursorMode( VeggaHudLayoutState.KeySkillsPanel, defaultValue: true ) || VeggaUiFreeCursor.IsActive;
+			Panel.Style.PointerEvents = VeggaHudLayoutState.IsActive ? PointerEvents.None : (_isOpen && cursorEnabled ? PointerEvents.All : PointerEvents.None);
 			Panel.Style.ZIndex = VeggaHudLayoutState.IsActive && VeggaHudLayoutState.SelectedElement == VeggaHudLayoutState.KeySkillsPanel ? 2601 : 0;
 		}
+
+		// Layout editor preview: keep it lightweight to make dragging smooth.
+		if ( IsLayoutActive && !_isOpen )
+			return;
 
 		_skillsComp = FindLocalSkills();
 		_hasSkills = _skillsComp != null && _skillsComp.IsValid();
@@ -140,7 +218,52 @@
 			hash.Add( _skillsComp.GetXp( s.Id ) );
 		}
 
+		hash.Add( _skillsComp.CombatLevel );
+		hash.Add( _skillsComp.CombatType );
+
 		return hash.ToHashCode();
+	}
+
+	int GetTotalLevel()
+	{
+		if ( _skillsComp == null || !_skillsComp.IsValid() )
+			return 0;
+
+		int sum = 0;
+		foreach ( var s in _skills )
+			sum += _skillsComp.GetLevel( s.Id );
+		return sum;
+	}
+
+	string GetSkillIcon( SkillId skill )
+	{
+		return skill switch
+		{
+			SkillId.Attack => "ATK",
+			SkillId.Strength => "STR",
+			SkillId.Defence => "DEF",
+			SkillId.Hitpoints => "HP",
+			SkillId.Prayer => "PRY",
+			SkillId.Magic => "MAG",
+			SkillId.Ranged => "RNG",
+			SkillId.Mining => "MIN",
+			SkillId.Woodcutting => "WOOD",
+			SkillId.Fishing => "FISH",
+			SkillId.Farming => "FARM",
+			SkillId.Hunter => "HUNT",
+			SkillId.Cooking => "COOK",
+			SkillId.Crafting => "CRFT",
+			SkillId.Smithing => "SMTH",
+			SkillId.Fletching => "FLET",
+			SkillId.Herblore => "HERB",
+			SkillId.Runecraft => "RUNE",
+			SkillId.Construction => "CONS",
+			SkillId.Firemaking => "FIRE",
+			SkillId.Agility => "AGI",
+			SkillId.Slayer => "SLAY",
+			SkillId.Thieving => "THV",
+			_ => ""
+		};
 	}
 
 	PlayerVeggaSkills FindLocalSkills()

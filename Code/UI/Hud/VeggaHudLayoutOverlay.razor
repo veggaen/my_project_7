@@ -119,6 +119,10 @@
 				<button class="action-btn reset-selected" onclick="@ResetSelected" disabled="@(SelectedElement == null)" title="Reset only the selected element">Reset Selected</button>
 				<button class="action-btn reset-selected" onclick="@UndoLast" disabled="@(_isDragging || !VeggaHudLayoutState.CanUndo)" title="Undo last layout change">Undo</button>
 				<button class="action-btn reset-selected @( VeggaHudLayoutState.DragModeEnabled ? "active" : "" )" onclick="@ToggleDragMode" title="Toggle drag mode for moving elements">Drag: @(VeggaHudLayoutState.DragModeEnabled ? "On" : "Off")</button>
+				@if ( SelectedElement != null )
+				{
+					<button class="action-btn reset-selected @( GetCursorMode( SelectedElement ) ? "active" : "" )" onclick="@ToggleCursorModeSelected" title="Toggle whether this element/menu opens in Cursor mode">Cursor: @( GetCursorMode( SelectedElement ) ? "On" : "Off" )</button>
+				}
 				<button class="action-btn reset-selected" onclick="@ToggleDebug" title="Show debug rectangle and size/anchor info">Debug: @(_debug ? "On" : "Off")</button>
 				<button class="action-btn done" onclick="@ExitLayout" title="Exit layout editor (changes are already saved)">Save &amp; Exit</button>
 			</div>
@@ -163,7 +167,12 @@
 	bool _isDragging;
 	string _dragKey;
 	Vector2 _dragGrabOffsetPx;
+	Vector2 _dragStartMousePx;
+	Vector2 _dragStartPosN;
 	Vector2 _dragLastPosN;
+	float _lastDragRerenderTime;
+	bool _dragMoved;
+	const float DragDeadzonePx = 2f;
 
 	struct PendingLog
 	{
@@ -188,6 +197,15 @@
 
 	System.Collections.Generic.List<string> GetElementKeys() => VeggaHudLayoutState.GetAllElementKeys();
 	string GetElementName( string key ) => VeggaHudLayoutState.GetElementName( key );
+	bool GetCursorMode( string key ) => VeggaHudLayoutState.GetCursorMode( key );
+
+	void ToggleCursorModeSelected()
+	{
+		if ( SelectedElement == null ) return;
+		var cur = VeggaHudLayoutState.GetCursorMode( SelectedElement );
+		VeggaHudLayoutState.SetCursorMode( SelectedElement, !cur );
+		StateHasChanged();
+	}
 
 	void ToggleDragMode()
 	{
@@ -447,7 +465,9 @@
 		if ( screen.x <= 0 || screen.y <= 0 )
 			return;
 
-		Vector2 anchorN = GetGuidePosition( key );
+		// IMPORTANT: start from the saved position, not LastApplied, so a click can't
+		// accidentally "restore" a stale LastApplied position.
+		Vector2 anchorN = VeggaHudLayoutState.GetPosition( key, GetGuidePosition( key ) );
 		var anchorPx = new Vector2( anchorN.x * screen.x, anchorN.y * screen.y );
 
 		// Mouse.Position is reported in Screen.Size space.
@@ -458,13 +478,15 @@
 			mouse = new Vector2( mouse.x * screen.x / screenForMouse.x, mouse.y * screen.y / screenForMouse.y );
 
 		_dragGrabOffsetPx = mouse - anchorPx;
+		_dragStartMousePx = mouse;
+		_dragStartPosN = anchorN;
 		_dragLastPosN = anchorN;
-
-		// Make dragging a single undo step.
-		VeggaHudLayoutState.SetPosition( key, anchorN );
+		_dragMoved = false;
 
 		_dragKey = key;
 		_isDragging = true;
+		_lastDragRerenderTime = 0f;
+		VeggaHudLayoutApply.BeginDrag( key );
 	}
 
 	void UpdateDrag()
@@ -492,12 +514,35 @@
 		if ( screenForMouse.x > 1f && screenForMouse.y > 1f && (System.Math.Abs( screenForMouse.x - screen.x ) > 1f || System.Math.Abs( screenForMouse.y - screen.y ) > 1f) )
 			mouse = new Vector2( mouse.x * screen.x / screenForMouse.x, mouse.y * screen.y / screenForMouse.y );
 
+		// Don't treat a simple click as a drag.
+		// Wait until the mouse moves past a small deadzone before writing/committing.
+		if ( !_dragMoved )
+		{
+			var dx = mouse.x - _dragStartMousePx.x;
+			var dy = mouse.y - _dragStartMousePx.y;
+			if ( (dx * dx + dy * dy) < (DragDeadzonePx * DragDeadzonePx) )
+				return;
+
+			_dragMoved = true;
+			// Make dragging a single undo step *only once we actually start moving*.
+			VeggaHudLayoutState.SetPosition( _dragKey, _dragStartPosN );
+		}
+
 		var anchorPx = mouse - _dragGrabOffsetPx;
 		var nextN = new Vector2( anchorPx.x / screen.x, anchorPx.y / screen.y );
 		_dragLastPosN = nextN;
 
 		// Debounced write to avoid hammering disk while dragging.
 		VeggaHudLayoutState.UpdatePositionClamped( _dragKey, nextN );
+
+		// The drag-target rectangles are rendered by Razor, so we need to re-render during drag
+		// or the UI can move while the pink overlay box looks frozen.
+		float now = Time.Now;
+		if ( now - _lastDragRerenderTime >= 0.016f )
+		{
+			_lastDragRerenderTime = now;
+			StateHasChanged();
+		}
 	}
 
 	void OnGlobalMouseMove()
@@ -517,14 +562,22 @@
 	{
 		if ( !string.IsNullOrWhiteSpace( _dragKey ) )
 		{
-			// Final flush (single write) so the last position is guaranteed persisted.
-			// No undo push here; drag start already captured the previous state.
-			VeggaHudLayoutState.SetPositionNoUndo( _dragKey, _dragLastPosN );
+			if ( _dragMoved )
+			{
+				// Final flush (single write) so the last position is guaranteed persisted.
+				// No undo push here; drag start already captured the previous state.
+				VeggaHudLayoutState.SetPositionNoUndo( _dragKey, _dragLastPosN );
+			}
+			VeggaHudLayoutApply.EndDrag( _dragKey );
 		}
 		_isDragging = false;
 		_dragKey = null;
 		_dragGrabOffsetPx = default;
+		_dragStartMousePx = default;
+		_dragStartPosN = default;
 		_dragLastPosN = default;
+		_dragMoved = false;
+		StateHasChanged();
 	}
 
 	void UndoLast()
@@ -549,7 +602,14 @@
 
 		// If the element hasn't measured yet, use a small, still-clickable fallback.
 		var sizePx = info.HasValidSize ? info.SizePxScaled : new Vector2( 160f, 60f );
-		var anchorPx = new Vector2( info.PositionN.x * screen.x, info.PositionN.y * screen.y );
+
+		// While dragging, show the rect at the live dragged position immediately.
+		// After releasing, LastApplied can be 1+ frames behind; read the saved position directly
+		// so the pink box doesn't snap back even though the drag was applied.
+		var posN = (_isDragging && _dragKey == key)
+			? _dragLastPosN
+			: VeggaHudLayoutState.GetPosition( key, info.PositionN );
+		var anchorPx = new Vector2( posN.x * screen.x, posN.y * screen.y );
 		var topLeftPx = anchorPx + AnchorOffsetPx( info.Anchor, sizePx );
 
 		leftPct = (topLeftPx.x / screen.x) * 100f;
@@ -609,6 +669,7 @@
 
 	void ExitLayout()
 	{
+		StopDrag();
 		SetLayoutActive( false );
 		Log.Info( "[HUD Layout] Exited layout mode" );
 	}

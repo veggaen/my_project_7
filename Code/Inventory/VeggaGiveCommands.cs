@@ -50,7 +50,7 @@ public static class VeggaGiveCommands
 		if ( VeggaInventory.IsCurrencyItemId( def.Id )
 			|| string.Equals( def.PrefabPath, "noted_page.prefab", StringComparison.OrdinalIgnoreCase ) )
 		{
-			desired = Math.Min( desired, 10_000 );
+			desired = Math.Min( desired, 100_000 );
 		}
 		return desired;
 	}

@@ -42,6 +42,8 @@ public static class VeggaHudLayoutState
 		{ KeyXpBar, HudAnchor.BottomCenter },
 		// Hotbar sits on the bottom edge.
 		{ KeyHotbar, HudAnchor.BottomCenter },
+		// Cash drop progress sits on the bottom edge.
+		{ KeyCashDropProgress, HudAnchor.BottomCenter },
 		// Player HUD sits on the bottom-left.
 		{ KeyPlayerHud, HudAnchor.BottomLeft },
 		// Inventory should behave OSRS-like: anchored bottom-right.
@@ -53,6 +55,8 @@ public static class VeggaHudLayoutState
 		// World container windows behave like draggable panels.
 		{ KeyFurnaceMenu, HudAnchor.TopLeft },
 		{ KeyStorageMenu, HudAnchor.TopLeft },
+		// Scoreboard is a big centered panel.
+		{ KeyScoreboard, HudAnchor.MiddleCenter },
 	};
 
 	// Runtime registry for modular HUD "plugins".
@@ -77,6 +81,8 @@ public static class VeggaHudLayoutState
 	public const string KeySkillsPanel = "skills";
 	public const string KeyFurnaceMenu = "furnace_menu";
 	public const string KeyStorageMenu = "storage_menu";
+	public const string KeyCashDropProgress = "cash_drop_progress";
+	public const string KeyScoreboard = "scoreboard";
 
 	/// <summary>
 	/// Available screen positions.
@@ -122,6 +128,8 @@ public static class VeggaHudLayoutState
 		{ KeyXpBar, new Vector2( 0.50f, 0.96f ) },
 		// Hotbar sits above the XP bar by default.
 		{ KeyHotbar, new Vector2( 0.50f, 0.90f ) },
+		// Cash drop progress sits above the hotbar by default.
+		{ KeyCashDropProgress, new Vector2( 0.50f, 0.86f ) },
 		// Chat shares the bottom-left anchor with the Player HUD, so default it higher to avoid overlap.
 		{ KeyChat, new Vector2( 0.04f, 0.78f ) },
 		{ KeyMinimap, new Vector2( 0.96f, 0.04f ) },
@@ -130,6 +138,29 @@ public static class VeggaHudLayoutState
 		// World container windows (furnace/storage)
 		{ KeyFurnaceMenu, new Vector2( 0.50f, 0.55f ) },
 		{ KeyStorageMenu, new Vector2( 0.50f, 0.55f ) },
+		// Scoreboard default: center.
+		{ KeyScoreboard, new Vector2( 0.50f, 0.50f ) },
+	};
+
+	/// <summary>
+	/// Default cursor-mode behavior per element.
+	/// True: opening this element typically wants mouse cursor.
+	/// False: element is informational / should not force cursor.
+	/// </summary>
+	static readonly Dictionary<string, bool> DefaultCursorModeByKey = new()
+	{
+		{ KeyChat, true },
+		{ KeyInventory, true },
+		{ KeySkillsPanel, true },
+		{ KeyFurnaceMenu, true },
+		{ KeyStorageMenu, true },
+		{ KeyScoreboard, false },
+
+		{ KeyPlayerHud, false },
+		{ KeyXpBar, false },
+		{ KeyHotbar, false },
+		{ KeyMinimap, false },
+		{ KeyCashDropProgress, false },
 	};
 
 	/// <summary>
@@ -160,6 +191,7 @@ public static class VeggaHudLayoutState
 		public int Preset { get; set; } = -1; // -1 = custom, 0-8 = ScreenPosition enum
 		public float Scale { get; set; } = 1f;
 		public int Anchor { get; set; } = -1; // -1 = use default-by-key
+		public bool? CursorMode { get; set; } = null;
 	}
 
 	class LayoutSaveData
@@ -213,7 +245,8 @@ public static class VeggaHudLayoutState
 					Y = e.Y,
 					Preset = e.Preset,
 					Scale = e.Scale,
-					Anchor = e.Anchor
+					Anchor = e.Anchor,
+					CursorMode = e.CursorMode
 				};
 			}
 		}
@@ -235,7 +268,8 @@ public static class VeggaHudLayoutState
 							Y = e.Y,
 							Preset = e.Preset,
 							Scale = e.Scale,
-							Anchor = e.Anchor
+							Anchor = e.Anchor,
+							CursorMode = e.CursorMode
 						};
 					}
 				}
@@ -652,6 +686,39 @@ public static class VeggaHudLayoutState
 	}
 
 	/// <summary>
+	/// Should this element open in cursor mode (mouse visible)?
+	/// If not explicitly saved, uses per-key defaults.
+	/// </summary>
+	public static bool GetCursorMode( string key, bool defaultValue = false )
+	{
+		EnsureLoaded();
+		if ( TryGetEntry( key, out var entry ) && entry.CursorMode.HasValue )
+			return entry.CursorMode.Value;
+
+		if ( !string.IsNullOrWhiteSpace( key ) && DefaultCursorModeByKey.TryGetValue( key, out var d ) )
+			return d;
+
+		return defaultValue;
+	}
+
+	/// <summary>
+	/// Persist cursor-mode preference for an element.
+	/// Pass null to reset back to the per-key default.
+	/// </summary>
+	public static void SetCursorMode( string key, bool? cursorMode )
+	{
+		EnsureLoaded();
+		PushUndoState();
+
+		var entry = GetOrCreateEntryForWrite( key );
+		if ( entry == null ) return;
+
+		entry.CursorMode = cursorMode;
+		FileSystem.Data.WriteJson( LayoutFile, _data );
+		Log.Info( $"[HUD Layout] Set {key} cursor mode to: {(cursorMode.HasValue ? (cursorMode.Value ? "On" : "Off") : "Default")}" );
+	}
+
+	/// <summary>
 	/// Store a normalized position (0–1 in X/Y) for a HUD element and persist it.
 	/// </summary>
 	public static void SetPosition( string key, Vector2 pos )
@@ -806,6 +873,7 @@ public static class VeggaHudLayoutState
 				entry.Preset = (int)ScreenPosition.MiddleCenter;
 				entry.Anchor = (int)HudAnchor.MiddleCenter;
 				entry.Scale = 1f;
+				entry.CursorMode = null;
 			}
 
 			FileSystem.Data.WriteJson( LayoutFile, _data );
@@ -870,7 +938,8 @@ public static class VeggaHudLayoutState
 			KeyChat,
 			KeyMinimap,
 			KeyInventory,
-			KeySkillsPanel
+			KeySkillsPanel,
+			KeyScoreboard
 		};
 
 		foreach ( var k in _registeredKeys )
@@ -913,6 +982,7 @@ public static class VeggaHudLayoutState
 			KeySkillsPanel => "Skills",
 			KeyFurnaceMenu => "Forge Menu",
 			KeyStorageMenu => "Storage Menu",
+			KeyScoreboard => "Scoreboard (TAB)",
 			_ => key
 		};
 	}

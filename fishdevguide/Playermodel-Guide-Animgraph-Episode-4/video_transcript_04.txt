@@ -1,0 +1,924 @@
+welcome to the sbox comprehensive player
+0:02
+model guide I'm grber and today we'll be
+0:04
+diving into aiming and shooting this is
+0:06
+going to be a long one so you know the
+0:08
+drill by now check for a pin comment
+0:10
+download the model in the description
+0:12
+place it in your models folder let's
+0:14
+just go
+0:15
+man we are almost done with the movement
+0:18
+but before adding the jump our guy can't
+0:20
+even look around last episode we looked
+0:22
+at ik chains now let's learn about look
+0:25
+at chains just like ik these chains are
+Lookat Chains
+0:28
+formed by bones that are moved
+0:30
+procedurally but unlike ik where the
+0:33
+bones arrange themselves to find a
+0:35
+position where the end bone matches with
+0:37
+the ik target bone these will try to
+0:39
+arrange themselves so that they point to
+0:41
+a Target which will be a position in
+0:43
+space rather than a bone so this time
+0:46
+we'll have to play with attachments and
+Creating a Lookat
+0:48
+vectors to make one model dock add a new
+0:50
+nod search for look at chain and give it
+0:53
+a name let's call it look at we now have
+0:56
+to add bonds that will be in this chain
+0:58
+the order I've going to find out
+1:00
+actually matters it goes by decreasing
+1:02
+influence so first will be the head
+1:04
+since this is the B that has to fully
+1:06
+look at our Target we'll set the
+1:07
+influence to one then will be the spine
+1:10
+Bones from the top down all the way to
+1:12
+the pelvis but since this is a voxel
+1:14
+character there is no spine so we just
+1:16
+go straight from head to pelvis this
+1:19
+time let's do a more subpal influence
+1:21
+normally moving the root bone will cause
+1:23
+some problems with the legs but we
+1:24
+already have a case set up so they'll be
+1:27
+fine the look at node will require an
+1:29
+attachment to work so make a new
+1:31
+attachment and call this ice obviously
+1:33
+it's going to be parented to the head
+1:35
+put your character in a bind pose and
+1:37
+the camera to the side while you place
+1:39
+the ice make sure the red line the xais
+1:42
+is pointing forward as this is how it
+1:44
+will know when the chain is looking at
+1:46
+its Target now that it's set we are back
+1:48
+in the Alim graph at the look at node
+1:50
+for our Target we can use parameters and
+1:53
+to make a target with parameters we need
+1:55
+to use a vector since it can store X Y
+1:58
+and Z coordinates call it aim head and
+2:01
+use that the weight parameter can remain
+2:03
+empty it's just for a 0 to one flat so
+2:06
+you can turn them off or blend them out
+2:08
+select the chain we made earlier and as
+2:10
+attachment use the ice now the
+2:13
+programmer will handle everything
+2:14
+regarding where the target is placed but
+2:17
+we'll still need to preview our Lookouts
+2:19
+so here's how it works the target
+2:21
+starting point is your attachment 0 0 0
+2:24
+since you can't look inside your head
+2:26
+let's place it about 10 units forward by
+2:29
+default the parameter now the imaginary
+2:31
+Target is just in front of you start the
+2:34
+simulation and change Y and Z with the
+2:36
+mouse wheel right left up down looks
+2:40
+pretty good and just like we did with a
+2:42
+Crouch blend you can set the dumping to
+Bouncy Spring Damping
+2:44
+bouncey spring usually the players don't
+2:46
+like it when you mess with their aiming
+2:49
+but come on this looks awesome now
+2:51
+here's another cool thing you can do
+2:53
+with the look at chains you can stack
+2:55
+multiple ones for example if you have
+Eyes lookat
+2:57
+eye bones which are quite common
+2:59
+nowadays you can make each side a lookat
+3:02
+and have them follow your Target and
+3:04
+then you can add a head lookat plus
+3:06
+hisus which adds a sort of lug or as
+Hysteresis lookat
+3:09
+valve explains it it makes it sticky
+3:12
+shrimply put it won't move until your
+3:15
+target moves too far out of a cone of
+3:17
+view you can set the degrees of this
+3:19
+imaginary cone here in the outer angle
+3:21
+so 15 is a 30° cone of view after that
+3:25
+it moves to follow the target until it
+3:27
+is back into another cone the inner
+3:29
+angle don't set it too low or it will
+3:31
+never stop so something like five
+3:34
+combining these two types of chains
+3:36
+gives you this nice effect of being
+3:38
+followed with the eyes only for them to
+3:40
+turn as you leave their field of view
+3:42
+now that we got looking we can do aiming
+3:44
+with a gun to kill people so we have two
+3:47
+ways to blend in the pose bone masks and
+3:49
+additives let's try with bone masks
+Weight List
+3:52
+first in model do create a weight list
+3:54
+and name is torso to include bones you
+3:57
+can move the influence slider from left
+3:59
+to right and anything in between for
+4:01
+softer Blends again that's what we use
+4:03
+for the spine decreasing the influence
+4:05
+for each spine bone as it goes down into
+4:07
+the pelvis we exclude the pelvis because
+4:09
+we don't want to replace the motion of
+4:11
+the work animations and I guess All That
+4:13
+Remains of the Torso is the head the
+4:16
+arms and of course the hand case
+4:18
+different hierarchy but still arms in
+4:20
+aning graph add a bone mask node and
+Bone Masking
+4:23
+select the Torso weight list connect
+4:25
+everything before the lot cut to the
+4:27
+base in model do add a new simple
+4:29
+animation and select ranged uncore 28
+4:33
+we'll get to why the animation is is
+4:35
+later and now add a new single frame
+4:37
+from the ranged two-handed animation
+4:40
+this time select frame four press play
+4:43
+and wow wow wow he got that thing on
+4:46
+except he doesn't he's not holding
+4:48
+anything let's give him something here
+Bone Merging
+4:50
+in BS press this PL to add a model and
+4:53
+with a magnifying glass sech for the gun
+4:55
+model are included in the files and now
+4:58
+he got that thing on bone merging is
+5:00
+exactly what it sounds it merges the
+5:02
+bones of two models together for example
+5:05
+this gun I have rigged it to the right
+5:07
+hand bone and included it in the model
+5:09
+so if you bone merge the gun it will
+5:11
+find the right hand bone and merge it as
+5:14
+if they were one model this is also how
+5:16
+clothing accessories are done head for
+5:18
+hats feet for shoes or the entire torso
+5:21
+for shorts things are going to get crazy
+5:23
+as we enter Advanced territory we'll
+5:26
+really need to pick up the pace I'll try
+5:28
+to be clear with instructions but if you
+5:30
+can't follow my words follow my actions
+5:32
+on the screen before proceeding let's
+5:34
+make sure we learn how to order our
+5:36
+anagraph from now on I will be renaming
+Renaming Nodes
+5:39
+important nodes which you can do in the
+5:41
+node property I will also group nodes
+5:43
+together so add a new node group name
+5:46
+this movement copy the leftmost nodes up
+5:49
+to when the Crouch is added then enter
+5:51
+the group with double click paste the
+5:53
+noes and here we can connect our nodes
+5:55
+to the outside world through these two
+5:57
+indestructible nodes so connect a last
+5:59
+node to the group's output and I guess
+6:02
+we don't need an input for this group
+6:03
+since it's the start of the anim graph
+6:05
+select the group's input node and in the
+6:08
+no properties you see you can add or
+6:10
+remove more connections but uh remove
+6:12
+the only one copy everything after the
+6:14
+first group up until the ik chains
+6:17
+create a new group name his rifle paste
+6:20
+them inside the group connect the input
+6:22
+onto the bone mask and a look at into
+6:24
+the output leave move this around and
+6:27
+there we go he is looking around but
+6:29
+he's supposed to be aiming the gun not
+6:31
+his head let's do something cheeky
+Aiming the gun
+6:34
+create a new attachment called the gun
+6:36
+forward parent it to the right hand and
+6:38
+then Bon merge the gun in model do and
+6:42
+referencing frame four of the ranged
+6:44
+animation in a side autographic view
+6:47
+place it at the gun muzzle remember the
+6:49
+red arrow is forward and now let's use
+6:52
+that in the look at instead of the ice
+6:54
+so it won't stop until the gun is
+6:56
+pointing at our Target now let's try and
+7:00
+it's not moving that much the head still
+7:02
+does though oh I know why the arms
+7:05
+follow the pelvis not the head but it
+7:07
+can't rotate enough or at least not as
+7:09
+much as the head let's pump it to one
+7:11
+great oh but now it doesn't rotate
+7:14
+enough to the right or at least not as
+7:16
+much as to the left we can see what's
+Node Preview
+7:18
+happening using the no preview in the
+7:20
+bottom right we see that the ball mask
+7:22
+does at the gun pose but only the arms
+7:25
+since we excluded the pelvis which is
+7:27
+supposed to be turned to the right that
+7:29
+is is corrected in the look at where the
+7:31
+pelvis is rotated about 30° to the right
+7:34
+which is why we can't look that far in
+7:36
+that direction but a lot to the left you
+7:38
+can increase the limits of the look at
+7:40
+as a quick fix I prefer to keep both yo
+7:42
+and PX to 90° that seems to have done
+7:45
+the trick oh what's up with the knees
+7:47
+let's look at the not preview oh okay
+7:50
+okay oh I see it's the ik that keeps the
+7:52
+feet still while the pelvis rotates that
+7:54
+should be a quick fix in most engines
+7:57
+you can tell an ik to use the
+7:58
+orientation of the target I bone instead
+8:01
+of the parent pelvis that would fix it
+8:04
+but we don't have that in sandbox yet I
+8:06
+even made an issue about it let's add a
+Fix Knee Swivel
+8:08
+corrective instead bone masking the legs
+8:10
+to use the rotations from before the
+8:12
+group so go ahead and create a leg
+8:13
+weight listing model dock upper leg l r
+8:17
+fot case and add a bone mask in anra
+8:20
+select the leg weight list for the base
+8:22
+plugin from the rle group and for the
+8:24
+child plug in from the movement Group
+8:27
+which is where we'll get the leg
+8:28
+rotation now now if we try oh damn I was
+8:31
+so sure this would have worked but the
+8:33
+pelvis is the parent of the legs if that
+8:35
+rotates so must the legs too well not
+8:39
+necessarily let's talk about blend
+Model Blend Space
+8:41
+Spaces by default you are in parent
+8:43
+blend space also called the local blend
+8:46
+space in other engines any blend is done
+8:48
+in relation to its parent as opposed to
+8:51
+model blend space where it's in relation
+8:53
+to the model as a whole to understand
+8:55
+better the concept take this shrimal
+8:57
+wave animation in parent blend space
+8:59
+face only one Bon is moving the lower
+9:01
+arm or in the point of view of its
+9:03
+parent at least and from the POV of the
+9:06
+lower arm its child the hand is not
+9:08
+moving at all but mother space doesn't
+9:10
+see parents all it sees is two bones
+9:13
+moving around especially the hand this
+9:16
+has some Niche uses for lower body stuff
+9:18
+like lean animations or crouching which
+9:21
+we fixed with an ik instead that's very
+9:23
+cool but how does that help well
+9:25
+essentially with Mel space you can
+9:27
+ignore the parents so we can use a mask
+9:30
+to free some bones from the constraints
+9:32
+of the hierarchy or in our case from the
+9:34
+rotation of the pelvis so switch over
+9:36
+the mask blend space from parent to
+9:39
+Mother space and wasam oh wow it's
+9:42
+strong it's even ignoring the position
+9:43
+of the pelvis I think I saw rotations
+9:46
+only in the list there it is okay much
+9:48
+better call this bone mask mod space leg
+9:51
+and let's also add some documentation to
+9:53
+this node programmers usually add
+9:55
+comments in their code to help explain
+9:57
+why they did something and as the graph
+9:59
+gets more complex I don't see why we
+10:01
+shouldn't do you can add a comment to
+10:03
+individual nods up let's see uhhuh right
+Commenting Nodes
+10:08
+not going to lie I'm not digging much
+10:09
+how the pelvis moves and what happens if
+10:12
+we look straight up oh this cannot
+10:14
+continue I'm through with ball masks
+10:17
+let's try with additives instead let's
+10:19
+go in model dock you can notice that the
+10:21
+ranged pose has a different stance the
+10:23
+legs are split out and the body points
+10:26
+to the right all stuff that was lost
+10:28
+when just bone masking the arms so add
+Additive Blending
+10:30
+an anim subtract to it and choose to
+10:33
+subtract the idol now in the anim graph
+10:35
+rifle group delete the arms bone mask
+10:38
+and substitute it with an ad node
+10:40
+preview and okay seems like everything
+10:43
+went right oh wow come on okay a lot of
+10:46
+things are going on let's see the no
+10:48
+preview I guess the arms move back and
+10:51
+forth in the walk animation oh I see the
+10:53
+lookat is managing to keep the gun
+10:55
+straight right where to even start you
+Left to Right ikChain
+10:58
+know I think I want the left arm to be
+11:00
+kept on the gun at all times of course
+11:02
+this means we'll use an ik chain so head
+11:05
+over to model do and create one name it
+11:07
+handore l last bone hand L change the
+11:11
+target to not the left hand I but to
+11:15
+acain little bone called hand R2 r as
+11:18
+the name implies this is a bone that
+11:20
+makes the left hand follow the right
+11:22
+hand it is a child of the right hand so
+11:25
+in the animation you can place it
+11:27
+wherever the left hand will go on a
+11:29
+handed weapon and then use an ik to keep
+11:31
+the left hand parented to the right it
+11:34
+is in the same hierarchy but as the ik
+11:36
+chain is only two bones long it doesn't
+11:38
+create a loop now in anim graph create a
+11:41
+new Sol K chain and select our hand L
+11:43
+chain C is no and L2 R so we don't
+11:47
+confuse it with the f i k t we go this
+11:50
+is pretty commonly done in games even in
+11:52
+foress 2 has it except here apparently
+11:55
+where they forgot to add it wait a
+11:57
+minute I kind of like how the brid
+11:59
+greting layer is added on top of
+12:01
+everything let's do that too our Idol
+Breathing Layer
+12:03
+animation is in the 2D blend but we'll
+12:06
+only need a pause now so in model dock
+Trimming Animations
+12:08
+you can trim the animation frames with
+12:10
+this double slider pull the right handle
+12:13
+all the way to zero to make it a single
+Add Frame Holds
+12:15
+frame pose you can also add frame holds
+12:17
+by pressing these little eights to keep
+12:19
+a frame for longer or even to turn a
+12:22
+pause into an animation for example when
+12:24
+you want to blend a pause with an
+12:26
+animation since even the 2D blend
+12:28
+struggles with it the little steps are
+12:30
+back both run and walk are 32 frames so
+12:33
+hold the idols frame zero for 32 frames
+12:37
+and now that they last the same it
+12:38
+Blends even better than before as for
+12:40
+adding the breathing we already have an
+Additive Idle
+12:43
+idle Delta so make it Loop add it before
+12:45
+the hand I case there that looks more
+12:48
+lively actually let's make this a group
+12:50
+too but still let's mask out the
+Masking out arms sway
+12:52
+movement of the arms when walking add a
+12:55
+bone mask and select the Torso weight
+12:57
+list use the walk gun add as the base
+13:00
+and will mask in the arms from the
+13:02
+single frame pose so they stand still
+13:04
+all right it's a Delta animation of the
+13:06
+idol let's just quickly add it on top of
+13:08
+an idol single frame use that for the
+13:11
+arm mask rename it to arm mask start at
+13:15
+voila okay okay next up are the legs
+13:17
+they are suddenly snapping which is when
+13:20
+the limit of the chain is reached this
+13:22
+is happening because the gun PA has the
+13:24
+legs split out more which is fine when
+13:26
+standing still but since it's added on
+13:29
+on top as soon as you start working it
+13:31
+breaks I want to keep the cool pause so
+13:34
+let's blend the legs out gradually as
+13:36
+you pick up speed go in the rifle group
+Fixing Leg Snapping
+13:38
+and create a bone mask using the legs
+13:40
+weight list and call this leg stance
+13:43
+mask for the Bas will obviously use
+13:45
+everything up until now as for the child
+13:47
+we'll replace it with everything from
+13:49
+before of this mess so connect a group
+13:52
+input into the child if we start we see
+13:54
+that the legs don't snap anymore but
+13:56
+they're also not in a cool pose when
+13:58
+standing still so let's instead slowly
+14:01
+blend the pose out as you get faster
+14:03
+with a 1D blend so create one as for the
+Blending out a pose
+14:05
+blend Source we wanton use a parameter
+14:08
+will you have either move X or Y but we
+14:10
+need to use the speed you're moving
+14:12
+usually you can add a third wish speed
+14:15
+parameter and let the programmer set the
+14:17
+velocity here but we can skip that and
+Using Root Motion
+14:20
+use our root motion speed as the blend
+14:22
+Source make sure we add a comment to
+14:24
+explain this now add two inputs called
+14:27
+the first one stance and the second walk
+14:30
+set 38 as the value that's how fast the
+14:33
+walk is and now connect the lookout to
+14:35
+The Stance input and a mask to the
+14:37
+walking put as The Stance gets masked
+14:40
+out while walking you may think using a
+14:42
+ond blend here is a bad idea with the
+14:44
+whole matching time frame thing but
+14:47
+actually we are blending between walking
+14:49
+and walking with a bone mask so there is
+14:52
+no mism timing issue if we start we can
+14:55
+see that as the work gets faster the pae
+14:58
+is Blended up out and the legs don't
+15:00
+snap anymore we're almost done but
+15:02
+there's one last problem look at chains
+15:05
+are really bad for looking straight up
+15:07
+and down you have three ways to mitigate
+Look straight up or down
+15:09
+this stack multiple chains for the head
+15:13
+arms and spine not allow the players to
+15:15
+look straight up or down or my favorite
+15:18
+use an aim Matrix wherein you do a pause
+15:21
+for every direction your character can
+15:24
+look so you can have great look up and
+15:26
+down poses this is why the range to
+15:29
+two-handed animation is so messed up
+15:31
+every frame is 45° of an UT look
+15:34
+Direction the order of these frames is
+15:37
+very important it starts down left goes
+15:40
+middle right then middle left to right
+15:43
+up to right and finally straight up and
+15:45
+straight down don't worry because if you
+15:47
+had an aim Matrix node in the rifle
+Aim Matrix
+15:50
+group the nod itself tells you the order
+15:53
+Target will use parameter of course set
+15:55
+aim head set can forward as the
+15:58
+attachment blend node additive since
+16:01
+this node uses either bone masks or
+16:04
+additives which means we'll need a Delta
+16:06
+animation admittedly we already have one
+16:09
+but this is something we're going to add
+16:11
+on top of the pause which means copy and
+16:13
+paste the ranged animation add Matrix in
+16:16
+the name and change the target animation
+16:18
+to itself if that was all we could have
+16:21
+used a linear Delta but we're not using
+16:23
+the first frame this time we want to use
+16:25
+the frame where it's aiming in the
+16:27
+middle the neutral pause that will be
+16:30
+frame number four now change the
+16:32
+sequence to this new Matrix animation
+16:34
+check the K look straight down box and
+16:37
+plug it where the look at would be and
+16:39
+if you play it yes such awesome Dynamic
+16:43
+poses whoever made his animation is
+16:46
+really talented although he didn't
+16:48
+predict one thing for the exception of
+16:50
+straight up and down the animation only
+16:52
+covers at most 45° increments he didn't
+16:56
+take into account that when running left
+16:59
+your torso rotates more than 45° making
+17:02
+aiming straight impossible this is the
+17:04
+same issue we had earlier but this time
+17:06
+we can't just bump up the limit it's at
+17:09
+times like this that we could really use
+17:11
+our regular Lookout which has no
+17:13
+inherent Limit Oh wait we can I hope you
+Stacking Lookat Chains
+17:17
+didn't delete it because we can just
+17:18
+plug it after the Matrix as a fail safe
+17:21
+to give it that last push when it can't
+17:23
+quite keep the aim straight and finally
+17:27
+our gun is properly blend Ed onto our
+17:29
+movement and I mean proper this is a
+17:32
+real piece of work it only took it only
+17:36
+took read time for real this time oh wow
+17:39
+I guess we'll need to cut it here tune
+17:41
+in next episode for a deep dive on anim
+17:44
+graph's most useful node the state
+17:46
+machine and what the heck are tags

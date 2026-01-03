@@ -14,6 +14,11 @@ VeggaScoreboard {
 		pointer-events: all;
 	}
 
+	.scoreboard-overlay.layout-preview {
+		background-color: rgba(0, 0, 0, 0.0);
+		pointer-events: none;
+	}
+
 	.scoreboard-container {
 		width: 1400px;
 		max-height: 85%;

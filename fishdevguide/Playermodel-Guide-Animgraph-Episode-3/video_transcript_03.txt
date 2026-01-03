@@ -1,0 +1,668 @@
+welcome to the sandbox comprehensive
+0:01
+player model guide I'm grber and today
+0:03
+we'll be diving into crouching using
+0:05
+additive animations and inverse
+0:07
+kinematics now if you don't already have
+0:10
+a model you can go download the folder
+0:12
+from the description and place it in
+0:14
+your projects assets models folder
+0:17
+otherwise if you've been following the
+0:18
+series still do that but choose to
+0:21
+ignore the files that share names before
+0:23
+starting check the pin comment to see if
+0:25
+there's any correction sbox is always
+0:27
+changing so some things may not apply
+0:29
+since the release of this
+0:32
+[Music]
+0:34
+video we got our running men now but
+0:37
+players also want to crouch sometimes
+0:39
+sure you could make a whole new
+0:41
+animation set for walk crouching that's
+0:43
+what's usually done but we are lazy
+0:45
+India and we got places to be come on
+0:48
+get out of here what if I told you we
+0:50
+could add crouching with a single
+0:52
+animation nay a single frame because
+0:55
+that's possible with the power of
+THEORY: Additive Animations
+0:57
+additive animations although we'll need
+0:59
+to learn a little Theory before getting
+1:01
+into practice this time last time I used
+1:03
+the example of adding a breathing layer
+1:05
+onto a static pose let's break that down
+1:08
+here we have our Idol animation a
+1:10
+characteristic NPC like up and down
+1:12
+motion if we were to add it as is to the
+1:15
+static POS our model will explode that's
+1:18
+because what it's doing is take the
+1:20
+distance of the bones from the center
+1:22
+and adding that value onto the new pose
+1:24
+well no wonder it explodes some bones
+1:26
+are very far from the origin Point well
+1:28
+if that's the problem then why don't we
+1:30
+just move all of the bones near the
+1:32
+center not really this is what that
+1:34
+looks like this crumpled up meatball is
+1:37
+what's called a Delta animation Delta
+1:39
+from Greek meaning difference which is a
+1:41
+very up description because the process
+1:43
+to make one requires you to First
+1:45
+subtract a POS with another literally
+1:47
+POS a minus POS b equals Delta the
+1:50
+difference between those two and how far
+1:52
+the bones are from the center is what's
+1:54
+used to store that value this can also
+1:56
+be used to store the movement of an
+1:57
+animation we just need to subtract an
+2:00
+animation with its first frame because
+2:02
+the difference between an animation and
+2:04
+its first frame is well the rest of the
+2:06
+animation a dead breathing Delta on top
+2:09
+of a different pose to breath some life
+2:11
+into it great but what's this got to do
+2:13
+with crouching exactly well if we can
+THEORY: Crouching Additive
+2:16
+get the difference between two
+2:17
+animations that means we can get the
+2:19
+difference between a crouching pause and
+2:22
+a standing pause and if we then add that
+2:24
+difference on top of our walk animations
+2:27
+we will have a crouching walk all with a
+2:29
+single frame just like promised and I
+2:32
+guess Crouch run too but I don't think
+2:34
+you should allow your players to run
+2:35
+while crouching this concept can be
+Proportion Trick
+2:37
+applied to many things for example in
+2:39
+our game death card we want to reuse our
+2:42
+animation set between all humanoid
+2:44
+enemies however some have widely
+2:47
+different proportions the solution is to
+2:49
+get the difference between our big guy
+2:51
+and our regular guy and then add it
+2:53
+after all of the animations if you're
+2:55
+coming from G mod this may sound
+2:57
+familiar because it's what allows all of
+3:00
+those Pokémon player models to use the g
+3:02
+mode player animations there they call
+3:04
+it the proportion trick and it was
+3:06
+boiled down to a list of instructions
+3:08
+and a copy and paste but we see the
+3:10
+concept is the same you subtract an
+3:12
+animation from another and 10 is here
+3:15
+adds that on top of every animation this
+3:18
+also means that you can use teris
+3:19
+animations and Anning graph for your
+3:21
+player models which is what we did for
+3:24
+another one of our games in this house
+3:26
+we'll probably have a separate fish bite
+3:28
+explaining this first but let's move on
+3:31
+for now and that's the theory part on
+3:33
+let's get into some practice back in
+Grouping Nodes
+3:35
+model doc the animation list just keeps
+3:37
+growing so let's tid it up a little
+3:40
+select all of the work animations right
+3:42
+click and group them in a folder call
+3:44
+his work do the same for the Run
+3:46
+animation and now add the Crouch SP in
+Subtract Animations
+3:49
+model doc then to subtract our animation
+3:52
+you right click it and add an anim
+3:54
+subtract markup for the animation Target
+3:57
+select Idol and keep the frame at zero
+3:59
+it can only get the difference from a
+4:01
+single frame and that's our Delta done
+4:04
+now head over to the anim graph we'll
+Additives in Animgraph
+4:06
+only need a single frame this time so
+4:08
+add animations single frame and then
+4:12
+select your Crouch Delta now blend and
+4:15
+you see you have both add and subtract
+4:17
+in case you want to do the subtraction
+4:19
+in the anim graph select add now for the
+4:21
+base connect the work blend and for the
+4:24
+additive connect your Dela connect the
+4:26
+ad node to the final pose and now he
+4:29
+crouching we don't want to crouch all
+4:31
+the time of course we could make a
+4:33
+shrimp or state machine with a Boolean
+4:35
+either stand up or Crouch but instead
+4:38
+let's do something fun combine what we
+4:40
+learned last episode and this episode
+4:42
+you may remember me mentioning how One D
+4:44
+blend is really better suited for
+4:46
+blending poses well boy we have poses to
+4:49
+blend now create a new flot called duck
+Crouching 1D Blend
+4:52
+why not cruts well because that's what
+4:54
+the citizen calls it which means that
+4:55
+once we are done with the player model
+4:57
+you will be able to hook it up with the
+4:59
+default B player controller then add a
+5:01
+1D blend with two entries idle and
+5:04
+Crouch the latter having a value of one
+5:06
+set duck as the parameter connect the
+5:09
+Crouch Delta to the Crouch spot and now
+5:11
+we need another Delta one that even when
+5:14
+add dead it does nothing we need
+5:16
+literally nothing go back to model do
+Empty Animations
+5:19
+and duplicate your idol animation call
+5:21
+this Idol Delta like we showed earlier
+5:24
+we can subtract an animation with its
+5:26
+first frame and it will sore all the
+5:28
+differences that come after that this
+5:30
+means that at frame zero there is no
+5:32
+difference which is just what we needed
+5:34
+since this is such a common operation
+5:36
+they made another an markup that saves
+AnimLinearDelta
+5:38
+you a little time called anim linear Del
+5:41
+all this does is subtract itself from
+5:43
+frame zero back in the anim graph if you
+5:45
+were to add the animation clip you'd
+5:47
+also get all the bobbing motion of the
+5:49
+idol since this is a Delta animation
+5:51
+unlike Crouch which is just the pause so
+5:54
+instead of dragging the animation clip
+5:56
+add a new node animation single frame
+5:59
+pretty self-explanatory select idle
+6:01
+Delta and use frame zero which is
+6:03
+nothing as we said connect it to the 1D
+6:06
+blend connect the blend of the two poses
+6:08
+to the ad node and now you have a Crouch
+6:10
+slider a little more work for the
+6:12
+programmers but maybe now you can Crouch
+6:14
+run if you want you can even get fancy
+6:17
+and add some bounciness to it with
+Animation Damping
+6:18
+dumping if you expand the least you can
+6:20
+change from no dumping to bouncy spring
+6:23
+this way it's going to overshoot the
+6:25
+value and correct itself when you crouch
+6:27
+tension is how fast the spring will and
+6:30
+dumping is how strongly it will try to
+6:32
+correct itself about 110 is fine now
+6:35
+when you crouch down your character will
+6:38
+overshoot a little although annoyingly
+6:40
+it just plays with the value and it's
+6:42
+not clamped so if it shoots over the
+6:44
+floats max value it just freezes you can
+6:48
+fix this by making sure the value limits
+6:50
+of the blend are wider than those of the
+6:52
+parameter to leave some space for the
+6:54
+overshooting oh I guess I can't stop
+6:56
+ignoring it any longer why is the fot
+6:59
+going under the ground now did we do
+7:01
+something wrong well yes but actually no
+7:04
+you can't make an omelet without
+7:05
+breaking a few eggs it's fine to add
+7:07
+something and then correct it later with
+7:10
+some sort of corrective function luckily
+7:12
+for us we have a way to fix that with
+THEORY: Inverse Kinematics
+7:15
+inverse kinematics if you've already
+7:17
+heard of a case it's probably through
+7:20
+some procedurally animated spider Dev
+7:22
+blog clickbait or baby's first blender
+7:25
+rig making a character dense both cases
+7:28
+with their feet f firmly on the ground
+7:30
+to understand ik first you need to
+7:33
+understand FK or forward kinematics
+THEORY: Forward Kinematics
+7:36
+so-called because moving a bone will
+7:38
+also move the next bone in the hierarchy
+7:40
+hierarchy being the order at which bones
+7:42
+are connected with children coming from
+7:45
+the parents all the way up to the top of
+7:47
+the hierarchy being the root usually the
+7:49
+pelvis FK is the default because imagine
+7:52
+how nightmareish posing will be without
+7:54
+it if you've been following along then
+7:56
+you can guess inverse kinematics means
+7:58
+the children the parents but if you move
+8:01
+the parents the children move and then
+8:03
+the parents move and then the children
+8:05
+move and then that will create an
+8:07
+infinite Loop what we need is for the
+8:09
+bones to follow someone outside the
+8:11
+hierarchy a through Sigma what we call
+8:14
+ik bones in blender you can see that the
+THEORY: IK Bones
+8:17
+bones of the leg constantly rotate
+8:19
+themselves to find an arrangement where
+8:21
+the foot is aligned with the ik bone I
+8:23
+use the ik bone to animate the work
+8:26
+cycle so the ik and the foot always
+8:28
+share position however the ik bones are
+8:31
+in a different hierarchy their own any
+8:34
+changes in the main hierarchy isn't
+8:36
+reflected in the ik a change like an
+8:39
+additive animation that's affecting all
+8:41
+bones to use ik in sandbox you have to
+IKChains in Modeldoc
+8:44
+first make an ik chain in model do so go
+8:47
+ahead and add one search for ik chain
+8:50
+name it foore R the end affector bone is
+8:53
+the last bone in the chain in our case
+8:55
+the right foot so select that as for
+8:58
+number of bones to add is how long the
+9:00
+chain will be plus the affector bones
+9:02
+two is fine since we'll need the lower
+9:04
+leg and the upper leg you can also get
+9:06
+fancy and do three for stuff like an arm
+9:09
+K which includes the shoulder bone press
+9:11
+okay down here we can see our chain and
+9:14
+reveal the hierarchy consisting of leg
+9:16
+upper leg lower and foot foot one foot
+9:19
+one I guess foot was already used uh who
+9:23
+cares we're not done yet for some reason
+9:25
+you have to set your ik target here
+9:27
+instead of being prompt to earlier by
+9:30
+default it uses the end affector bone
+9:32
+which is wrong don't do that so change
+9:35
+it to ik fo R now go make another one
+9:37
+for the left foot this time with those
+9:40
+set up we can view where the I bones are
+9:42
+by turning on the bone view should be
+9:44
+right around here or not but I was so
+9:47
+sure to include them and I did I don't
+9:49
+make mistakes and when I do is to segue
+9:52
+into something else let's talk about
+Bone Culling
+9:54
+bone cooling like when I Tau you how to
+9:56
+make lods or I mean like I meant to
+9:59
+teach you uh everything in the model
+10:02
+affects performance number of vertices
+10:05
+materials meshes and yes even number of
+10:08
+bones animation info yo this displays
+10:11
+the root motion speed anyways because of
+10:14
+that if model do is that you as a bone
+10:17
+is not influencing any part of the mesh
+10:19
+then you are gone this includes our ik
+10:22
+bones which we only need for animation
+Bone Markup
+10:24
+if you want to summon them back you'll
+10:26
+have to add a new node called bone
+10:28
+markup with this you can select a bone
+10:31
+and specify not to discard it here or if
+10:34
+you don't want to go through every bone
+10:36
+you can go on the bone markup list and
+10:38
+change the settings from there wow they
+10:41
+know list said settings by default it's
+10:43
+set to aggressive removing every bone
+10:45
+with no influence set it to none instead
+10:48
+and here they are now with this set up
+IKChains in Animgraph
+10:50
+we can now head back to animgraph here's
+10:52
+what you're going to want to do add a
+10:54
+solve I chain add two slots select your
+10:57
+left and right a case connect it
+10:59
+after the animations and into the final
+11:02
+pause and uh that's it sharing poas if
+11:05
+you play it now you can see that the
+11:07
+feet are on the ground the FK kind of
+11:09
+worked at a glance but the fact the
+11:11
+parents of the feet are affected yields
+11:13
+us unintentional results meanwhile it's
+11:15
+fine in the ik because between the
+11:17
+Crouch and standing pose the ik bones
+11:20
+only shift a little to the side and
+11:22
+after the Delta is added with no parent
+11:24
+to worry about they are still on the
+11:25
+right track we rather use the I case
+11:27
+hierarchy than the fits on this one so
+11:29
+we solve for ik instead now that we know
+11:31
+how to do both ik and additives we can
+11:34
+learn about another common feature that
+Lean Animations
+11:36
+uses the two of them lean animations
+11:39
+many realistic games layer a pelvis lean
+11:41
+on top of a running animation and
+11:43
+there's a concept called wish velocity
+Wish Velocity
+11:46
+to control them basically how fast the
+11:48
+character wants to move in a Direction
+11:50
+but can't do to realism stuff like iner
+11:53
+show or the centripetal force think
+11:55
+zombies leaning on a curve because the
+11:57
+player is strafing or a player leaning
+11:59
+forward to Sprint but is bound to a
+12:01
+heavy object the player uses wish X and
+12:04
+wish y to control this lean and is
+12:07
+connected to a 2d blend that is later
+12:09
+added since this is a minor detail and
+12:11
+for brevity's sake I won't be showing
+12:14
+you how to do it however if you've been
+12:16
+following along I'm confident you could
+12:18
+do it on your own I didn't expect this
+12:20
+episode to be so Theory heavy but don't
+12:22
+worry next episode is going to be a lot
+12:24
+of anim graph because we'll be making
+12:26
+our character Take Aim and shoot see you
+12:29
+on the other side

@@ -2,6 +2,7 @@ using Sandbox;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Sandbox;
 
@@ -24,6 +25,8 @@ public sealed class VeggaDropThrowAnimator : Component
 	Vector3 _startScale;
 	int _sideSign;
 	float _phase;
+	bool _delayColliderRestoreOneFrame;
+	bool _pendingDestroy;
 
 	bool _cached;
 	readonly List<Collider> _colliders = new();
@@ -55,6 +58,10 @@ public sealed class VeggaDropThrowAnimator : Component
 		long droppedAtUtcTicks,
 		float startDelaySeconds = 0f )
 	{
+		_delayColliderRestoreOneFrame = itemId == Sandbox.Money.VeggaCurrency.CashItemId
+			|| itemId == Sandbox.Money.VeggaCurrency.GoldCoinItemId;
+		_pendingDestroy = false;
+
 		_player = player;
 		_endPos = endPos;
 		_endRot = endRot;
@@ -155,11 +162,16 @@ public sealed class VeggaDropThrowAnimator : Component
 
 	void RestorePhysicsAndCollisions()
 	{
-		for ( int i = 0; i < _colliders.Count; i++ )
+		// Currency drops can block/bump the player if colliders come back on the same frame
+		// the animation finishes. Keep colliders disabled for one extra frame.
+		if ( !_delayColliderRestoreOneFrame )
 		{
-			var c = _colliders[i];
-			if ( c == null || !c.IsValid() ) continue;
-			c.Enabled = _colliderEnabled[i];
+			for ( int i = 0; i < _colliders.Count; i++ )
+			{
+				var c = _colliders[i];
+				if ( c == null || !c.IsValid() ) continue;
+				c.Enabled = _colliderEnabled[i];
+			}
 		}
 
 		// Determine if this is a "problem" drop that must keep physics disabled until the
@@ -297,6 +309,11 @@ public sealed class VeggaDropThrowAnimator : Component
 			WorldPosition = _endPos;
 			WorldRotation = _endRot;
 			WorldScale = _startScale;
+			// Only finalize once.
+			if ( _pendingDestroy )
+				return;
+			_pendingDestroy = true;
+
 			RestorePhysicsAndCollisions();
 
 			if ( _registerPersistence && !string.IsNullOrWhiteSpace( _persistPrefabPath ) )
@@ -319,7 +336,34 @@ public sealed class VeggaDropThrowAnimator : Component
 				}
 			}
 
-			Destroy();
+			if ( !_delayColliderRestoreOneFrame )
+			{
+				Destroy();
+			}
+			else
+			{
+				// Colliders are still disabled here (by design) to avoid bumping the player
+				// on the same frame the animation finishes. Restore them next frame using
+				// the enabled state captured at the start of the throw.
+				RestoreCachedCollidersAfterFrameAndDestroy();
+			}
 		}
+	}
+
+	async void RestoreCachedCollidersAfterFrameAndDestroy()
+	{
+		await Task.Frame();
+		if ( !IsValid )
+			return;
+
+		// Restore colliders to their original enabled states captured at Begin().
+		for ( int i = 0; i < _colliders.Count; i++ )
+		{
+			var c = _colliders[i];
+			if ( c == null || !c.IsValid() ) continue;
+			c.Enabled = _colliderEnabled[i];
+		}
+
+		Destroy();
 	}
 }

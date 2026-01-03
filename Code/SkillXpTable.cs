@@ -4,6 +4,7 @@ using System.Text;
 public static class SkillXpTable
 {
 	public const int MaxLevel = 99;
+	public const int MaxXp = 200_000_000;
 
 	// XpForLevel[1] = 0, XpForLevel[99] = 13034431
 	public static readonly int[] XpForLevel = BuildXpTable();
@@ -35,6 +36,7 @@ public static class SkillXpTable
 	public static int GetLevelForXp( int xp )
 	{
 		if ( xp <= 0 ) return 1;
+		xp = Math.Clamp( xp, 0, MaxXp );
 
 		int current = 1;
 		for ( int level = 2; level <= MaxLevel; level++ )

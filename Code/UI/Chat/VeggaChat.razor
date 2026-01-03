@@ -123,6 +123,7 @@
 
 	bool _isOpen = true;
 	bool _isFocused = false;
+	bool _wasFocused = false;
 	public static bool IsChatInputOpenGlobal { get; private set; }
 	static VeggaChat _instance;
 	string _inputText = "";
@@ -159,6 +160,8 @@
 		_instance = this;
 		// Statics can survive hot reloads; ensure we start from a sane state.
 		IsChatInputOpenGlobal = _isFocused;
+		_wasFocused = _isFocused;
+		VeggaUiCloseStack.SetOpen( VeggaUiCloseStack.KeyChatInput, _isFocused, CloseSelfFromEscape );
 		_chatManager = VeggaChatManager.Local;
 		if ( _chatManager != null )
 		{
@@ -176,13 +179,22 @@
 
 	public static void ForceClose()
 	{
+		CancelTypingFromEscape();
+	}
+
+	public static void CancelTypingFromEscape()
+	{
+		_instance?.CloseSelfFromEscape();
+	}
+
+	void CloseSelfFromEscape()
+	{
+		CloseChatInput();
+		_isFocused = false;
+		_wasFocused = false;
 		IsChatInputOpenGlobal = false;
-		if ( _instance == null ) return;
-		_instance._isFocused = false;
-		_instance._wantFocusEntry = false;
-		_instance._suggestions.Clear();
-		_instance._selectedSuggestionIndex = 0;
-		_instance.StateHasChanged();
+		VeggaUiCloseStack.Remove( VeggaUiCloseStack.KeyChatInput );
+		StateHasChanged();
 	}
 
 	protected override void OnDestroy()
@@ -192,13 +204,20 @@
 			_instance = null;
 		IsChatInputOpenGlobal = false;
 		_isFocused = false;
+		_wasFocused = false;
 		_wantFocusEntry = false;
+		VeggaUiCloseStack.Remove( VeggaUiCloseStack.KeyChatInput );
 	}
 
 	protected override void OnUpdate()
 	{
 		// Keep the global flag in sync every frame (prevents "stuck UI mouse" after hot reload).
 		IsChatInputOpenGlobal = _isFocused;
+		if ( _isFocused != _wasFocused )
+		{
+			VeggaUiCloseStack.SetOpen( VeggaUiCloseStack.KeyChatInput, _isFocused, CloseSelfFromEscape );
+			_wasFocused = _isFocused;
+		}
 
 		// Find chat manager if not yet found
 		if ( _chatManager == null )
@@ -266,11 +285,7 @@
 			}
 
 			// Cancel on Escape
-			if ( Input.EscapePressed )
-			{
-				Input.EscapePressed = false;
-				CloseChatInput();
-			}
+			// (Escape is handled by the centralized close-stack)
 		}
 		else
 		{
@@ -374,6 +389,8 @@
 		_isFocused = true;
 		_isOpen = true;
 		IsChatInputOpenGlobal = true;
+		VeggaUiCloseStack.SetOpen( VeggaUiCloseStack.KeyChatInput, true, CloseSelfFromEscape );
+		_wasFocused = true;
 		_inputText = "";
 		_historyIndex = -1;
 		_historyDraft = "";
@@ -427,6 +444,8 @@
 	{
 		_isFocused = false;
 		IsChatInputOpenGlobal = false;
+		VeggaUiCloseStack.Remove( VeggaUiCloseStack.KeyChatInput );
+		_wasFocused = false;
 		_inputText = "";
 		_historyIndex = -1;
 		_historyDraft = "";
@@ -438,7 +457,9 @@
 
 	void SubmitMessage()
 	{
-		var text = _inputText;
+		// Prefer the live TextEntry value; _inputText can lag behind in some UI timing cases.
+		var text = (_textEntry?.Text ?? _inputText) ?? "";
+		_inputText = text;
 		if ( !string.IsNullOrWhiteSpace( text ) )
 		{
 			try

@@ -29,6 +29,20 @@ public sealed class PlayerVeggaStats : Component
 	[Sync] public float Stamina { get; private set; }
 	[Sync] public float SpecialAttack { get; private set; }
 
+	// ---- Cash drop (pallet build) UI ----
+	// Host updates these while spawning a cash pallet so the local HUD can show progress.
+	[Sync] public bool CashDropBuildActive { get; private set; }
+	[Sync] public float CashDropBuildProgress01 { get; private set; }
+
+	internal void SetCashDropBuildProgress( bool active, float progress01 )
+	{
+		if ( Network.IsProxy )
+			return;
+
+		CashDropBuildActive = active;
+		CashDropBuildProgress01 = progress01.Clamp( 0f, 1f );
+	}
+
 	public int Money
 	{
 		get

@@ -75,6 +75,7 @@
 	[Property] public PlayerVeggaStats PlayerStats { get; set; }
 
 	bool _isOpen = false;
+	bool _wasOpen = false;
 	public static bool IsOpenGlobal { get; private set; }
 	static InventoryHud _instance;
 
@@ -108,6 +109,8 @@
 		_instance = this;
 		// Statics can survive hot reloads; ensure we start from a sane state.
 		IsOpenGlobal = _isOpen;
+		_wasOpen = _isOpen;
+		VeggaUiCloseStack.SetOpen( InventoryKey, _isOpen, CloseSelfFromEscape );
 		_layoutPos = VeggaHudLayoutState.GetPosition( InventoryKey, _layoutPos );
 		_layoutScale = VeggaHudLayoutState.GetScale( InventoryKey, 1f );
 	}
@@ -119,16 +122,14 @@
 			_instance = null;
 		IsOpenGlobal = false;
 		_isOpen = false;
+		_wasOpen = false;
+		VeggaUiCloseStack.Remove( InventoryKey );
 		_showItemDetails = false;
 	}
 
 	public static void ForceClose()
 	{
-		IsOpenGlobal = false;
-		if ( _instance == null ) return;
-		_instance._isOpen = false;
-		_instance._showItemDetails = false;
-		_instance.StateHasChanged();
+		_instance?.CloseSelfFromEscape();
 	}
 
 	public static void ForceOpen()
@@ -136,13 +137,31 @@
 		IsOpenGlobal = true;
 		if ( _instance == null ) return;
 		_instance._isOpen = true;
+		_instance._wasOpen = true;
+		VeggaUiCloseStack.SetOpen( VeggaHudLayoutState.KeyInventory, true, _instance.CloseSelfFromEscape );
 		_instance.StateHasChanged();
+	}
+
+	void CloseSelfFromEscape()
+	{
+		_isOpen = false;
+		_wasOpen = false;
+		IsOpenGlobal = false;
+		_showItemDetails = false;
+		InventoryHudSlot.CancelHeld();
+		VeggaUiCloseStack.Remove( InventoryKey );
+		StateHasChanged();
 	}
 
 	protected override void OnUpdate()
 	{
 		// Keep the global flag in sync every frame (prevents "stuck UI mouse" after hot reload).
 		IsOpenGlobal = _isOpen;
+		if ( _isOpen != _wasOpen )
+		{
+			VeggaUiCloseStack.SetOpen( InventoryKey, _isOpen, CloseSelfFromEscape );
+			_wasOpen = _isOpen;
+		}
 
 		// 🎯 MULTIPLAYER FIX: Only process input for local player's UI
 		if ( PlayerStats != null && PlayerStats.Network.IsProxy ) return;
@@ -157,19 +176,11 @@
 				_showItemDetails = false;
 				InventoryHudSlot.CancelHeld();
 			}
+			VeggaUiCloseStack.SetOpen( InventoryKey, _isOpen, CloseSelfFromEscape );
+			_wasOpen = _isOpen;
 
 			// Pointer-events are updated each frame below.
 
-			StateHasChanged();
-		}
-
-		// ESC closes inventory/menus
-		if ( _isOpen && !IsLayoutActive && Input.Pressed( "InventoryClose" ) )
-		{
-			_isOpen = false;
-			IsOpenGlobal = false;
-			_showItemDetails = false;
-			InventoryHudSlot.CancelHeld();
 			StateHasChanged();
 		}
 
@@ -190,10 +201,15 @@
 		// Apply layout to the component panel so absolute positioning is relative to the HUD root.
 		if ( Panel != null )
 		{
-			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_isOpen ? PointerEvents.All : PointerEvents.None);
+			bool cursorEnabled = VeggaHudLayoutState.GetCursorMode( InventoryKey, defaultValue: true ) || VeggaUiFreeCursor.IsActive;
+			Panel.Style.PointerEvents = IsLayoutActive ? PointerEvents.None : (_isOpen && cursorEnabled ? PointerEvents.All : PointerEvents.None);
 			Panel.Style.ZIndex = (IsLayoutActive && SelectedElement == InventoryKey) ? 2601 : 0;
 		}
 		ApplyLayoutPosition();
+
+		// Layout editor preview: keep it lightweight to make dragging smooth.
+		if ( IsLayoutActive && !_isOpen )
+			return;
 
 		// Get inventory data
 		if ( _inventory == null

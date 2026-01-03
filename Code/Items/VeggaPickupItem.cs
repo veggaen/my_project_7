@@ -39,6 +39,13 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		return itemId == VeggaItemIds.MouldBar || itemId == VeggaItemIds.MouldCoin || itemId == VeggaItemIds.MouldGoblet;
 	}
 
+	static int CashItemIdRuntime()
+	{
+		// Avoid "unreachable code" diagnostics in some build configurations that treat certain
+		// constant comparisons as dead code when warnings are elevated.
+		return VeggaCurrency.CashItemId;
+	}
+
 	bool IsLikelyWorldDrop()
 	{
 		// DroppedAtTime is the normal path, but persisted drops may restore with other metadata.
@@ -79,11 +86,55 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		if ( rb == null || !rb.IsValid() || !rb.Enabled || !rb.MotionEnabled )
 			return;
 
+		bool isCurrency = ItemId == VeggaCurrency.CashItemId || ItemId == VeggaCurrency.GoldCoinItemId;
+
 		// If something is extremely heavy (or we forgot to set MassOverride), don't try to move it.
 		if ( rb.MassOverride >= 80f )
 			return;
 
 		var itemPos = WorldPosition;
+		float bumpStrength = PlayerBumpStrength;
+		float bumpUpStrength = PlayerBumpUpStrength;
+		float maxHorizontalSpeed = 80f;
+		float maxUpSpeed = 55f;
+		if ( isCurrency )
+		{
+			// Players are kinematic, so without this bump currency becomes "unpushable".
+			// Keep it pushable but aggressively clamp so it never "launches".
+			if ( ItemId == VeggaCurrency.CashItemId )
+			{
+				if ( Quantity >= VeggaCurrency.CashBoxAmount )
+				{
+					bumpStrength *= 0.08f;
+					bumpUpStrength *= 0.05f;
+					maxHorizontalSpeed = 10f;
+					maxUpSpeed = 8f;
+				}
+				else if ( Quantity >= VeggaCurrency.CashBundleAmount )
+				{
+					bumpStrength *= 0.14f;
+					bumpUpStrength *= 0.07f;
+					maxHorizontalSpeed = 16f;
+					maxUpSpeed = 10f;
+				}
+				else
+				{
+					bumpStrength *= 0.25f;
+					bumpUpStrength *= 0.12f;
+					maxHorizontalSpeed = 24f;
+					maxUpSpeed = 14f;
+				}
+			}
+			else
+			{
+				// Coins: small, but shouldn't go flying.
+				bumpStrength *= 0.20f;
+				bumpUpStrength *= 0.10f;
+				maxHorizontalSpeed = 22f;
+				maxUpSpeed = 14f;
+			}
+		}
+
 		foreach ( var mover in scene.GetAllComponents<PlayerVeggaMovement>() )
 		{
 			if ( mover == null || !mover.IsValid() )
@@ -111,9 +162,15 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 				continue;
 
 			var falloff = (1f - (dist / PlayerBumpRadius)).Clamp( 0f, 1f );
-			var push = toItemDir * (PlayerBumpStrength * falloff);
-			var up = Vector3.Up * (PlayerBumpUpStrength * falloff);
-			rb.Velocity += (push + up);
+			var push = toItemDir * (bumpStrength * falloff);
+			var up = Vector3.Up * (bumpUpStrength * falloff);
+			var newVel = rb.Velocity + (push + up);
+			var horiz = newVel.WithZ( 0 );
+			float hz = horiz.Length;
+			if ( hz > maxHorizontalSpeed && hz > 0.001f )
+				horiz = horiz / hz * maxHorizontalSpeed;
+			float z = MathF.Min( newVel.z, maxUpSpeed );
+			rb.Velocity = horiz.WithZ( z );
 
 			_nextPlayerBumpTime = Time.Now + PlayerBumpIntervalSeconds;
 			break;
@@ -253,8 +310,9 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		if ( total <= 0 )
 			return piles;
 
-		const int box = 100_000;
-		const int bundle = 10_000;
+		const int box = VeggaCurrency.CashBoxAmount;
+		const int bundle = VeggaCurrency.CashBundleAmount;
+		const int bill = VeggaCurrency.CashBillAmount;
 		while ( total >= box )
 		{
 			piles.Add( box );
@@ -265,6 +323,11 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			piles.Add( bundle );
 			total -= bundle;
 		}
+		while ( total >= bill )
+		{
+			piles.Add( bill );
+			total -= bill;
+		}
 		if ( total > 0 )
 			piles.Add( (int)Math.Min( int.MaxValue, total ) );
 		return piles;
@@ -273,14 +336,14 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 	void TryNormalizeNearbyCashPiles()
 	{
 		// Host-only. Keep nearby cash world drops in canonical sizes:
-		// 100k boxes, 10k bundles, remainder (<10k).
+		// 10M boxes, 1M bundles, 100k bills, remainder (<100k).
 		if ( Network.IsProxy )
 			return;
 		if ( _consumed || IsBeingLooted || IsInDropThrow )
 			return;
 		if ( !IsLikelyWorldDrop() )
 			return;
-		if ( ItemId != VeggaCurrency.CashItemId )
+		if ( ItemId != CashItemIdRuntime() )
 			return;
 		if ( Quantity <= 0 )
 			return;
@@ -351,10 +414,8 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		// Ensure we have enough instances to represent desired piles.
 		for ( int i = cluster.Count; i < keepCount; i++ )
 		{
-			// Tiny jitter so piles don't z-fight perfectly.
-			float jitterX = ((i % 3) - 1) * 1.25f;
-			float jitterY = ((i / 3) - 1) * 1.25f;
-			var pos = myPos + new Vector3( jitterX, jitterY, 0f );
+			// Spawn near the cluster; we'll place them properly after sizing.
+			var pos = myPos + Vector3.Up * 4f;
 			var go = CashWorldDrop.Spawn( scene, pos, rot, desired[i], droppedBy );
 			var pickup = go?.Components.Get<VeggaPickupItem>()
 				?? go?.Components.GetAll<VeggaPickupItem>( FindMode.InDescendants ).FirstOrDefault();
@@ -375,6 +436,61 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			p.SetQuantityAndSyncSpecials( desired[i] );
 		}
 
+		// Reposition into a stable pallet-style stack for 10M boxes, and a tight cluster for smaller piles.
+		// This reduces interpenetration and helps prevent merging piles from tunneling through terrain seams.
+		int boxCount = 0;
+		for ( int i = 0; i < keepCount; i++ )	if ( desired[i] == VeggaCurrency.CashBoxAmount ) boxCount++;
+		int boxIndex = 0;
+		const float spacingX = 33.0f;
+		const float spacingY = 19.0f;
+		const float spacingZ = 30.2f;
+		int grid = (int)MathF.Ceiling( MathF.Sqrt( MathF.Min( boxCount, 100 ) ) );
+		int cols = Math.Clamp( grid, 3, 10 );
+		int rows = cols;
+		int perLayer = Math.Max( 1, cols * rows );
+
+		for ( int i = 0; i < keepCount && i < cluster.Count; i++ )
+		{
+			var p = cluster[i];
+			if ( p == null || !p.IsValid() )
+				continue;
+
+			var targetPos = myPos;
+			if ( desired[i] == VeggaCurrency.CashBoxAmount && boxCount > 0 )
+			{
+				int layer = boxIndex / perLayer;
+				int within = boxIndex % perLayer;
+				int row = within / cols;
+				int col = within % cols;
+				float centeredX = col - (cols - 1) * 0.5f;
+				float centeredY = row - (rows - 1) * 0.5f;
+				targetPos = myPos + rot.Right * (centeredX * spacingX) + rot.Forward * (centeredY * spacingY) + Vector3.Up * (layer * spacingZ);
+				boxIndex++;
+			}
+			else
+			{
+				// Small piles: keep them close but not perfectly overlapping.
+				float jitterX = ((i % 3) - 1) * 3.0f;
+				float jitterY = ((i / 3) - 1) * 3.0f;
+				targetPos = myPos + rot.Right * jitterX + rot.Forward * jitterY;
+			}
+
+			// Lift to avoid starting inside the ground after merge.
+			p.WorldPosition = targetPos + Vector3.Up * (desired[i] == VeggaCurrency.CashBoxAmount ? 3f : 5f);
+			p.WorldRotation = rot;
+
+			var rb = p.Components.Get<Rigidbody>() ?? p.Components.GetAll<Rigidbody>( FindMode.InDescendants ).FirstOrDefault();
+			if ( rb != null && rb.IsValid() )
+			{
+				// Don't pop 10M pallet boxes upward; it ruins the neat lego stack.
+				if ( desired[i] == VeggaCurrency.CashBoxAmount )
+					rb.Velocity = Vector3.Zero;
+				else
+					rb.Velocity = (rb.Velocity * 0.1f) + Vector3.Up * 55f;
+				rb.AngularVelocity = Vector3.Zero;
+			}
+		}
+
 		// Destroy extras.
 		for ( int i = keepCount; i < cluster.Count; i++ )
 		{
@@ -386,6 +502,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		}
 	}
 
+	#pragma warning disable CS0162
 	void TryMergeNearbyStackables()
 	{
 		if ( Network.IsProxy )
@@ -397,12 +514,6 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		if ( Quantity <= 0 )
 			return;
 
-		// Cash has special "canonical pile" rules (100k/10k/remainder).
-		if ( ItemId == VeggaCurrency.CashItemId )
-		{
-			TryNormalizeNearbyCashPiles();
-			return;
-		}
 		if ( StackMergeRadius <= 0f )
 			return;
 		if ( Time.Now < _nextMergeCheckTime )
@@ -477,6 +588,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			secondary.SetQuantityAndSyncSpecials( secondaryRemaining );
 		}
 	}
+	#pragma warning restore CS0162
 
 	[Property] public float PlayerBumpRadius { get; set; } = 28f;
 	[Property] public float PlayerBumpMinSpeed { get; set; } = 22f;
@@ -487,6 +599,9 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 	/// Time remaining on pickup delay.
 	/// </summary>
 	private float _pickupTimer;
+
+	const float ManualPickupHoldRepeatSeconds = 0.12f;
+	static float _nextManualPickupAttemptTime;
 
 	/// <summary>
 	/// Host-side: prevents double-pickup.
@@ -528,9 +643,9 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 
 	void EnsureDropPhysicsReady()
 	{
-		// Only the host simulates physics for networked pickups.
-		if ( Network.IsProxy )
-			return;
+		// Host simulates physics, but clients still benefit from correct colliders
+		// (otherwise currency can appear "ghosted" even when the host has collision).
+		bool isProxy = Network.IsProxy;
 
 		// Only tune dropped items. Scene-placed pickups should keep their prefab-authored physics.
 		if ( !IsLikelyWorldDrop() )
@@ -541,7 +656,6 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		bool isMouldGoblet = ItemId == VeggaItemIds.MouldGoblet;
 		bool isCurrency = ItemId == Sandbox.Money.VeggaCurrency.CashItemId || ItemId == Sandbox.Money.VeggaCurrency.GoldCoinItemId;
 		bool needsPhysicsFix = isOre || isMouldGoblet || isCurrency;
-		EnsureImpactPolish();
 		if ( !needsPhysicsFix && _dropPhysicsConfigured )
 			return;
 
@@ -550,31 +664,107 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			// Currency drops: ensure we always have a solid collider (trigger-only setups fall through the world).
 			if ( isCurrency )
 			{
-				var currencyModelCollider = Components.Get<ModelCollider>();
-				if ( currencyModelCollider != null && currencyModelCollider.IsValid() )
+				bool isCash = ItemId == Sandbox.Money.VeggaCurrency.CashItemId;
+				bool isCashBox = isCash && Quantity >= Sandbox.Money.VeggaCurrency.CashBoxAmount;
+
+				// Player bump uses distance-to-origin checks; big cash has a huge collider so we need
+				// a larger radius or it will feel completely unpushable.
+				if ( !isProxy && isCash )
 				{
-					currencyModelCollider.Enabled = false;
-					currencyModelCollider.IsTrigger = false;
-					currencyModelCollider.Static = false;
+					var desiredRadius = isCashBox ? 72f : 34f;
+					if ( PlayerBumpRadius < desiredRadius )
+						PlayerBumpRadius = desiredRadius;
 				}
 
-				// Ensure a non-trigger box collider with non-zero thickness.
-				var box = Components.Get<BoxCollider>();
-				if ( box == null )
-					box = Components.Create<BoxCollider>();
-				if ( box != null && box.IsValid() )
+				// Find the renderer's model wherever it lives in the prefab hierarchy.
+				var anyRenderer = Components.Get<ModelRenderer>()
+					?? Components.GetAll<ModelRenderer>( FindMode.InDescendants ).FirstOrDefault();
+				if ( anyRenderer == null || !anyRenderer.IsValid() )
 				{
-					box.Enabled = true;
-					box.IsTrigger = false;
-					if ( ItemId == Sandbox.Money.VeggaCurrency.CashItemId )
-						box.Scale = new Vector3( 9f, 6f, 3f );
-					else
-						box.Scale = new Vector3( 4f, 4f, 3f );
+					var p = GameObject.Parent;
+					while ( p != null && p.IsValid )
+					{
+						anyRenderer = p.Components.Get<ModelRenderer>()
+							?? p.Components.GetAll<ModelRenderer>( FindMode.InDescendants ).FirstOrDefault();
+						if ( anyRenderer != null && anyRenderer.IsValid() )
+							break;
+						p = p.Parent;
+					}
+				}
+
+				// Money models are inconsistent about having a usable physics mesh.
+				// Use a primitive collider as the authoritative collision for all currency.
+				foreach ( var mcAny in Components.GetAll<ModelCollider>( FindMode.InDescendants ) )
+				{
+					if ( mcAny == null || !mcAny.IsValid() ) continue;
+					mcAny.Enabled = false;
+				}
+				var mcRoot = Components.Get<ModelCollider>();
+				if ( mcRoot != null && mcRoot.IsValid() )
+					mcRoot.Enabled = false;
+
+				if ( isCash )
+				{
+					var box = Components.Get<BoxCollider>() ?? Components.Create<BoxCollider>();
+					if ( box != null && box.IsValid() )
+					{
+						box.Enabled = true;
+						box.IsTrigger = false;
+						box.Static = false;
+						box.Scale = Sandbox.Money.VeggaCurrency.GetCashBoxColliderScaleForAmount( Quantity );
+						if ( Quantity >= Sandbox.Money.VeggaCurrency.CashBoxAmount ) { box.Friction = 1.4f; box.RollingResistance = 1.1f; }
+						else if ( Quantity >= Sandbox.Money.VeggaCurrency.CashBundleAmount ) { box.Friction = 1.5f; box.RollingResistance = 1.25f; }
+						else { box.Friction = 1.2f; box.RollingResistance = 1.0f; }
+					}
+
+					// Disable other primitive colliders in children.
+					foreach ( var bc in Components.GetAll<BoxCollider>( FindMode.InDescendants ) )
+					{
+						if ( bc == null || !bc.IsValid() ) continue;
+						if ( box != null && bc == box ) continue;
+						bc.Enabled = false;
+					}
+					foreach ( var sc in Components.GetAll<SphereCollider>( FindMode.InDescendants ) )
+					{
+						if ( sc == null || !sc.IsValid() ) continue;
+						sc.Enabled = false;
+					}
+					var rootSphere = Components.Get<SphereCollider>();
+					if ( rootSphere != null && rootSphere.IsValid() )
+						rootSphere.Enabled = false;
+				}
+				else
+				{
+					// Gold coins: use a modest sphere so they don't snag on edges.
+					var sphere = Components.Get<SphereCollider>() ?? Components.Create<SphereCollider>();
+					if ( sphere != null && sphere.IsValid() )
+					{
+						sphere.Enabled = true;
+						sphere.IsTrigger = false;
+						sphere.Static = false;
+						if ( sphere.Radius <= 0 || sphere.Radius > 10f ) sphere.Radius = 6f;
+						sphere.Friction = 1.25f;
+						sphere.RollingResistance = 1.05f;
+					}
+
+					foreach ( var bc in Components.GetAll<BoxCollider>( FindMode.InDescendants ) )
+					{
+						if ( bc == null || !bc.IsValid() ) continue;
+						bc.Enabled = false;
+					}
+					foreach ( var sc in Components.GetAll<SphereCollider>( FindMode.InDescendants ) )
+					{
+						if ( sc == null || !sc.IsValid() ) continue;
+						if ( sphere != null && sc == sphere ) continue;
+						sc.Enabled = false;
+					}
 				}
 			}
 
-			var modelCollider = Components.Get<ModelCollider>();
-			var renderer = Components.Get<ModelRenderer>();
+			var modelCollider = Components.Get<ModelCollider>()
+				?? Components.GetAll<ModelCollider>( FindMode.InDescendants ).FirstOrDefault();
+			var renderer = Components.Get<ModelRenderer>()
+				?? Components.GetAll<ModelRenderer>( FindMode.InDescendants ).FirstOrDefault();
 			if ( modelCollider != null && modelCollider.IsValid() )
 			{
 				if ( renderer != null && renderer.IsValid() && renderer.Model != null )
@@ -625,10 +815,11 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			}
 		}
 
+		// Keep the authoritative Rigidbody on this GameObject for stability.
 		var rb = Components.Get<Rigidbody>();
 		if ( rb == null )
 			rb = Components.Create<Rigidbody>();
-		if ( rb != null && rb.IsValid() )
+		if ( !isProxy && rb != null && rb.IsValid() )
 		{
 			// Ensure collision callbacks can fire for ICollisionListener-based polish.
 			try { rb.CollisionEventsEnabled = true; } catch { }
@@ -644,9 +835,29 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			}
 			else if ( isCurrency )
 			{
-				// Currency should settle quickly and not tunnel.
-				TuneRigidbody( rb, mass: 10f, linearDamping: 0.12f, angularDamping: 1.2f );
+				// Currency should settle quickly and not drift/slide.
+				if ( ItemId == Sandbox.Money.VeggaCurrency.CashItemId )
+					Sandbox.Money.VeggaCurrency.ApplyCashRigidbodyTuning( rb, Quantity );
+				else
+					TuneRigidbody( rb, mass: 10f, linearDamping: 0.22f, angularDamping: 2.2f );
 			}
+		}
+
+		var prop = Components.Get<Prop>() ?? Components.GetAll<Prop>( FindMode.InDescendants ).FirstOrDefault();
+		if ( prop != null && prop.IsValid() )
+			prop.IsStatic = false;
+
+		EnsureImpactPolish();
+		var polishNow = Components.Get<VeggaDropImpactPolish>() ?? Components.GetAll<VeggaDropImpactPolish>( FindMode.InDescendants ).FirstOrDefault();
+		polishNow?.RefreshBaseline();
+
+		// Disable any extra rigidbodies (common if the prefab has rb in a child and we accidentally created a root rb).
+		foreach ( var otherRb in Components.GetAll<Rigidbody>( FindMode.InDescendants ) )
+		{
+			if ( otherRb == null || !otherRb.IsValid() ) continue;
+			if ( rb != null && otherRb == rb ) continue;
+			otherRb.MotionEnabled = false;
+			otherRb.Enabled = false;
 		}
 
 		// Non-problem items: apply a small, category-based feel tuning for dropped items.
@@ -690,6 +901,24 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			polish.SettleLinearDamping = 0.10f;
 			polish.SettleSeconds = 0.35f;
 			polish.MinSpeedForImpact = 90f;
+		}
+		else if ( ItemId == Sandbox.Money.VeggaCurrency.CashItemId )
+		{
+			// Cash: make it settle aggressively so big pallet stacks don't keep jittering and interpenetrating.
+			if ( Quantity >= Sandbox.Money.VeggaCurrency.CashBoxAmount )
+			{
+				polish.SettleAngularDamping = 4.0f;
+				polish.SettleLinearDamping = 0.30f;
+				polish.SettleSeconds = 0.55f;
+				polish.MinSpeedForImpact = 60f;
+			}
+			else
+			{
+				polish.SettleAngularDamping = 2.2f;
+				polish.SettleLinearDamping = 0.18f;
+				polish.SettleSeconds = 0.35f;
+				polish.MinSpeedForImpact = 75f;
+			}
 		}
 		else if ( IsBar( ItemId ) )
 		{
@@ -845,25 +1074,31 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		if ( lookedAt != this )
 			return;
 
-		// Player pressed E
-		if ( Input.Pressed( "use" ) )
+		// Reset repeat when the key is released so the next hold starts instantly.
+		if ( !Input.Down( "use" ) )
+			_nextManualPickupAttemptTime = 0f;
+
+		bool wantsPickup = Input.Pressed( "use" )
+			|| (Input.Down( "use" ) && Time.Now >= _nextManualPickupAttemptTime);
+		if ( !wantsPickup )
+			return;
+		_nextManualPickupAttemptTime = Time.Now + ManualPickupHoldRepeatSeconds;
+
+		if ( DebugNet ) Log.Info( $"[Pickup] Use pressed; host={Networking.IsHost} proxy={Network.IsProxy} local={Connection.Local?.Id} dist={dist:0.0}" );
+		if ( Networking.IsHost && !Network.IsProxy )
 		{
-			if ( DebugNet ) Log.Info( $"[Pickup] Use pressed; host={Networking.IsHost} proxy={Network.IsProxy} local={Connection.Local?.Id} dist={dist:0.0}" );
-			if ( Networking.IsHost && !Network.IsProxy )
-			{
-				// Host/local: animate pickup too (no instant poof).
-				var sceneLocal = Scene ?? Game.ActiveScene;
-				var cameraSide = VeggaPickupLook.GetCameraShoulderSide( sceneLocal, localPlayer.GameObject );
-				StartVacuumToPlayer( localPlayer.GameObject, Guid.Empty, grantViaRpc: false, cameraSide );
-			}
-			else
-			{
-				var id = Connection.Local?.Id ?? Guid.Empty;
-				var sceneLocal = Scene ?? Game.ActiveScene;
-				var cameraSide = VeggaPickupLook.GetCameraShoulderSide( sceneLocal, localPlayer.GameObject );
-				if ( DebugNet ) Log.Info( $"[Pickup] Sending pickup request id={id}" );
-				RpcRequestPickup( id, cameraSide );
-			}
+			// Host/local: animate pickup too (no instant poof).
+			var sceneLocal = Scene ?? Game.ActiveScene;
+			var cameraSide = VeggaPickupLook.GetCameraShoulderSide( sceneLocal, localPlayer.GameObject );
+			StartVacuumToPlayer( localPlayer.GameObject, Guid.Empty, grantViaRpc: false, cameraSide );
+		}
+		else
+		{
+			var id = Connection.Local?.Id ?? Guid.Empty;
+			var sceneLocal = Scene ?? Game.ActiveScene;
+			var cameraSide = VeggaPickupLook.GetCameraShoulderSide( sceneLocal, localPlayer.GameObject );
+			if ( DebugNet ) Log.Info( $"[Pickup] Sending pickup request id={id}" );
+			RpcRequestPickup( id, cameraSide );
 		}
 	}
 
@@ -1020,7 +1255,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		_vacuumTarget = FindLowerBack( player ) ?? player;
 		_vacuumStartPos = WorldPosition;
 		_vacuumStartTime = Time.Now;
-		_vacuumStartScale = Transform.Scale;
+		_vacuumStartScale = WorldScale;
 		_vacuumStartDistance = MathF.Max( 1f, Vector3.DistanceBetween( _vacuumStartPos, _vacuumTarget.WorldPosition ) );
 		var seed = (PersistId != Guid.Empty ? PersistId.GetHashCode() : HashCode.Combine( ItemId, Quantity, WorldPosition.GetHashCode() ));
 		_vacuumSwirlPhase = seed * 0.001f;
@@ -1107,7 +1342,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		_vacuumSphereColliderEnabled = false;
 		_vacuumBoxColliderEnabled = false;
 		if ( _vacuumStartScale != default )
-			Transform.Scale = _vacuumStartScale;
+			WorldScale = _vacuumStartScale;
 		_vacuumStartScale = default;
 
 		var rb = Components.Get<Rigidbody>();
@@ -1143,14 +1378,18 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			|| ItemId == VeggaItemIds.MouldGoblet
 			|| ItemId == Sandbox.Money.VeggaCurrency.CashItemId
 			|| ItemId == Sandbox.Money.VeggaCurrency.GoldCoinItemId;
+		bool isCash = ItemId == Sandbox.Money.VeggaCurrency.CashItemId;
 		try
 		{
 			// Re-enforce known-problematic physics/collider setups (ore/goblet) now that the item is placed.
 			if ( !Network.IsProxy )
 				EnsureDropPhysicsReady();
 
-			// Snap ore + goblet mould to ground to avoid starting interpenetrating terrain or falling through seams.
-			if ( !Network.IsProxy && isProblemDrop )
+			// Snap problematic items to ground.
+			// Cash always snaps now (no pallet build / multi-piece stacking).
+			bool shouldSnapToGround = !Network.IsProxy
+				&& (VeggaOreVisuals.IsOre( ItemId ) || ItemId == VeggaItemIds.MouldGoblet || isCash);
+			if ( shouldSnapToGround )
 			{
 				var scene = Scene ?? Game.ActiveScene;
 				if ( scene != null )
@@ -1161,7 +1400,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 						.WithoutTags( "player", "trigger" )
 						.Run();
 					if ( tr.Hit )
-						WorldPosition = tr.HitPosition + tr.Normal * 8f;
+						WorldPosition = tr.HitPosition + tr.Normal * (isCash ? 2f : 8f);
 				}
 			}
 		}
@@ -1224,7 +1463,11 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 			apply ??= rb;
 		}
 		if ( apply != null )
+		{
 			apply.Velocity = velocity;
+
+			// Cash physics is tuned when spawning the cash world-drop (CashWorldDrop/VeggaCurrency).
+		}
 	}
 
 	void VacuumTowardTarget()
@@ -1278,7 +1521,7 @@ public sealed class VeggaPickupItem : Component, Component.ITriggerListener
 		if ( _vacuumStartScale != default )
 		{
 			var scaleFactor = 1f - (eased * 0.75f);
-			Transform.Scale = _vacuumStartScale * scaleFactor;
+			WorldScale = _vacuumStartScale * scaleFactor;
 		}
 
 		// Close enough? Pickup!

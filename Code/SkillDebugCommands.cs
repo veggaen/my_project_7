@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using Sandbox;
 using Sandbox.Data;
+using Sandbox.Money;
 
 #nullable enable
 
@@ -231,6 +233,100 @@ public static class SkillDebugCommands
 		}
 
 		Log.Info( $"[Money] ========================================" );
+	}
+
+	/// <summary>
+	/// Dump collider state for the cash box you're looking at.
+	/// Usage: vegga_cashbox_dump
+	/// </summary>
+	[ConCmd( "vegga_cashbox_dump" )]
+	public static void CashBoxDumpCmd()
+	{
+		var scene = Game.ActiveScene;
+		var cam = scene?.Camera;
+		if ( scene == null || cam == null )
+		{
+			Log.Warning( "[CashBoxDump] No active scene/camera." );
+			return;
+		}
+
+		var ray = cam.ScreenNormalToRay( new Vector2( 0.5f, 0.5f ) );
+		var tr = scene.Trace.Ray( ray, 600f )
+			.WithoutTags( "trigger", "particles" )
+			.Run();
+		if ( !tr.Hit || tr.GameObject == null )
+		{
+			Log.Warning( "[CashBoxDump] Nothing hit." );
+			return;
+		}
+
+		// Walk up parent chain to find the pickup.
+		GameObject go = tr.GameObject;
+		VeggaPickupItem? pickup = null;
+		for ( var obj = go; obj != null; obj = obj.Parent )
+		{
+			pickup = obj.Components.Get<VeggaPickupItem>()
+				?? obj.Components.GetAll<VeggaPickupItem>( FindMode.InDescendants ).FirstOrDefault();
+			if ( pickup != null && pickup.IsValid() )
+			{
+				go = obj;
+				break;
+			}
+		}
+		if ( pickup == null || !pickup.IsValid() )
+		{
+			Log.Warning( $"[CashBoxDump] Hit '{tr.GameObject.Name}' but found no VeggaPickupItem in parents." );
+			return;
+		}
+
+		bool isCashBox = pickup.ItemId == VeggaCurrency.CashItemId && pickup.Quantity >= VeggaCurrency.CashBoxAmount;
+		Log.Info( $"[CashBoxDump] GO={go.Name} Hit={tr.GameObject.Name} isCashBox={isCashBox} ItemId={pickup.ItemId} Qty={pickup.Quantity} PersistId={pickup.PersistId} InThrow={pickup.IsInDropThrow}" );
+		Log.Info( $"[CashBoxDump] WorldPos={go.WorldPosition} WorldRot={go.WorldRotation.Angles()}" );
+
+		var renderers = go.Components.GetAll<ModelRenderer>( FindMode.InDescendants ).ToList();
+		var rootRenderer = go.Components.Get<ModelRenderer>();
+		if ( rootRenderer != null && rootRenderer.IsValid() )
+			renderers.Insert( 0, rootRenderer );
+		foreach ( var r in renderers )
+		{
+			if ( r == null || !r.IsValid() ) continue;
+			Log.Info( $"[CashBoxDump] ModelRenderer enabled={r.Enabled} model={(r.Model != null ? r.Model.Name : "<null>")}" );
+		}
+
+		var mcs = go.Components.GetAll<ModelCollider>( FindMode.InDescendants ).ToList();
+		var rootMc = go.Components.Get<ModelCollider>();
+		if ( rootMc != null && rootMc.IsValid() )
+			mcs.Insert( 0, rootMc );
+		foreach ( var mc in mcs )
+		{
+			if ( mc == null || !mc.IsValid() ) continue;
+			Log.Info( $"[CashBoxDump] ModelCollider enabled={mc.Enabled} trigger={mc.IsTrigger} static={mc.Static} model={(mc.Model != null ? mc.Model.Name : "<null>")}" );
+			Log.Info( $"[CashBoxDump]  -> friction={mc.Friction} rollRes={mc.RollingResistance}" );
+		}
+
+		var bcs = go.Components.GetAll<BoxCollider>( FindMode.InDescendants ).ToList();
+		var rootBc = go.Components.Get<BoxCollider>();
+		if ( rootBc != null && rootBc.IsValid() )
+			bcs.Insert( 0, rootBc );
+		foreach ( var bc in bcs )
+		{
+			if ( bc == null || !bc.IsValid() ) continue;
+			Log.Info( $"[CashBoxDump] BoxCollider enabled={bc.Enabled} trigger={bc.IsTrigger} scale={bc.Scale} center={bc.Center} friction={bc.Friction} rollRes={bc.RollingResistance}" );
+		}
+
+		Log.Info( "[CashBoxDump] Done." );
+	}
+
+	/// <summary>
+	/// Wipe persisted world drops (world/drops.json) and optionally destroy existing persisted drops in-scene.
+	/// Usage: vegga_worlddrops_wipe
+	/// </summary>
+	[ConCmd( "vegga_worlddrops_wipe" )]
+	public static void WorldDropsWipeCmd()
+	{
+		if ( !EnsureHost() )
+			return;
+		WorldDropPersistence.WipeAllDrops( Game.ActiveScene, destroySpawned: true );
 	}
 
 	/// <summary>

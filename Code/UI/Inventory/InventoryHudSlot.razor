@@ -548,14 +548,14 @@
 				return MouseButtonKind.Left;
 
 			// Fallback: try numeric enum value (common in engine enums)
-			// Many systems use 0=Left, 1=Right, 2=Middle.
-			// (DOM uses 0=Left, 1=Middle, 2=Right, but e.Button here is typically an engine enum.)
+			// UI event systems commonly use 0=Left, 1=Middle, 2=Right.
+			// If the engine provides named strings, we'll have already matched above.
 			int i = Convert.ToInt32( e.Button );
 			return i switch
 			{
 				0 => MouseButtonKind.Left,
-				1 => MouseButtonKind.Right,
-				2 => MouseButtonKind.Middle,
+				1 => MouseButtonKind.Middle,
+				2 => MouseButtonKind.Right,
 				_ => MouseButtonKind.Other
 			};
 		}
@@ -1584,7 +1584,13 @@
 				if ( available > maxStack )
 					available = maxStack;
 				if ( maxStack > 1 )
-					_manualSplitCount = _manualSplitShift ? Math.Max( 1, (available + 2) / 3 ) : Math.Max( 1, (available + 1) / 2 );
+				{
+					// Use long math to avoid overflow when available is very large (e.g., int.MaxValue currency stacks).
+					long avail = available;
+					long want = _manualSplitShift ? (avail + 2L) / 3L : (avail + 1L) / 2L;
+					want = Math.Clamp( want, 1L, avail );
+					_manualSplitCount = (int)want;
+				}
 			}
 
 			if ( DebugInput ) Log.Info( $"[InvUI] ManualSplit armed slot={SlotIndex} count={_manualSplitCount} shift={_manualSplitShift}" );

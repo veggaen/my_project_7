@@ -1,0 +1,656 @@
+welcome to the sbox comprehensive player
+0:01
+model guide I'm grber and today we'll be
+0:04
+diving into animation blending and
+0:06
+movement now if you don't already have a
+0:08
+model you can go download the folder
+0:10
+from the description and place it in
+0:12
+your projects assets models folder
+0:15
+otherwise if you've been following the
+0:17
+series still do that but choose to
+0:19
+ignore the files that share names before
+0:21
+starting check the pin comment to see if
+0:23
+there's any correction sbox is always
+0:26
+changing so some things may not apply
+0:28
+since the release of this video
+0:30
+[Music]
+0:31
+here we've got our anim graph currently
+0:33
+it's either Idol or W with no in between
+0:36
+of course since they are two separate
+0:38
+animations but what if they weren't you
+0:42
+have three main ways to blend between
+0:43
+poses animation blending bone masking
+0:46
+and additive animations animation
+Animation Blending
+0:49
+blending is very straightforward it's
+0:51
+the movements of two or more animations
+0:53
+average out we've actually seen this
+0:55
+type already when exiting a state in a
+0:58
+state machine the old pose is blended
+1:00
+into the new state on the right are the
+1:02
+options if you increase the time it
+1:04
+takes to 2 seconds you can see the
+1:06
+blending action B masking allows you to
+Bone Masking / Weight Lists
+1:08
+make a weight list of bones to determine
+1:11
+which are going to be influenced by one
+1:13
+animation and which by the other for
+1:15
+example we can have a weight list so the
+1:18
+arms use the work animation and Bone
+1:20
+mask them into the idol and now he's
+1:22
+swaying like a muppet lastly additive
+Additive Animations
+1:25
+animations as the name implies instead
+1:27
+of blending an animation you add one
+1:30
+onto another you take the Motions of
+1:32
+each bone and add them to the current
+1:35
+pose take for example a breathing
+1:37
+animation layer it on top of a static
+1:39
+pose and the model comes to life however
+1:42
+if you Trad this now chances are it
+1:45
+would explode they can be very
+1:47
+complicated to beginners so stick around
+1:50
+to learn how to use them let's start
+1:52
+with a shrim animation blend add a new
+1D Blend
+1:54
+note go to blend and Select 1 D blend
+1:57
+the d stands for one dimensional so this
+2:00
+can only go backwards or forwards like a
+2:03
+slider we'll need a new parameter to
+2:05
+control this since the bullan just won
+2:08
+cut it luckily we have just the thing as
+2:10
+we learned in the last episode flot
+2:12
+parameters have a minimum value a max
+2:15
+value and everything in between which is
+2:18
+just what we need so create a new flot
+2:20
+and name it speed go ahead and set the
+2:22
+max to 100 now we can use this parameter
+2:25
+for our 1D blend however we still don't
+2:28
+have any Arrow to connect our animations
+2:30
+into to add them press this Big Blue
+2:33
+Cross expand the list and name it Idol
+2:37
+then add another and name it walk below
+2:39
+them we can assign their values since
+2:41
+our flot goes up to 100 set the walk to
+2:45
+100 and now if we start a simulation our
+2:48
+dude will go from an idol to a walk and
+2:51
+everything in between huh that's weird
+2:55
+what's with the tiny little steps this
+2:57
+is a characteristic of Animation
+2:59
+blending the more different an animation
+3:01
+is the worse the blend will be and
+3:03
+although idling and walking may seem
+3:05
+similar the duration isn't the ond blend
+Animation Cycle
+3:08
+no sees the different in length and
+3:10
+tries its best to match them through
+3:12
+this option here the sink cycle it slows
+3:15
+down or speeds up the animations until
+3:18
+their cycle matches results May Vary but
+3:21
+it's not like turning this off will give
+3:23
+you better results it just means that it
+3:25
+gives up trying try copy and pasting the
+3:27
+work animation and set the playback
+3:29
+speed to.5 ideally this will result in a
+3:33
+blend between a slow walk and a frisky J
+3:35
+but if we try it out we see one
+3:37
+animation is sped up with sink cycle but
+3:40
+without the two animations are fighting
+3:42
+for control really ond blend is only
+3:44
+good for similar animations or blending
+3:47
+static poses I kind of dropped a very
+3:49
+important term earlier that being a
+3:51
+cycle as we've discussed animations can
+3:54
+have widely different lengths either due
+3:56
+to frame count or their playback speed
+3:58
+but an animation cycle is different it
+4:01
+starts at zero and ends on one you can
+Cycle Control
+4:03
+see what I mean by adding a new node the
+4:06
+cycle control node if we use a flot that
+4:08
+goes from 0 to one select it as the
+4:11
+parameter and connect it to walk we can
+4:13
+play around with the cycle of Animation
+4:16
+woo woo the one the blend was kind of
+4:18
+failing to use cycle effectively but
+4:20
+this next node does not disappoint as it
+4:23
+is one of the most useful and Powerful
+4:25
+notes I'm talking about the 2D blend
+2D Blend
+4:27
+space as the name implies this Blends in
+4:30
+two Dimensions so not only back and
+4:32
+forth but also right and left this is
+4:35
+mainly used to make what we call
+4:37
+eight-way movement the golden standard
+4:39
+for player model since was movement only
+4:42
+allows for up to eight directions those
+4:44
+usually being named after the cardinal
+4:46
+directions from a top down view now go
+4:49
+ahead and create a 2d blend node this
+4:51
+time we require two parameters usually
+4:54
+two flots named move uncore X for
+4:57
+forward and move uncore for y for right
+5:01
+so rename speed into move X and create a
+5:03
+new flot called move y with a Max of 100
+5:07
+as well set the horizontal axis as move
+5:09
+y since it's right to left and the
+5:12
+vertical axis as move X since it's
+5:14
+forward to backwards makes it easier to
+5:16
+visualize you'll understand what I mean
+5:18
+as soon as we get into the node because
+5:20
+as you can see it has a little arrow on
+5:22
+the top right double press the node to
+5:25
+enter it and we are presented with a new
+5:27
+workspace of course it's empty you can
+5:29
+now add your animation through this
+5:31
+little running man so let's start with
+5:33
+walk nor we do have quite a few more to
+5:35
+add though speed up the process by
+5:37
+adding multiple clips up here search for
+5:39
+work and just select this three for now
+5:42
+you can see the one we already have is
+5:43
+grade out also the idol animation okay
+5:46
+this is annoying for some reason the
+5:48
+panels start squished so much so you
+5:51
+cannot even make out what this value on
+5:52
+the left is drag this line to the right
+5:54
+to reveal that it is the blend
+5:56
+percentage and a little bit the rest as
+5:58
+well I guess if we you have to fill out
+6:00
+all of these values I might as well
+6:02
+explain how to do it right if you
+6:04
+watched episode zero you probably notice
+6:06
+engine uses in as units and if you want
+6:09
+to avoid foot sliding you'll have to
+6:11
+know exactly how fast your character
+6:13
+ought to be moving a great way to do
+6:15
+that is for the blend value of an
+6:17
+animation to be set as its speed in
+6:20
+units per second that's really
+Auto-Calculate Blend Values
+6:22
+complicated but don't worry because yes
+6:25
+we have a wizard that can do that all
+6:27
+for you we can use the root motion that
+6:29
+we up in model do last episode and use
+6:32
+this wizard to set all the values for us
+6:34
+if we were to press it right now nothing
+6:36
+will happen that's because we're
+6:38
+controlling this blend through
+6:39
+parameters and it doesn't know what to
+6:42
+make of it but if we switch the axis
+6:44
+control to something that uses root
+6:46
+motion like strafe speed for left to
+6:48
+right and then forward speed for the
+6:50
+vertical axis and then press the wizard
+6:53
+again the values will be set and blue
+6:55
+dots appear in the preview Matrix below
+6:57
+and if you start the preview here you
+6:59
+can play around with them looks awesome
+7:02
+although for some reason the Y AIS is
+Not Blending Correctly
+7:04
+inverted huh something's wrong with walk
+7:07
+W it's not blending correctly with the
+7:09
+others remember when I said blending
+7:11
+doesn't work well when an animation is
+7:13
+too different well I got lazy walk west
+7:16
+is just a mirrored Walk East so even
+7:19
+though the right motions are there they
+7:21
+are in the wrong place that makes all
+7:23
+the difference in the world look at the
+7:25
+feet for example if we start walk e you
+7:28
+can see the right foot moves forward to
+7:30
+make contact that's the case for all of
+7:33
+the animations too but when mirrored we
+7:35
+see that the left foot moves forward
+7:38
+first how is it supposed to blend
+7:39
+between those two we can fix the timing
+7:42
+by offsetting when the animation starts
+7:44
+in fact if we go back to model dock we
+7:46
+can see that even the normal work
+7:48
+animations are kind of different from
+7:50
+the idle POS frame 10 looks like a
+7:52
+better starting POs to go into a walk if
+AnimStartLoop
+7:55
+you right click the node you can add an
+7:57
+anim start Loop which is what we use to
+7:59
+change what frame to start animation in
+8:02
+Tye in frame 10 and now the first frame
+8:04
+has changed oh what I thought we had a
+ExtractMotion not Working
+8:07
+thread me why is he walking off we still
+8:09
+do have the extract motion markup but
+8:12
+the problem is that he's applying the
+8:13
+markups alphabetically so first it's
+8:16
+applying the position and then it
+8:18
+extracts the wrong motions if you check
+8:20
+this anim markup ordered box in the nod
+8:23
+it will make sure they are instead
+8:25
+applied by the order you place them
+8:27
+there we go now go ahead and copy the
+8:29
+anim start Loop to all of the other work
+8:31
+animations make sure to check the anim
+8:33
+markup ordered box as well we still have
+8:36
+to make the mirrored West animations
+8:38
+match the correct timing I find the
+8:40
+easiest way to do so is to have a
+8:42
+certain motion I can use to match the
+8:44
+frames some sort of event a footstep
+AnimEvents
+8:48
+event the programmers need to know where
+8:50
+to play a footstep sound to do that we
+8:52
+embed any events into an animation in
+8:55
+mod dog there are many types some Mak
+8:57
+sounds Swit body body groups spawn
+9:00
+particles or in our case makes a
+9:03
+footstep so go ahead and right click
+Footstep Event
+9:05
+walk in select add anim event and from
+9:09
+this list search for footstep you have a
+9:11
+couple fields to feel now the first is
+Attachments
+9:13
+the attachment it uses attachments are
+9:15
+empty points in space used to keep a
+9:18
+position in this case we need one to let
+9:20
+it know where the foot is add a new no
+9:23
+search for attachment name this one foot
+9:26
+uncore R select the right foot for the
+9:28
+parent
+9:30
+copy and paste the attachment call it
+9:31
+foot _ L and change the parent to the
+9:34
+left foot now back to the foot anim
+9:36
+event select the right foot attachment
+9:39
+and of course set the foot as the right
+9:41
+copy and paste the event and change
+9:43
+everything to the left foot now to order
+9:45
+them here in the timeline you can slide
+9:47
+the anime events let's see where the
+9:50
+right foot lands I say frame 10 and the
+9:53
+left foot frame 26 select both of these
+9:57
+animation events and copy them over all
+9:59
+of the Walk animations we can now see
+Matching Mirrored Animations
+10:01
+how offset those mirrored animations are
+10:04
+seems the right foot steps at around
+10:06
+frame 26 oh where the left will land of
+10:09
+course because it's mirrored so I guess
+10:11
+it's behind by 16 frames add 16 to the
+10:14
+10 so 26 and great now the footsteps are
+10:18
+aligned and the animation starts at the
+10:20
+inoffensive neutral pose now do the same
+10:22
+for walk NW and walk s SW and now we're
+10:26
+back in the 2D blender if we try it out
+10:29
+we see that everything blends perfectly
+10:31
+and all is fine in the world except for
+10:34
+some reason left and right is still
+10:36
+inverted just remember to invert the
+10:38
+First Column pH we are already at read
+10:41
+time minutes into the video guess we got
+10:44
+to wrap it up quickly we also have
+10:46
+running animations so go set those up in
+Running Animations
+10:48
+model do you should know the process by
+10:50
+now but if you're lazy just follow the
+10:52
+Montage find a nice in offensive frame
+10:54
+for the start usually a little after
+10:56
+what the animators call the passing
+10:58
+pause frame five looks nice then I set
+11:01
+up the footstep events what you look at
+11:03
+that frame 10 and 26 they match with the
+11:06
+walk footsteps as they should always try
+11:08
+to match the Motions of your Blends then
+11:11
+I offset the mirrored animations by
+11:13
+adding 16 so plus five that's 21 back to
+11:16
+our 2D blend delete all of the
+11:18
+animations with the trash can now add
+11:20
+all of them back walk run idle and if we
+11:23
+press the auto blend hell yeah oh it's
+11:26
+supposed to be a perfect circle why was
+11:28
+south run given such a large value let's
+11:31
+see model doc ah it has a frame rate of
+Animation Framerate
+11:34
+60 FPS while the others are only 24 FPS
+11:38
+it's almost three times as fast that's
+11:40
+why it gave a bigger value after seeing
+11:43
+this the others seems low I think 60 FPS
+11:46
+is better so go ahead and change the
+11:48
+frame rate to 60 frames per second
+11:51
+compile back to the 2D blend hit the
+11:54
+auto blend again invert the First Column
+11:57
+because I like it better that way and
+11:58
+change the Access Control to use
+12:00
+parameters remember move Y and move X
+12:03
+good times now if you start a preview we
+12:06
+are finally able to control our
+12:07
+character through parameters all right I
+Change Float Values
+12:10
+forgot it only went up to 100 the world
+12:13
+seems so small back then our running
+12:15
+animations go to 266 and even in the
+12:18
+negatives now so change the mean value
+12:20
+in the parameter to - 266 and the max
+12:24
+value to 266 there we go Perfection this
+12:27
+saves so much time comp to setting it by
+Outro
+12:30
+hand although that's not all the
+12:32
+movement a player expects tune in next
+12:34
+episode where we will add crouching
+12:36
+wherein you learn the fabled third type
+12:38
+of Animation blending additive layers
+12:41
+and also the famous inverse kinematics
