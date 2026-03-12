@@ -52,14 +52,16 @@ From `PlayerVeggaAnimGraphDriver`:
 10. `aim_weight`
 11. `has_weapon`
 12. `support_hand_weight`
-13. `move_speed`
-14. `move_forward`
-15. `move_right`
-16. `grounded`
-17. `crouching`
-18. `sprinting`
-19. `aim_yaw`
-20. `aim_pitch`
+13. `dual_wield`
+14. `fire_side`
+15. `move_speed`
+16. `move_forward`
+17. `move_right`
+18. `grounded`
+19. `crouching`
+20. `sprinting`
+21. `aim_yaw`
+22. `aim_pitch`
 
 ## Recommended Graph Layout
 
@@ -83,6 +85,10 @@ From `PlayerVeggaAnimGraphDriver`:
 6. Additive action layers
    - `shoot`
    - `reload`
+
+7. Dual-wield branch (future)
+   - Gate a dedicated dual-pistol upper-body path with `dual_wield`.
+   - Use `fire_side` to choose left-gun or right-gun fire additives.
 
 ## Minimal First Win
 

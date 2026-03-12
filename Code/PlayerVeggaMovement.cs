@@ -162,7 +162,9 @@ public sealed class PlayerVeggaMovement : Component
 		if ( !IsProxy )
 		{
 			UpdateCrouch();
-			IsSprinting = Input.Down( "Run" ) && !IsCrouching;
+			var equipment = Components.Get<Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
+			var blocksSprint = equipment != null && equipment.IsValid() && equipment.IsAiming;
+			IsSprinting = Input.Down( "Run" ) && !IsCrouching && !blocksSprint;
 
 			if ( Input.Pressed( "Jump" ) )
 				Jump();
@@ -268,6 +270,12 @@ public sealed class PlayerVeggaMovement : Component
 			targetSpeed = RunSpeed;
 		else
 			targetSpeed = BaseSpeed;
+
+		var equipment = Components.Get<Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
+		if ( equipment != null && equipment.IsValid() )
+		{
+			targetSpeed *= equipment.GetMovementSpeedMultiplier();
+		}
 
 		// --- Diagonal nerf: light when crouching/walking, heavier when sprinting ---
 		if ( keysDown >= 2 && !moveDir.IsNearZeroLength )

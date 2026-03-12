@@ -257,9 +257,9 @@ public sealed class CameraVeggaMovement : Component
 			? Player.Components.Get<Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants )
 			: null;
 
-		// "1x" ADS: slight FOV tighten for feel (not a scope).
-		if ( !VeggaUiMouse.WantsUiMouse && equipment != null && equipment.IsValid() && equipment.CanAim() && Input.Down( "Attack2" ) )
-			targetFov = MathF.Max( 10f, BaseFov * 0.85f );
+		// ADS FOV is driven by the equipped weapon spec. Dual-wield disables ADS entirely.
+		if ( !VeggaUiMouse.WantsUiMouse && equipment != null && equipment.IsValid() && equipment.IsAiming )
+			targetFov = MathF.Max( 10f, BaseFov * equipment.GetAdsFovMultiplier() );
 
 		_currentFov = _currentFov + (targetFov - _currentFov) * (12f * Time.Delta).Clamp( 0f, 1f );
 		_camera.FieldOfView = _currentFov;

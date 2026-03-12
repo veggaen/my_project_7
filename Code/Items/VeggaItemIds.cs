@@ -45,6 +45,7 @@ public static class VeggaItemIds
 	// Weapons / tools
 	public const int Pistol9mm = 500;
 	public const int Rifle556 = 501;
+	public const int DualPistols9mm = 502;
 	public const int Knife = 520;
 	public const int BuildHammer = 540;
 

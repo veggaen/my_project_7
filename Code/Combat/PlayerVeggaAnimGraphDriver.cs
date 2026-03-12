@@ -56,6 +56,8 @@ public sealed class PlayerVeggaAnimGraphDriver : Component
 			: (int)VeggaHoldType.None;
 		var hasWeapon = holdType == (int)VeggaHoldType.Pistol || holdType == (int)VeggaHoldType.Rifle;
 		var isAiming = _equipment != null && _equipment.IsValid() && _equipment.IsAiming;
+		var isDualWield = _equipment != null && _equipment.IsValid() && _equipment.IsDualWielding;
+		var fireSide = _equipment != null && _equipment.IsValid() ? _equipment.LastFireSide : leadSide;
 		var velocity = _movement != null && _movement.IsValid()
 			? _movement.SyncedVelocity
 			: (_characterController != null && _characterController.IsValid() ? _characterController.Velocity : Vector3.Zero);
@@ -81,7 +83,7 @@ public sealed class PlayerVeggaAnimGraphDriver : Component
 		// The future custom graph should read these values to select right/left lead,
 		// hipfire/ADS, and shoulder-swap handoff states without any camera-space IK hacks.
 		var aimWeight = isAiming ? 1f : 0f;
-		var supportHandWeight = (isAiming && hasWeapon && !isShoulderSwapping) ? 1f : 0f;
+		var supportHandWeight = (!isDualWield && isAiming && hasWeapon && !isShoulderSwapping) ? 1f : 0f;
 
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HoldType, holdType );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HoldTypeHandedness, leadSide );
@@ -93,6 +95,8 @@ public sealed class PlayerVeggaAnimGraphDriver : Component
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.AimWeight, aimWeight );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HasWeapon, hasWeapon );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.SupportHandWeight, supportHandWeight );
+		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.IsDualWield, isDualWield );
+		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.FireSide, fireSide );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.MoveSpeed, moveSpeed );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.MoveForward, moveForward );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.MoveRight, moveRight );

@@ -8,17 +8,43 @@
 <root>
 	@if ( _visible )
 	{
-		<div class="ammo-root">
+		<div class="ammo-root @(_dual ? "dual" : "single")">
 			<div class="ammo-top">
-				<span class="ammo-label">AMMO</span>
-				<span class="ammo-reserve">@_reserve</span>
+				<span class="ammo-label">@(_dual ? "DUAL 9MM" : "AMMO")</span>
+				<span class="ammo-reserve">RES @_reserve</span>
 			</div>
-			<div class="ammo-row">
-				<div class="ammo-bar">
-					<div @ref="_fillRef" class="ammo-fill"></div>
+			@if ( _dual )
+			{
+				<div class="ammo-dual-grid">
+					<div class="ammo-column left">
+						<div class="ammo-column-top">
+							<span class="ammo-side">L</span>
+							<span class="ammo-mag">@_leftMag / @_cap</span>
+						</div>
+						<div class="ammo-bar">
+							<div @ref="_leftFillRef" class="ammo-fill"></div>
+						</div>
+					</div>
+					<div class="ammo-column right">
+						<div class="ammo-column-top">
+							<span class="ammo-side">R</span>
+							<span class="ammo-mag">@_rightMag / @_cap</span>
+						</div>
+						<div class="ammo-bar">
+							<div @ref="_rightFillRef" class="ammo-fill"></div>
+						</div>
+					</div>
 				</div>
-				<div class="ammo-mag">@_mag / @_cap</div>
-			</div>
+			}
+			else
+			{
+				<div class="ammo-row">
+					<div class="ammo-bar">
+						<div @ref="_fillRef" class="ammo-fill"></div>
+					</div>
+					<div class="ammo-mag">@_mag / @_cap</div>
+				</div>
+			}
 		</div>
 	}
 </root>
@@ -28,13 +54,20 @@
 	global::Sandbox.VeggaInventory _inventory;
 	global::Sandbox.VeggaEquipmentController _equipment;
 	Panel _fillRef;
+	Panel _leftFillRef;
+	Panel _rightFillRef;
 	bool _registered;
 
 	bool _visible;
+	bool _dual;
 	int _mag;
 	int _cap;
 	int _reserve;
+	int _leftMag;
+	int _rightMag;
 	float _magPct;
+	float _leftPct;
+	float _rightPct;
 
 	private static global::Sandbox.VeggaEquipmentController FindLocalEquipmentController()
 	{
@@ -100,10 +133,15 @@
 			_equipment = FindLocalEquipmentController();
 
 		_visible = false;
+		_dual = false;
 		_mag = 0;
 		_cap = 0;
 		_reserve = 0;
+		_leftMag = 0;
+		_rightMag = 0;
 		_magPct = 0f;
+		_leftPct = 0f;
+		_rightPct = 0f;
 
 		if ( _inventory == null || !_inventory.IsValid() || _equipment == null || !_equipment.IsValid() )
 			return;
@@ -112,22 +150,30 @@
 		if ( slot < 0 || slot > 8 )
 			return;
 
-		var itemId = _inventory.GetSlotItemId( slot );
-		if ( !VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out var spec ) )
+		if ( !_equipment.TryGetAmmoDisplay( out var dualWield, out var leftMag, out var rightMag, out var cap, out var reserve ) )
 			return;
 
 		_visible = true;
-		_cap = Math.Max( 0, spec.MagazineSize );
-		_mag = _inventory.GetSlotDurability( slot ).Clamp( 0, _cap );
-		_reserve = Math.Max( 0, _inventory.GetItemCount( spec.AmmoItemId ) );
+		_dual = dualWield;
+		_cap = Math.Max( 0, cap );
+		_leftMag = Math.Max( 0, leftMag );
+		_rightMag = Math.Max( 0, rightMag );
+		_reserve = Math.Max( 0, reserve );
+		_mag = _rightMag;
 		_magPct = _cap > 0 ? (_mag / (float)_cap) * 100f : 0f;
 		_magPct = _magPct.Clamp( 0f, 100f );
+		_leftPct = _cap > 0 ? (_leftMag / (float)_cap) * 100f : 0f;
+		_rightPct = _cap > 0 ? (_rightMag / (float)_cap) * 100f : 0f;
+		_leftPct = _leftPct.Clamp( 0f, 100f );
+		_rightPct = _rightPct.Clamp( 0f, 100f );
 
 		_fillRef?.Style.Set( "width", $"{_magPct}%" );
+		_leftFillRef?.Style.Set( "width", $"{_leftPct}%" );
+		_rightFillRef?.Style.Set( "width", $"{_rightPct}%" );
 	}
 
 	protected override int BuildHash()
 	{
-		return HashCode.Combine( _visible, _mag, _cap, _reserve, _inventory?.Revision ?? 0, _equipment?.ActiveHotbarSlot ?? -1 );
+		return HashCode.Combine( _visible, _dual, _mag, _leftMag, _rightMag, _cap, _reserve, _inventory?.Revision ?? 0, _equipment?.ActiveHotbarSlot ?? -1 );
 	}
 }

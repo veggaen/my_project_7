@@ -9,9 +9,13 @@ public sealed class VeggaEquipmentController : Component
 	[Sync] public int ActiveHotbarSlot { get; private set; }
 	[Sync] public VeggaHoldType HoldType { get; private set; } = VeggaHoldType.None;
 	[Sync] public bool IsAiming { get; private set; }
+	[Sync] public bool IsDualWielding { get; private set; }
 	[Sync] public int ShotSequence { get; private set; }
 	[Sync] public int ReloadSequence { get; private set; }
 	[Sync] public bool IsReloading { get; private set; }
+	[Sync] public int LastFireSide { get; private set; } = 1;
+	[Sync] public int LeftHandMagazineAmmo { get; private set; }
+	[Sync] public int RightHandMagazineAmmo { get; private set; }
 
 	[Property, Group( "Weapons" )] public bool AutoReloadWhenEmpty { get; set; } = true;
 
@@ -30,6 +34,9 @@ public sealed class VeggaEquipmentController : Component
 	// Host-side rate limiting
 	private TimeSince _sinceHostShot;
 	private TimeSince _sinceHostMelee;
+	private TimeSince _sinceLeftHandShot;
+	private TimeSince _sinceRightHandShot;
+	private int _runtimeWeaponItemId = int.MinValue;
 
 	protected override void OnStart()
 	{
@@ -37,6 +44,8 @@ public sealed class VeggaEquipmentController : Component
 		_movement = Components.Get<PlayerVeggaMovement>();
 		_sinceHostShot = 999f;
 		_sinceHostMelee = 999f;
+		_sinceLeftHandShot = 999f;
+		_sinceRightHandShot = 999f;
 		_worldModelItemId = int.MinValue;
 	}
 
@@ -72,14 +81,24 @@ public sealed class VeggaEquipmentController : Component
 		if ( VeggaUiMouse.WantsUiMouse )
 		{
 			IsAiming = false;
+			IsDualWielding = false;
 			UpdateDerivedState();
 			return;
 		}
 
 		var equippedItemId = _inventory.GetSlotItemId( ActiveHotbarSlot );
 		var isWeapon = VeggaEquipmentCatalog.TryGetWeaponSpec( equippedItemId, out var weaponSpec );
+		if ( isWeapon )
+		{
+			SyncWeaponRuntimeState( equippedItemId, weaponSpec );
+		}
+		else
+		{
+			IsDualWielding = false;
+			IsAiming = false;
+		}
 
-		IsAiming = isWeapon && Input.Down( "Attack2" );
+		IsAiming = isWeapon && weaponSpec.SupportsAds && Input.Down( "Attack2" );
 
 		// Complete reload after timer expires.
 		if ( IsReloading && _reloadStarted >= _pendingReloadSpec.ReloadTime )
@@ -92,20 +111,31 @@ public sealed class VeggaEquipmentController : Component
 			TryReloadLocal( weaponSpec );
 		}
 
-		if ( Input.Pressed( "Attack1" ) && !IsReloading )
+		if ( !IsReloading )
 		{
-			if ( isWeapon )
+			if ( isWeapon && weaponSpec.IsDualWield )
 			{
-				TryFireLocal( weaponSpec );
+				if ( Input.Pressed( "Attack1" ) )
+					TryFireLocal( weaponSpec, GetLeadFireSide() );
+
+				if ( Input.Pressed( "Attack2" ) )
+					TryFireLocal( weaponSpec, -GetLeadFireSide() );
 			}
-			else if ( VeggaEquipmentCatalog.TryGetMeleeDamage( equippedItemId, out var dmg, out var range ) )
+			else if ( Input.Pressed( "Attack1" ) )
 			{
-				RpcRequestMelee( GetRequesterId(), dmg, range );
-			}
-			else if ( VeggaEquipmentCatalog.IsTool( equippedItemId ) )
-			{
-				// Stub for tool items. (Build tools will live here.)
-				Log.Info( "[Tool] Build hammer used (stub)." );
+				if ( isWeapon )
+				{
+					TryFireLocal( weaponSpec, GetLeadFireSide() );
+				}
+				else if ( VeggaEquipmentCatalog.TryGetMeleeDamage( equippedItemId, out var dmg, out var range ) )
+				{
+					RpcRequestMelee( GetRequesterId(), dmg, range );
+				}
+				else if ( VeggaEquipmentCatalog.IsTool( equippedItemId ) )
+				{
+					// Stub for tool items. (Build tools will live here.)
+					Log.Info( "[Tool] Build hammer used (stub)." );
+				}
 			}
 		}
 
@@ -382,10 +412,63 @@ public sealed class VeggaEquipmentController : Component
 
 	public bool CanAim()
 	{
+		if ( !TryGetActiveWeaponSpec( out var spec ) )
+			return false;
+		return spec.SupportsAds;
+	}
+
+	public float GetMovementSpeedMultiplier()
+	{
+		if ( !TryGetActiveWeaponSpec( out var spec ) )
+			return 1f;
+
+		return IsAiming ? spec.AimMoveSpeedMultiplier : 1f;
+	}
+
+	public float GetAdsFovMultiplier()
+	{
+		if ( !TryGetActiveWeaponSpec( out var spec ) )
+			return 1f;
+
+		return spec.SupportsAds ? spec.AdsFovMultiplier : 1f;
+	}
+
+	public bool TryGetActiveWeaponSpec( out VeggaWeaponSpec spec )
+	{
+		spec = default;
 		if ( _inventory == null || !_inventory.IsValid() )
 			return false;
+
 		var itemId = _inventory.GetSlotItemId( ActiveHotbarSlot );
-		return VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out _ );
+		return VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out spec );
+	}
+
+	public bool TryGetAmmoDisplay( out bool dualWield, out int leftMag, out int rightMag, out int magCap, out int reserve )
+	{
+		dualWield = false;
+		leftMag = 0;
+		rightMag = 0;
+		magCap = 0;
+		reserve = 0;
+
+		if ( !TryGetActiveWeaponSpec( out var spec ) )
+			return false;
+
+		magCap = Math.Max( 0, spec.MagazineSize );
+		reserve = Math.Max( 0, _inventory.GetItemCount( spec.AmmoItemId ) );
+		dualWield = spec.IsDualWield;
+
+		if ( dualWield )
+		{
+			leftMag = LeftHandMagazineAmmo.Clamp( 0, magCap );
+			rightMag = RightHandMagazineAmmo.Clamp( 0, magCap );
+		}
+		else
+		{
+			rightMag = _inventory.GetSlotDurability( ActiveHotbarSlot ).Clamp( 0, magCap );
+		}
+
+		return true;
 	}
 
 	public int GetEquippedItemId()
@@ -450,6 +533,7 @@ public sealed class VeggaEquipmentController : Component
 		if ( _inventory == null || !_inventory.IsValid() )
 		{
 			HoldType = VeggaHoldType.None;
+			IsDualWielding = false;
 			return;
 		}
 
@@ -457,35 +541,67 @@ public sealed class VeggaEquipmentController : Component
 		HoldType = VeggaEquipmentCatalog.GetHoldType( equippedItemId );
 	}
 
-	private void TryFireLocal( VeggaWeaponSpec spec )
+	private void TryFireLocal( VeggaWeaponSpec spec, int fireSide )
 	{
 		// Fire-rate gate client-side (feel). Host enforces its own too.
 		var minDelay = 1f / MathF.Max( 0.001f, spec.FireRateRps );
-		if ( _sinceHostShot < minDelay )
-			return;
 
-		// Consume ammo locally (owner-authoritative inventory). Host will validate before spawning.
-		var magBefore = _inventory.GetSlotDurability( ActiveHotbarSlot );
-		if ( magBefore <= 0 )
-			return;
+		if ( fireSide < 0 )
+		{
+			if ( _sinceLeftHandShot < minDelay )
+				return;
+		}
+		else
+		{
+			if ( _sinceRightHandShot < minDelay )
+				return;
+		}
 
-		_inventory.SetSlotDurability( ActiveHotbarSlot, magBefore - 1 );
+		int magBefore;
+		if ( spec.IsDualWield )
+		{
+			magBefore = fireSide < 0 ? LeftHandMagazineAmmo : RightHandMagazineAmmo;
+			if ( magBefore <= 0 )
+				return;
+
+			if ( fireSide < 0 )
+				LeftHandMagazineAmmo = magBefore - 1;
+			else
+				RightHandMagazineAmmo = magBefore - 1;
+		}
+		else
+		{
+			magBefore = _inventory.GetSlotDurability( ActiveHotbarSlot );
+			if ( magBefore <= 0 )
+				return;
+
+			_inventory.SetSlotDurability( ActiveHotbarSlot, magBefore - 1 );
+		}
+
+		LastFireSide = fireSide;
 		ShotSequence++;
 
 		// Client-side feedback: sound + recoil.
-		ApplyRecoil( spec );
+		ApplyRecoil( spec, fireSide );
 		PlayShootSound( spec );
 
-		RpcRequestFire( GetRequesterId(), ActiveHotbarSlot, spec.ItemId, magBefore );
-		_sinceHostShot = 0;
+		RpcRequestFire( GetRequesterId(), ActiveHotbarSlot, spec.ItemId, magBefore, fireSide );
+		if ( fireSide < 0 )
+			_sinceLeftHandShot = 0;
+		else
+			_sinceRightHandShot = 0;
 	}
 
-	private void ApplyRecoil( VeggaWeaponSpec spec )
+	private void ApplyRecoil( VeggaWeaponSpec spec, int fireSide )
 	{
 		if ( _movement == null ) return;
 		// Kick the camera up and slightly sideways for recoil feel.
 		var pitchKick = -spec.RecoilPitch;  // negative = aim up
 		var yawKick = (Game.Random.Float() - 0.5f) * 2f * spec.RecoilYaw;
+		if ( spec.IsDualWield )
+		{
+			yawKick += fireSide < 0 ? -0.15f : 0.15f;
+		}
 		_movement.TargetHeadAngle += new Angles( pitchKick, yawKick, 0f );
 	}
 
@@ -512,10 +628,9 @@ public sealed class VeggaEquipmentController : Component
 	private void TryReloadLocal( VeggaWeaponSpec spec )
 	{
 		var max = spec.MagazineSize;
-		var mag = _inventory.GetSlotDurability( ActiveHotbarSlot );
-		mag = mag.Clamp( 0, max );
-
-		var need = max - mag;
+		var need = spec.IsDualWield
+			? (max - LeftHandMagazineAmmo.Clamp( 0, max )) + (max - RightHandMagazineAmmo.Clamp( 0, max ))
+			: max - _inventory.GetSlotDurability( ActiveHotbarSlot ).Clamp( 0, max );
 		if ( need <= 0 )
 			return;
 
@@ -535,8 +650,9 @@ public sealed class VeggaEquipmentController : Component
 		IsReloading = false;
 		var spec = _pendingReloadSpec;
 		var max = spec.MagazineSize;
-		var mag = _inventory.GetSlotDurability( ActiveHotbarSlot ).Clamp( 0, max );
-		var need = max - mag;
+		var need = spec.IsDualWield
+			? (max - LeftHandMagazineAmmo.Clamp( 0, max )) + (max - RightHandMagazineAmmo.Clamp( 0, max ))
+			: max - _inventory.GetSlotDurability( ActiveHotbarSlot ).Clamp( 0, max );
 		if ( need <= 0 ) return;
 
 		var have = _inventory.GetItemCount( spec.AmmoItemId );
@@ -546,11 +662,31 @@ public sealed class VeggaEquipmentController : Component
 		if ( !_inventory.RemoveItem( spec.AmmoItemId, take ) )
 			return;
 
-		_inventory.SetSlotDurability( ActiveHotbarSlot, mag + take );
+		if ( spec.IsDualWield )
+		{
+			var left = LeftHandMagazineAmmo.Clamp( 0, max );
+			var right = RightHandMagazineAmmo.Clamp( 0, max );
+			var leftNeed = max - left;
+			var leftTake = Math.Min( leftNeed, take );
+			left += leftTake;
+			take -= leftTake;
+
+			var rightNeed = max - right;
+			var rightTake = Math.Min( rightNeed, take );
+			right += rightTake;
+
+			LeftHandMagazineAmmo = left;
+			RightHandMagazineAmmo = right;
+		}
+		else
+		{
+			var mag = _inventory.GetSlotDurability( ActiveHotbarSlot ).Clamp( 0, max );
+			_inventory.SetSlotDurability( ActiveHotbarSlot, mag + take );
+		}
 	}
 
 	[Rpc.Broadcast]
-	private void RpcRequestFire( Guid requesterId, int slotIndex, int expectedItemId, int clientMagBefore )
+	private void RpcRequestFire( Guid requesterId, int slotIndex, int expectedItemId, int clientMagBefore, int fireSide )
 	{
 		if ( !Networking.IsHost )
 			return;
@@ -577,17 +713,67 @@ public sealed class VeggaEquipmentController : Component
 			return;
 
 		var minDelay = 1f / MathF.Max( 0.001f, spec.FireRateRps );
-		if ( _sinceHostShot < minDelay )
-			return;
-		_sinceHostShot = 0;
+		if ( fireSide < 0 )
+		{
+			if ( _sinceLeftHandShot < minDelay )
+				return;
+			_sinceLeftHandShot = 0;
+		}
+		else
+		{
+			if ( _sinceRightHandShot < minDelay )
+				return;
+			_sinceRightHandShot = 0;
+		}
 
 		// Host-side ammo check (best-effort; owner may have already consumed).
-		var mag = _inventory.GetSlotDurability( slotIndex );
+		var mag = spec.IsDualWield
+			? (fireSide < 0 ? LeftHandMagazineAmmo : RightHandMagazineAmmo)
+			: _inventory.GetSlotDurability( slotIndex );
 		if ( mag <= 0 && clientMagBefore <= 0 )
 			return;
 
 		var (origin, dir) = GetShootOriginAndDirection();
 		SpawnProjectile( requesterId, origin, dir, spec );
+	}
+
+	private void SyncWeaponRuntimeState( int equippedItemId, VeggaWeaponSpec spec )
+	{
+		IsDualWielding = spec.IsDualWield;
+
+		if ( !spec.IsDualWield )
+		{
+			_runtimeWeaponItemId = equippedItemId;
+			return;
+		}
+
+		if ( _runtimeWeaponItemId != equippedItemId )
+		{
+			if ( LeftHandMagazineAmmo <= 0 && RightHandMagazineAmmo <= 0 )
+			{
+				LeftHandMagazineAmmo = spec.MagazineSize;
+				RightHandMagazineAmmo = spec.MagazineSize;
+			}
+			else
+			{
+				LeftHandMagazineAmmo = LeftHandMagazineAmmo.Clamp( 0, spec.MagazineSize );
+				RightHandMagazineAmmo = RightHandMagazineAmmo.Clamp( 0, spec.MagazineSize );
+			}
+		}
+
+		_runtimeWeaponItemId = equippedItemId;
+	}
+
+	private int GetLeadFireSide()
+	{
+		if ( Scene != null )
+		{
+			var cam = Scene.Components.GetAll<CameraVeggaMovement>().FirstOrDefault();
+			if ( cam != null && cam.IsValid() && !cam.InFirstPerson )
+				return cam.TargetShoulderSide;
+		}
+
+		return LastFireSide == 0 ? 1 : LastFireSide;
 	}
 
 	[Rpc.Broadcast]

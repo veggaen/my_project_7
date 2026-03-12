@@ -290,6 +290,20 @@ public static class VeggaItemRegistry
 
 		Register( new VeggaItemDef
 		{
+			Id = VeggaItemIds.DualPistols9mm,
+			Name = "Dual P250s",
+			Description = "A paired 9mm pistol setup. Mouse1 fires the camera-side pistol, Mouse2 fires the opposite pistol. No ADS.",
+			ModelPath = "models/weapons/sbox_pistol_usp/w_usp.vmdl",
+			PrefabPath = "pistol_9mm.prefab",
+			Value = 0,
+			MaxStack = 1,
+			MaxGrams = 24,
+			Category = ItemCategory.Equipment,
+			Rarity = ItemRarity.Rare
+		} );
+
+		Register( new VeggaItemDef
+		{
 			Id = VeggaItemIds.Knife,
 			Name = "Knife",
 			Description = "A close-range melee weapon.",

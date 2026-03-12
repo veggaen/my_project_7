@@ -26,6 +26,8 @@ public static class VeggaAnimGraphParams
 	public const string IsShoulderSwapping = "shoulder_swapping";
 	public const string HasWeapon = "has_weapon";
 	public const string SupportHandWeight = "support_hand_weight";
+	public const string IsDualWield = "dual_wield";
+	public const string FireSide = "fire_side";
 
 	// Optional tags you can use inside the animgraph to disable lookats/IK during reload.
 	public const string TagDisableLookAt = "disable_lookat";

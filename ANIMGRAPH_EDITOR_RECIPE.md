@@ -31,14 +31,16 @@ Code is already feeding these parameters into the body renderer:
 10. `aim_weight`
 11. `has_weapon`
 12. `support_hand_weight`
-13. `move_speed`
-14. `move_forward`
-15. `move_right`
-16. `grounded`
-17. `crouching`
-18. `sprinting`
-19. `aim_yaw`
-20. `aim_pitch`
+13. `dual_wield`
+14. `fire_side`
+15. `move_speed`
+16. `move_forward`
+17. `move_right`
+18. `grounded`
+19. `crouching`
+20. `sprinting`
+21. `aim_yaw`
+22. `aim_pitch`
 
 You do not need more movement code before making the first working graph.
 
@@ -88,6 +90,8 @@ Create these parameters in the graph with matching names and types:
 18. Int or Enum-compatible selector: `holdtype`
 19. Int or Enum-compatible selector: `holdtype_handedness`
 20. Int or Enum-compatible selector: `lead_side`
+21. Bool: `dual_wield`
+22. Int or Enum-compatible selector: `fire_side`
 
 For `shoot`, enable auto reset if your graph setup uses a one-frame trigger path.
 For `reload`, only use auto reset if your reload state machine is also built around a trigger pulse.
@@ -109,6 +113,16 @@ Do not start with IK. Build correct authored poses first.
 
 The temporary gameplay fallback still presents the third-person weapon on the stock right-hand hold.
 That is deliberate. The left-hand lead presentation should only return after the authored left-lead graph path exists.
+
+## Dual Wield Follow-Up
+
+Once the single-pistol left/right lead path is stable, add a dual-wield upper-body branch.
+
+Use:
+
+1. `dual_wield` to select dual-pistol content instead of the single-pistol ADS path.
+2. `fire_side` to choose left-shot vs right-shot additives.
+3. Shared locomotion and aim-offset logic where possible, but no ADS state for dual pistols in the first pass.
 
 ## Step 1: Locomotion Group
 

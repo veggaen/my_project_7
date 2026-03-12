@@ -20,7 +20,11 @@ public readonly record struct VeggaWeaponSpec(
 	string ShootSound = "sounds/weapon_shoot.sound",
 	string MuzzleFlashParticle = "",
 	float BulletGravity = 300f,
-	float BulletDrag = 0.002f
+	float BulletDrag = 0.002f,
+	bool SupportsAds = true,
+	float AimMoveSpeedMultiplier = 0.82f,
+	float AdsFovMultiplier = 0.85f,
+	bool IsDualWield = false
 );
 
 public static class VeggaEquipmentCatalog
@@ -29,6 +33,7 @@ public static class VeggaEquipmentCatalog
 		=> itemId switch
 		{
 			VeggaItemIds.Pistol9mm => VeggaHoldType.Pistol,
+			VeggaItemIds.DualPistols9mm => VeggaHoldType.Pistol,
 			VeggaItemIds.Rifle556 => VeggaHoldType.Rifle,
 			VeggaItemIds.Knife => VeggaHoldType.Melee,
 			VeggaItemIds.BuildHammer => VeggaHoldType.Tool,
@@ -36,7 +41,7 @@ public static class VeggaEquipmentCatalog
 		};
 
 	public static bool IsWeapon( int itemId )
-		=> itemId == VeggaItemIds.Pistol9mm || itemId == VeggaItemIds.Rifle556;
+		=> itemId == VeggaItemIds.Pistol9mm || itemId == VeggaItemIds.DualPistols9mm || itemId == VeggaItemIds.Rifle556;
 
 	public static bool IsMelee( int itemId )
 		=> itemId == VeggaItemIds.Knife;
@@ -60,7 +65,27 @@ public static class VeggaEquipmentCatalog
 					ProjectileSpeed: 4200f,
 					FireRateRps: 6f,
 					WorldModelPath: "models/weapons/sbox_pistol_usp/w_usp.vmdl",
-					ViewModelPath: "models/weapons/sbox_pistol_usp/v_usp.vmdl"
+					ViewModelPath: "models/weapons/sbox_pistol_usp/v_usp.vmdl",
+					AimMoveSpeedMultiplier: 0.82f,
+					AdsFovMultiplier: 0.85f
+				);
+				return true;
+
+			case VeggaItemIds.DualPistols9mm:
+				spec = new VeggaWeaponSpec(
+					ItemId: itemId,
+					HoldType: VeggaHoldType.Pistol,
+					AmmoItemId: VeggaItemIds.Ammo9mm,
+					MagazineSize: 12,
+					Damage: 10f,
+					ProjectileSpeed: 4000f,
+					FireRateRps: 6f,
+					WorldModelPath: "models/weapons/sbox_pistol_usp/w_usp.vmdl",
+					ViewModelPath: "models/weapons/sbox_pistol_usp/v_usp.vmdl",
+					SupportsAds: false,
+					AimMoveSpeedMultiplier: 1f,
+					AdsFovMultiplier: 1f,
+					IsDualWield: true
 				);
 				return true;
 
@@ -75,7 +100,9 @@ public static class VeggaEquipmentCatalog
 					ProjectileSpeed: 6800f,
 					FireRateRps: 10f,
 						WorldModelPath: "models/weapons/sbox_smg_mp5/w_mp5.vmdl",
-						ViewModelPath: "models/weapons/sbox_smg_mp5/v_mp5.vmdl"
+						ViewModelPath: "models/weapons/sbox_smg_mp5/v_mp5.vmdl",
+						AimMoveSpeedMultiplier: 0.72f,
+						AdsFovMultiplier: 0.82f
 				);
 				return true;
 		}
