@@ -103,13 +103,16 @@ These parameters already exist or are now written by runtime code:
 1. `holdtype`
    - weapon family selector
 2. `holdtype_handedness`
-   - `1` = right lead
-   - `-1` = left lead
+   - stock Citizen handedness selector
+   - `0` = both
+   - `1` = right
+   - `2` = left
 3. `aim`
    - bool ADS state
 4. `aim_weight`
    - `0..1` hipfire to ADS blend
 5. `lead_side`
+   - custom animgraph selector
    - `1` = right lead
    - `-1` = left lead
 6. `shoulder_swap_progress`

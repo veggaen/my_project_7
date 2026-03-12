@@ -70,7 +70,8 @@ From `PlayerVeggaAnimGraphDriver`:
 
 2. Pistol stance selector
    - Branch to right-lead or left-lead pistol base based on `lead_side`.
-   - `holdtype_handedness` can mirror the same value if the graph prefers holdtype-local handedness.
+   - Keep `holdtype_handedness` separate from `lead_side`.
+   - Stock fallback uses right-handed Citizen behavior; custom authored left/right stance selection should read `lead_side`.
 
 3. Shoulder handoff blend
    - Blend right-lead and left-lead using `shoulder_swap_progress` when `shoulder_swapping` is true.

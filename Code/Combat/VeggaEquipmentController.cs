@@ -943,6 +943,13 @@ public sealed class VeggaEquipmentController : Component
 
 	private int GetLeadFireSide()
 	{
+		if ( TryGetActiveWeaponSpec( out var spec ) && !spec.IsDualWield )
+		{
+			// Until the authored left-lead graph exists, single-weapon firing stays on the
+			// stock right-hand path even if the camera moves to the opposite shoulder.
+			return 1;
+		}
+
 		if ( Scene != null )
 		{
 			var cam = Scene.Components.GetAll<CameraVeggaMovement>().FirstOrDefault();

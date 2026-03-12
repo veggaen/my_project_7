@@ -46,6 +46,7 @@ public sealed class PlayerVeggaAnimGraphDriver : Component
 		var cam = Scene?.Components?.GetAll<CameraVeggaMovement>()?.FirstOrDefault();
 		var inThirdPerson = cam != null && cam.IsValid() && !cam.InFirstPerson;
 		var leadSide = inThirdPerson ? cam.TargetShoulderSide : 1;
+		const int stockRightHandedness = 1;
 		var shoulderSwapProgress = inThirdPerson
 			? (((-cam.ShoulderBlend) + 1f) * 0.5f).Clamp( 0f, 1f )
 			: 0f;
@@ -86,7 +87,9 @@ public sealed class PlayerVeggaAnimGraphDriver : Component
 		var supportHandWeight = (!isDualWield && isAiming && hasWeapon && !isShoulderSwapping) ? 1f : 0f;
 
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HoldType, holdType );
-		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HoldTypeHandedness, leadSide );
+		// Keep the stock Citizen fallback on its stable right-hand path.
+		// lead_side remains available for the future authored left/right animgraph.
+		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HoldTypeHandedness, stockRightHandedness );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.IsAiming, isAiming );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.LeadSide, leadSide );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.ShoulderSwapProgress, shoulderSwapProgress );

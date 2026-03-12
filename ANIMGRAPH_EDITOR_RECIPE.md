@@ -64,7 +64,7 @@ If you want a fast first win, the first four are mandatory and the rest can be t
 2. Assign it to the body `SkinnedModelRenderer` in `Assets/player_vegga.prefab`.
 3. Keep `CitizenAnimationHelper` on the prefab for fallback values, but let the custom graph drive the body once assigned.
 
-After assignment, `PlayerVeggaMovement` will stop applying the old pistol IK pose logic automatically.
+The current runtime keeps the stock Citizen fallback stable while also writing the extra custom params this graph will consume.
 
 ## Parameter Setup In The Graph
 
@@ -92,6 +92,9 @@ Create these parameters in the graph with matching names and types:
 20. Int or Enum-compatible selector: `lead_side`
 21. Bool: `dual_wield`
 22. Int or Enum-compatible selector: `fire_side`
+
+Use `holdtype_handedness` only if you deliberately want to integrate with stock Citizen handedness behavior.
+Use `lead_side` as the custom left/right authored stance selector.
 
 For `shoot`, enable auto reset if your graph setup uses a one-frame trigger path.
 For `reload`, only use auto reset if your reload state machine is also built around a trigger pulse.
