@@ -41,24 +41,25 @@ Between right-lead and left-lead:
 From `PlayerVeggaAnimGraphDriver`:
 
 1. `holdtype`
-2. `aim`
-3. `shoot`
-4. `reload`
-5. `lead_side`
-6. `shoulder_swap_progress`
-7. `shoulder_swapping`
-8. `third_person`
-9. `aim_weight`
-10. `has_weapon`
-11. `support_hand_weight`
-12. `move_speed`
-13. `move_forward`
-14. `move_right`
-15. `grounded`
-16. `crouching`
-17. `sprinting`
-18. `aim_yaw`
-19. `aim_pitch`
+2. `holdtype_handedness`
+3. `aim`
+4. `shoot`
+5. `reload`
+6. `lead_side`
+7. `shoulder_swap_progress`
+8. `shoulder_swapping`
+9. `third_person`
+10. `aim_weight`
+11. `has_weapon`
+12. `support_hand_weight`
+13. `move_speed`
+14. `move_forward`
+15. `move_right`
+16. `grounded`
+17. `crouching`
+18. `sprinting`
+19. `aim_yaw`
+20. `aim_pitch`
 
 ## Recommended Graph Layout
 
@@ -67,6 +68,7 @@ From `PlayerVeggaAnimGraphDriver`:
 
 2. Pistol stance selector
    - Branch to right-lead or left-lead pistol base based on `lead_side`.
+   - `holdtype_handedness` can mirror the same value if the graph prefers holdtype-local handedness.
 
 3. Shoulder handoff blend
    - Blend right-lead and left-lead using `shoulder_swap_progress` when `shoulder_swapping` is true.
@@ -98,3 +100,8 @@ Then wire:
 3. `shoulder_swap_progress` to blend between right and left lead during the swap.
 
 That alone should fix the exact failure you keep showing in screenshots: the weapon side changes, but the body pose does nothing.
+
+## Temporary Runtime Constraint
+
+Until the custom graph exists, the current code intentionally keeps the weapon on the stock right-hand hold.
+Do not reintroduce runtime left-hand pose hacks here. Build the custom graph first, then reconnect left-lead presentation.

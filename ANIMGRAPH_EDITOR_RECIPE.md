@@ -20,24 +20,25 @@ And one controlled shoulder handoff between them.
 Code is already feeding these parameters into the body renderer:
 
 1. `holdtype`
-2. `aim`
-3. `shoot`
-4. `reload`
-5. `lead_side`
-6. `shoulder_swap_progress`
-7. `shoulder_swapping`
-8. `third_person`
-9. `aim_weight`
-10. `has_weapon`
-11. `support_hand_weight`
-12. `move_speed`
-13. `move_forward`
-14. `move_right`
-15. `grounded`
-16. `crouching`
-17. `sprinting`
-18. `aim_yaw`
-19. `aim_pitch`
+2. `holdtype_handedness`
+3. `aim`
+4. `shoot`
+5. `reload`
+6. `lead_side`
+7. `shoulder_swap_progress`
+8. `shoulder_swapping`
+9. `third_person`
+10. `aim_weight`
+11. `has_weapon`
+12. `support_hand_weight`
+13. `move_speed`
+14. `move_forward`
+15. `move_right`
+16. `grounded`
+17. `crouching`
+18. `sprinting`
+19. `aim_yaw`
+20. `aim_pitch`
 
 You do not need more movement code before making the first working graph.
 
@@ -85,7 +86,8 @@ Create these parameters in the graph with matching names and types:
 16. Float: `aim_yaw`
 17. Float: `aim_pitch`
 18. Int or Enum-compatible selector: `holdtype`
-19. Int or Enum-compatible selector: `lead_side`
+19. Int or Enum-compatible selector: `holdtype_handedness`
+20. Int or Enum-compatible selector: `lead_side`
 
 For `shoot`, enable auto reset if your graph setup uses a one-frame trigger path.
 For `reload`, only use auto reset if your reload state machine is also built around a trigger pulse.
@@ -102,6 +104,11 @@ Build the graph in this order from left to right:
 6. Final output
 
 Do not start with IK. Build correct authored poses first.
+
+## Important Current Constraint
+
+The temporary gameplay fallback still presents the third-person weapon on the stock right-hand hold.
+That is deliberate. The left-hand lead presentation should only return after the authored left-lead graph path exists.
 
 ## Step 1: Locomotion Group
 

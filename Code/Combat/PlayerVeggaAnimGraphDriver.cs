@@ -77,15 +77,22 @@ public sealed class PlayerVeggaAnimGraphDriver : Component
 			aimPitch = Angles.NormalizeAngle( _movement.TargetHeadAngle.pitch );
 		}
 
+		// Parameter-only runtime: code chooses gameplay state, the animgraph owns body poses.
+		// The future custom graph should read these values to select right/left lead,
+		// hipfire/ADS, and shoulder-swap handoff states without any camera-space IK hacks.
+		var aimWeight = isAiming ? 1f : 0f;
+		var supportHandWeight = (isAiming && hasWeapon && !isShoulderSwapping) ? 1f : 0f;
+
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HoldType, holdType );
+		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HoldTypeHandedness, leadSide );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.IsAiming, isAiming );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.LeadSide, leadSide );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.ShoulderSwapProgress, shoulderSwapProgress );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.IsShoulderSwapping, isShoulderSwapping );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.IsThirdPerson, inThirdPerson );
-		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.AimWeight, isAiming ? 1f : 0f );
+		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.AimWeight, aimWeight );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.HasWeapon, hasWeapon );
-		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.SupportHandWeight, isAiming ? 1f : 0f );
+		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.SupportHandWeight, supportHandWeight );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.MoveSpeed, moveSpeed );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.MoveForward, moveForward );
 		AnimationParameterWriter.Set( TargetRenderer, VeggaAnimGraphParams.MoveRight, moveRight );

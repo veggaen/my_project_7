@@ -23,7 +23,6 @@ public sealed class VeggaEquipmentController : Component
 	private GameObject _worldModelObject;
 	private ModelRenderer _worldModelRenderer;
 	private int _worldModelItemId;
-	private int _worldModelShoulderSide = 1; // -1 = left shoulder, +1 = right shoulder
 	private SkinnedModelRenderer _worldModelSkin;
 	private GameObject _worldModelBoneL;
 	private GameObject _worldModelBoneR;
@@ -39,7 +38,6 @@ public sealed class VeggaEquipmentController : Component
 		_sinceHostShot = 999f;
 		_sinceHostMelee = 999f;
 		_worldModelItemId = int.MinValue;
-		_worldModelShoulderSide = 1;
 	}
 
 	protected override void OnUpdate()
@@ -166,21 +164,15 @@ public sealed class VeggaEquipmentController : Component
 		{
 			DestroyWorldModel();
 			_worldModelItemId = int.MinValue;
-			_worldModelShoulderSide = 1;
 			return;
 		}
 
 		var itemId = _inventory.GetSlotItemId( ActiveHotbarSlot );
 		if ( itemId == _worldModelItemId && _worldModelObject != null && _worldModelObject.IsValid() )
 		{
-			var desiredSide = GetDesiredWorldModelShoulderSide();
-			if ( desiredSide != _worldModelShoulderSide )
-			{
-				_worldModelShoulderSide = desiredSide;
-				AttachWorldModelToHoldBone();
-			}
-
-			// Smoothly animate the worldmodel between hands for local third-person.
+			// Temporary fallback: keep the weapon attached to the stock right-hand hold
+			// so the body pose and weapon presentation stay consistent until the custom
+			// lead-side animgraph is authored.
 			UpdateWorldModelAttachment();
 
 			// Still update visibility (first-person hiding).
@@ -198,21 +190,8 @@ public sealed class VeggaEquipmentController : Component
 
 		EnsureWorldModel();
 		try { _worldModelRenderer.Model = Model.Load( spec.WorldModelPath ); } catch { _worldModelRenderer.Model = null; }
-		_worldModelShoulderSide = GetDesiredWorldModelShoulderSide();
 		AttachWorldModelToHoldBone();
 		UpdateWorldModelVisibilityForLocalCamera();
-	}
-
-	private int GetDesiredWorldModelShoulderSide()
-	{
-		// Only swap hands for the local player in third-person.
-		if ( !IsLocallyOwned() || Scene == null )
-			return 1;
-
-		var cam = Scene.Components.GetAll<CameraVeggaMovement>().FirstOrDefault();
-		if ( cam == null || !cam.IsValid() || cam.InFirstPerson )
-			return 1;
-		return cam.TargetShoulderSide;
 	}
 
 	private void EnsureWorldModel()
@@ -268,7 +247,7 @@ public sealed class VeggaEquipmentController : Component
 		_worldModelBoneL = _worldModelSkin.GetBoneObject( "hold_L" ) ?? _worldModelSkin.GetBoneObject( "hand_L" );
 		_worldModelBoneR = _worldModelSkin.GetBoneObject( "hold_R" ) ?? _worldModelSkin.GetBoneObject( "hand_R" );
 
-		// Keep the weapon object parented to the body so we can smoothly animate between bones.
+		// Keep the weapon object parented to the body so presentation remains body-anchored.
 		_worldModelObject.Parent = body;
 		_worldModelObject.Transform.ClearInterpolation();
 
@@ -282,10 +261,10 @@ public sealed class VeggaEquipmentController : Component
 		if ( _worldModelBoneR == null || !_worldModelBoneR.IsValid() )
 			return;
 
-		// Always attach weapon to hold_R — the stock citizen Pistol holdtype
-		// only raises the right arm, so the gun must be in the right hand.
-		// When we have authored left-lead animations, this will lerp between
-		// hold_R and hold_L based on lead_side. For now, hold_R only.
+		// Temporary fallback:
+		// Keep the weapon on hold_R because the stock citizen pistol pose only has
+		// a valid right-hand lead animation. The real left/right lead solution belongs
+		// in a custom animgraph with authored poses, not in this controller.
 		_worldModelObject.WorldPosition = _worldModelBoneR.WorldPosition;
 		_worldModelObject.WorldRotation = _worldModelBoneR.WorldRotation;
 		_worldModelObject.LocalScale = Vector3.One;

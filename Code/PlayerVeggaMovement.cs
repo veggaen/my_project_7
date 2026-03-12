@@ -449,9 +449,9 @@ public sealed class PlayerVeggaMovement : Component
 
 		if ( equipment != null && equipment.IsValid() )
 		{
-			// Always use the real HoldType. The weapon bone lerp (in VeggaEquipmentController)
-			// smoothly moves the gun between hold_R and hold_L based on shoulder side.
-			// From the active camera angle, the nearest hand appears to hold the gun.
+			// Temporary fallback: keep the stock CitizenAnimationHelper path stable.
+			// Long-term lead-hand posing is driven by the custom animgraph parameters
+			// written by PlayerVeggaAnimGraphDriver, not by runtime pose invention here.
 			animationHelper.HoldType = equipment.HoldType switch
 			{
 				Sandbox.VeggaHoldType.Pistol => CitizenAnimationHelper.HoldTypes.Pistol,
