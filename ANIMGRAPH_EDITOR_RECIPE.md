@@ -66,6 +66,50 @@ If you want a fast first win, the first four are mandatory and the rest can be t
 
 The current runtime keeps the stock Citizen fallback stable while also writing the extra custom params this graph will consume.
 
+## Exact Assignment Path In This Project
+
+Use this exact target so you do not assign the graph to the wrong renderer.
+
+1. Open `Assets/player_vegga.prefab` directly.
+2. Select the child GameObject named `Body`.
+3. In that child, find the `SkinnedModelRenderer` using `models/citizen/citizen.vmdl`.
+4. Set its `AnimationGraph` field from `null` to your new body animgraph asset.
+5. Leave `UseAnimGraph = true`.
+6. Do not move the `PlayerVeggaAnimGraphDriver` off the root. It already targets this renderer.
+
+Verified current hook points in this repo:
+
+1. Root component: `PlayerVeggaAnimGraphDriver`
+2. Driver target: `Body -> SkinnedModelRenderer`
+3. Current state: `AnimationGraph = null`
+
+## Prefab And Override Safety
+
+This is the easiest place to lose work in the editor.
+
+1. If you edit `Assets/player_vegga.prefab` directly, saving the prefab is enough.
+2. If you edit a spawned instance inside a scene, your change becomes an instance override.
+3. Instance overrides do not automatically update the source prefab.
+4. If the graph works in one scene but disappears later, you probably changed only the scene instance.
+5. In that case, right-click the instance and apply the override back to the prefab.
+
+Safe workflow:
+
+1. Prefer editing `Assets/player_vegga.prefab` directly for the first animgraph assignment.
+2. Save the prefab.
+3. Open the test scene after that and verify the spawned player inherits the graph.
+4. Only use scene-instance overrides for short experiments you intend to either apply or revert immediately.
+
+## First In-Editor Success Criteria
+
+Before authoring the full handoff, confirm these basics:
+
+1. The body renderer now references your animgraph asset instead of `null`.
+2. `PlayerVeggaAnimGraphDriver` remains enabled on the prefab root.
+3. The character still animates in-game and does not fall back to a frozen idle pose.
+4. Previewing `lead_side`, `aim_weight`, and `shoulder_swap_progress` in the graph visibly changes the upper body.
+5. Removing the graph assignment returns the character to the current stable stock fallback.
+
 ## Parameter Setup In The Graph
 
 Create these parameters in the graph with matching names and types:

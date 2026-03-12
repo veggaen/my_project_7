@@ -48,6 +48,12 @@ Suggested high-quality graph structure:
 
 Concrete editor build order now lives in `ANIMGRAPH_EDITOR_RECIPE.md`.
 
+Important editor workflow note:
+
+- Assign the first custom body animgraph on `Assets/player_vegga.prefab` itself, not only on a scene instance.
+- If you experiment on a scene instance, remember that the graph assignment is just an override until you apply it back to the prefab.
+- If the graph seems to "disappear" after reopening a scene, verify whether the source prefab was ever updated.
+
 Current intent:
 
 - Right shoulder remains on the stable stock-citizen behavior.
