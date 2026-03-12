@@ -25,6 +25,21 @@ Add a playable dual-pistol mode without pretending the final third-person animat
 - Reserve ammo is shared.
 - Reload refills the left magazine first, then the right magazine.
 
+## Test Flow
+
+Use the host-side debug command:
+
+1. `vegga_give_pistol_kit`
+
+This gives:
+
+1. slot 1: `P250`
+2. slot 2: `Dual P250s`
+3. slot 3: `MP5`
+4. shared `9mm` reserve ammo
+
+The command also auto-equips slot 1 so single-pistol testing starts immediately.
+
 ## Current Constraint
 
 The runtime can now support dual-wield input, separate ammo state, HUD display, and animation parameters.

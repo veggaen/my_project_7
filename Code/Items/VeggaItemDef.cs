@@ -297,7 +297,6 @@ public static class VeggaItemRegistry
 			PrefabPath = "pistol_9mm.prefab",
 			Value = 0,
 			MaxStack = 1,
-			MaxGrams = 24,
 			Category = ItemCategory.Equipment,
 			Rarity = ItemRarity.Rare
 		} );

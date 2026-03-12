@@ -12,6 +12,7 @@ namespace Sandbox;
 public static class VeggaGiveCommands
 {
 	private const string LogPrefix = "[Give]";
+	private const int DefaultAmmoReserve = 180;
 
 	static bool EnsureHostAndInventory( out VeggaInventory inv )
 	{
@@ -135,6 +136,49 @@ public static class VeggaGiveCommands
 		return false;
 	}
 
+	static VeggaEquipmentController FindLocalEquipment()
+	{
+		var stats = PlayerVeggaStats.Local;
+		var root = stats?.GameObject;
+		if ( root == null || !root.IsValid() )
+			return null;
+
+		return root.Components.Get<VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
+	}
+
+	static bool EnsureItemPresent( VeggaInventory inv, int itemId, int amount = 1 )
+	{
+		if ( inv == null || !inv.IsValid() )
+			return false;
+
+		if ( inv.FindFirstSlot( itemId ) >= 0 )
+			return true;
+
+		var def = VeggaItemRegistry.Get( itemId );
+		if ( def == null )
+			return false;
+
+		return TryGive( inv, def, amount, clampNonStackableToOne: true, out _ );
+	}
+
+	static bool TryMoveItemToHotbarSlot( VeggaInventory inv, int itemId, int hotbarSlot )
+	{
+		if ( inv == null || !inv.IsValid() )
+			return false;
+		if ( hotbarSlot < 0 || hotbarSlot >= 9 )
+			return false;
+
+		var fromSlot = inv.FindFirstSlot( itemId );
+		if ( fromSlot < 0 )
+			return false;
+
+		if ( fromSlot == hotbarSlot )
+			return true;
+
+		inv.RequestMoveSlot( fromSlot, hotbarSlot );
+		return true;
+	}
+
 	/// <summary>
 	/// Give a single item by id or name.
 	/// Defaults: stackable =&gt; 100 (clamped to max stack), non-stackable =&gt; 1.
@@ -170,6 +214,46 @@ public static class VeggaGiveCommands
 	[ConCmd( "hex_give", Help = "Alias for vegga_give. Usage: hex_give <itemId|itemName> [amount]" )]
 	public static void HexGiveCmd( string item, int amount = -1 )
 		=> GiveCmd( item, amount );
+
+	[ConCmd( "vegga_give_pistol_kit", Help = "Give a practical pistol test kit: P250, Dual P250s, MP5, and 9mm ammo. Places them on hotbar slots 1-3." )]
+	public static void GivePistolKitCmd()
+	{
+		if ( !EnsureHostAndInventory( out var inv ) )
+			return;
+
+		bool anyFailed = false;
+		if ( !EnsureItemPresent( inv, VeggaItemIds.Pistol9mm ) ) anyFailed = true;
+		if ( !EnsureItemPresent( inv, VeggaItemIds.DualPistols9mm ) ) anyFailed = true;
+		if ( !EnsureItemPresent( inv, VeggaItemIds.Rifle556 ) ) anyFailed = true;
+
+		var currentAmmo = inv.GetItemCount( VeggaItemIds.Ammo9mm );
+		if ( currentAmmo < DefaultAmmoReserve )
+		{
+			var ammoNeeded = DefaultAmmoReserve - currentAmmo;
+			if ( ammoNeeded > 0 && !EnsureItemPresent( inv, VeggaItemIds.Ammo9mm, ammoNeeded ) )
+				anyFailed = true;
+		}
+
+		TryMoveItemToHotbarSlot( inv, VeggaItemIds.Pistol9mm, 0 );
+		TryMoveItemToHotbarSlot( inv, VeggaItemIds.DualPistols9mm, 1 );
+		TryMoveItemToHotbarSlot( inv, VeggaItemIds.Rifle556, 2 );
+
+		var equipment = FindLocalEquipment();
+		if ( equipment != null && equipment.IsValid() )
+		{
+			equipment.SetActiveHotbarSlot( 0 );
+		}
+
+		PlayerDataPersistence.SaveLocalNow();
+		if ( anyFailed )
+			Log.Warning( $"{LogPrefix} Pistol kit partially applied. Check inventory space." );
+		else
+			Log.Info( $"{LogPrefix} Pistol kit ready: slot1=P250, slot2=Dual P250s, slot3=MP5, 9mm ammo={Math.Max( inv.GetItemCount( VeggaItemIds.Ammo9mm ), DefaultAmmoReserve )}." );
+	}
+
+	[ConCmd( "hex_give_pistol_kit", Help = "Alias for vegga_give_pistol_kit." )]
+	public static void HexGivePistolKitCmd()
+		=> GivePistolKitCmd();
 
 	/// <summary>
 	/// Give one of every non-stackable item.
