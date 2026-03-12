@@ -102,6 +102,7 @@ public sealed class PlayerVeggaMovement : Component
 	private CharacterController characterController;
 	private CitizenAnimationHelper animationHelper;
 	private SkinnedModelRenderer _bodyRenderer;
+	private PlayerVeggaAnimGraphDriver _animGraphDriver;
 
 	// Standing vs crouch heights – to avoid *= 2 / 0.5f drift
 	private float StandingHeight;
@@ -111,6 +112,7 @@ public sealed class PlayerVeggaMovement : Component
 	{
 		characterController = Components.Get<CharacterController>();
 		animationHelper = Components.Get<CitizenAnimationHelper>();
+		_animGraphDriver = Components.Get<PlayerVeggaAnimGraphDriver>();
 
 		if ( Body != null )
 		{
@@ -437,9 +439,19 @@ public sealed class PlayerVeggaMovement : Component
 	{
 		if ( animationHelper is null ) return;
 
+		// NOTE: The PlayerVeggaAnimGraphDriver provides supplemental custom params
+		// (lead_side, shoulder_swap_progress, etc.) but we ALWAYS let
+		// CitizenAnimationHelper run below to drive the standard holdtype,
+		// aim weights, velocity, etc. The driver's OnUpdate runs independently.
+
 		var equipment = Components.Get<Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
+		var isAiming = equipment != null && equipment.IsValid() && equipment.IsAiming;
+
 		if ( equipment != null && equipment.IsValid() )
 		{
+			// Always use the real HoldType. The weapon bone lerp (in VeggaEquipmentController)
+			// smoothly moves the gun between hold_R and hold_L based on shoulder side.
+			// From the active camera angle, the nearest hand appears to hold the gun.
 			animationHelper.HoldType = equipment.HoldType switch
 			{
 				Sandbox.VeggaHoldType.Pistol => CitizenAnimationHelper.HoldTypes.Pistol,
@@ -449,9 +461,10 @@ public sealed class PlayerVeggaMovement : Component
 				_ => CitizenAnimationHelper.HoldTypes.None
 			};
 
-			animationHelper.AimEyesWeight = equipment.IsAiming ? 1f : 0f;
-			animationHelper.AimHeadWeight = equipment.IsAiming ? 1f : 0f;
-			animationHelper.AimBodyWeight = equipment.IsAiming ? 1f : 0f;
+			bool hasWeapon = equipment.HoldType != Sandbox.VeggaHoldType.None;
+			animationHelper.AimEyesWeight = isAiming ? 1f : (hasWeapon ? 0.5f : 0f);
+			animationHelper.AimHeadWeight = isAiming ? 1f : (hasWeapon ? 0.5f : 0f);
+			animationHelper.AimBodyWeight = isAiming ? 0.8f : (hasWeapon ? 0.4f : 0f);
 		}
 
 		// 🎯 MULTIPLAYER: Use synced head rotation for animations
@@ -468,6 +481,10 @@ public sealed class PlayerVeggaMovement : Component
 			: CitizenAnimationHelper.MoveStyles.Walk;
 
 		animationHelper.DuckLevel = IsCrouching ? 1f : 0f;
+
+		// Reset body scale (remove any leftover mirror).
+		if ( Body != null && Body.IsValid() )
+			Body.WorldScale = Vector3.One;
 	}
 
 	/// <summary>

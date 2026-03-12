@@ -9,15 +9,24 @@ public sealed class VeggaEquipmentController : Component
 	[Sync] public int ActiveHotbarSlot { get; private set; }
 	[Sync] public VeggaHoldType HoldType { get; private set; } = VeggaHoldType.None;
 	[Sync] public bool IsAiming { get; private set; }
+	[Sync] public int ShotSequence { get; private set; }
+	[Sync] public int ReloadSequence { get; private set; }
+	[Sync] public bool IsReloading { get; private set; }
 
 	[Property, Group( "Weapons" )] public bool AutoReloadWhenEmpty { get; set; } = true;
 
 	private VeggaInventory _inventory;
 	private PlayerVeggaMovement _movement;
+	private TimeSince _reloadStarted;
+	private VeggaWeaponSpec _pendingReloadSpec;
 
 	private GameObject _worldModelObject;
 	private ModelRenderer _worldModelRenderer;
 	private int _worldModelItemId;
+	private int _worldModelShoulderSide = 1; // -1 = left shoulder, +1 = right shoulder
+	private SkinnedModelRenderer _worldModelSkin;
+	private GameObject _worldModelBoneL;
+	private GameObject _worldModelBoneR;
 
 	// Host-side rate limiting
 	private TimeSince _sinceHostShot;
@@ -30,6 +39,7 @@ public sealed class VeggaEquipmentController : Component
 		_sinceHostShot = 999f;
 		_sinceHostMelee = 999f;
 		_worldModelItemId = int.MinValue;
+		_worldModelShoulderSide = 1;
 	}
 
 	protected override void OnUpdate()
@@ -73,12 +83,18 @@ public sealed class VeggaEquipmentController : Component
 
 		IsAiming = isWeapon && Input.Down( "Attack2" );
 
-		if ( Input.Pressed( "Reload" ) && isWeapon )
+		// Complete reload after timer expires.
+		if ( IsReloading && _reloadStarted >= _pendingReloadSpec.ReloadTime )
+		{
+			FinishReload();
+		}
+
+		if ( Input.Pressed( "Reload" ) && isWeapon && !IsReloading )
 		{
 			TryReloadLocal( weaponSpec );
 		}
 
-		if ( Input.Pressed( "Attack1" ) )
+		if ( Input.Pressed( "Attack1" ) && !IsReloading )
 		{
 			if ( isWeapon )
 			{
@@ -150,12 +166,23 @@ public sealed class VeggaEquipmentController : Component
 		{
 			DestroyWorldModel();
 			_worldModelItemId = int.MinValue;
+			_worldModelShoulderSide = 1;
 			return;
 		}
 
 		var itemId = _inventory.GetSlotItemId( ActiveHotbarSlot );
 		if ( itemId == _worldModelItemId && _worldModelObject != null && _worldModelObject.IsValid() )
 		{
+			var desiredSide = GetDesiredWorldModelShoulderSide();
+			if ( desiredSide != _worldModelShoulderSide )
+			{
+				_worldModelShoulderSide = desiredSide;
+				AttachWorldModelToHoldBone();
+			}
+
+			// Smoothly animate the worldmodel between hands for local third-person.
+			UpdateWorldModelAttachment();
+
 			// Still update visibility (first-person hiding).
 			UpdateWorldModelVisibilityForLocalCamera();
 			return;
@@ -171,8 +198,21 @@ public sealed class VeggaEquipmentController : Component
 
 		EnsureWorldModel();
 		try { _worldModelRenderer.Model = Model.Load( spec.WorldModelPath ); } catch { _worldModelRenderer.Model = null; }
+		_worldModelShoulderSide = GetDesiredWorldModelShoulderSide();
 		AttachWorldModelToHoldBone();
 		UpdateWorldModelVisibilityForLocalCamera();
+	}
+
+	private int GetDesiredWorldModelShoulderSide()
+	{
+		// Only swap hands for the local player in third-person.
+		if ( !IsLocallyOwned() || Scene == null )
+			return 1;
+
+		var cam = Scene.Components.GetAll<CameraVeggaMovement>().FirstOrDefault();
+		if ( cam == null || !cam.IsValid() || cam.InFirstPerson )
+			return 1;
+		return cam.TargetShoulderSide;
 	}
 
 	private void EnsureWorldModel()
@@ -190,6 +230,9 @@ public sealed class VeggaEquipmentController : Component
 
 		_worldModelRenderer = _worldModelObject.Components.Create<ModelRenderer>();
 		_worldModelRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
+		_worldModelSkin = null;
+		_worldModelBoneL = null;
+		_worldModelBoneR = null;
 	}
 
 	private void DestroyWorldModel()
@@ -198,6 +241,9 @@ public sealed class VeggaEquipmentController : Component
 			_worldModelObject.Destroy();
 		_worldModelObject = null;
 		_worldModelRenderer = null;
+		_worldModelSkin = null;
+		_worldModelBoneL = null;
+		_worldModelBoneR = null;
 	}
 
 	private void AttachWorldModelToHoldBone()
@@ -209,27 +255,40 @@ public sealed class VeggaEquipmentController : Component
 			return;
 		}
 
-		var skin = body.Components.Get<SkinnedModelRenderer>()
+		_worldModelSkin = body.Components.Get<SkinnedModelRenderer>()
 			?? body.Components.GetAll<SkinnedModelRenderer>( FindMode.InDescendants ).FirstOrDefault();
-		if ( skin == null || !skin.IsValid() )
+		if ( _worldModelSkin == null || !_worldModelSkin.IsValid() )
 		{
 			_worldModelObject.Parent = body;
 			return;
 		}
 
 		// Ensure bone objects exist so GetBoneObject works.
-		skin.CreateBoneObjects = true;
+		_worldModelSkin.CreateBoneObjects = true;
+		_worldModelBoneL = _worldModelSkin.GetBoneObject( "hold_L" ) ?? _worldModelSkin.GetBoneObject( "hand_L" );
+		_worldModelBoneR = _worldModelSkin.GetBoneObject( "hold_R" ) ?? _worldModelSkin.GetBoneObject( "hand_R" );
 
-		var holdBone = skin.GetBoneObject( "hold_R" ) ?? skin.GetBoneObject( "hand_R" );
-		if ( holdBone == null || !holdBone.IsValid() )
-		{
-			_worldModelObject.Parent = body;
+		// Keep the weapon object parented to the body so we can smoothly animate between bones.
+		_worldModelObject.Parent = body;
+		_worldModelObject.Transform.ClearInterpolation();
+
+		UpdateWorldModelAttachment();
+	}
+
+	private void UpdateWorldModelAttachment()
+	{
+		if ( _worldModelObject == null || !_worldModelObject.IsValid() )
 			return;
-		}
+		if ( _worldModelBoneR == null || !_worldModelBoneR.IsValid() )
+			return;
 
-		_worldModelObject.Parent = holdBone;
-		_worldModelObject.WorldPosition = holdBone.WorldPosition;
-		_worldModelObject.WorldRotation = holdBone.WorldRotation;
+		// Always attach weapon to hold_R — the stock citizen Pistol holdtype
+		// only raises the right arm, so the gun must be in the right hand.
+		// When we have authored left-lead animations, this will lerp between
+		// hold_R and hold_L based on lead_side. For now, hold_R only.
+		_worldModelObject.WorldPosition = _worldModelBoneR.WorldPosition;
+		_worldModelObject.WorldRotation = _worldModelBoneR.WorldRotation;
+		_worldModelObject.LocalScale = Vector3.One;
 		_worldModelObject.Transform.ClearInterpolation();
 	}
 
@@ -358,6 +417,15 @@ public sealed class VeggaEquipmentController : Component
 		return _inventory.GetSlotItemId( ActiveHotbarSlot );
 	}
 
+	public bool TryGetWorldModelTransform( out Transform worldTransform )
+	{
+		worldTransform = default;
+		if ( _worldModelObject == null || !_worldModelObject.IsValid() )
+			return false;
+		worldTransform = _worldModelObject.WorldTransform;
+		return true;
+	}
+
 	private void HandleSlotSelectionInput()
 	{
 		static bool PressedSlot( int number, string actionName )
@@ -423,9 +491,36 @@ public sealed class VeggaEquipmentController : Component
 			return;
 
 		_inventory.SetSlotDurability( ActiveHotbarSlot, magBefore - 1 );
+		ShotSequence++;
+
+		// Client-side feedback: sound + recoil.
+		ApplyRecoil( spec );
+		PlayShootSound( spec );
 
 		RpcRequestFire( GetRequesterId(), ActiveHotbarSlot, spec.ItemId, magBefore );
 		_sinceHostShot = 0;
+	}
+
+	private void ApplyRecoil( VeggaWeaponSpec spec )
+	{
+		if ( _movement == null ) return;
+		// Kick the camera up and slightly sideways for recoil feel.
+		var pitchKick = -spec.RecoilPitch;  // negative = aim up
+		var yawKick = (Game.Random.Float() - 0.5f) * 2f * spec.RecoilYaw;
+		_movement.TargetHeadAngle += new Angles( pitchKick, yawKick, 0f );
+	}
+
+	private void PlayShootSound( VeggaWeaponSpec spec )
+	{
+		if ( string.IsNullOrWhiteSpace( spec.ShootSound ) ) return;
+		try
+		{
+			Sound.Play( spec.ShootSound, WorldPosition );
+		}
+		catch
+		{
+			// Sound resource may not exist yet.
+		}
 	}
 
 	private Guid GetRequesterId()
@@ -449,9 +544,25 @@ public sealed class VeggaEquipmentController : Component
 		if ( have <= 0 )
 			return;
 
+		// Start reload — ammo transfer happens after the timer.
+		_pendingReloadSpec = spec;
+		_reloadStarted = 0;
+		IsReloading = true;
+		ReloadSequence++;
+	}
+
+	private void FinishReload()
+	{
+		IsReloading = false;
+		var spec = _pendingReloadSpec;
+		var max = spec.MagazineSize;
+		var mag = _inventory.GetSlotDurability( ActiveHotbarSlot ).Clamp( 0, max );
+		var need = max - mag;
+		if ( need <= 0 ) return;
+
+		var have = _inventory.GetItemCount( spec.AmmoItemId );
 		var take = Math.Min( need, have );
-		if ( take <= 0 )
-			return;
+		if ( take <= 0 ) return;
 
 		if ( !_inventory.RemoveItem( spec.AmmoItemId, take ) )
 			return;
@@ -553,6 +664,10 @@ public sealed class VeggaEquipmentController : Component
 		if ( scene == null )
 			return;
 
+		// Apply spread so bullets don't go dead-center every time.
+		var spreadOffset = (Vector3.Random.Normal * spec.Spread);
+		dir = (dir + spreadOffset).Normal;
+
 		var go = new GameObject( true, "vegga_projectile" );
 		go.WorldPosition = origin;
 		go.WorldRotation = Rotation.LookAt( dir, Vector3.Up );
@@ -562,7 +677,12 @@ public sealed class VeggaEquipmentController : Component
 		proj.ShooterId = shooterId;
 		proj.Damage = spec.Damage;
 		proj.Velocity = dir * spec.ProjectileSpeed;
+		proj.Gravity = spec.BulletGravity;
+		proj.Drag = spec.BulletDrag;
 		proj.LifetimeSeconds = 3.0f;
 		proj.SetShooter( GameObject );
+
+		// Network spawn so all clients see the tracer.
+		go.NetworkSpawn();
 	}
 }

@@ -34,6 +34,12 @@ public sealed class HUDManagerScene : Component
 	public HotbarHud HotbarPanel { get; set; }
 
 	/// <summary>
+	/// Link to the AmmoHud component (weapon ammo counter).
+	/// </summary>
+	[Property, Group( "Links" )]
+	public AmmoHud AmmoPanel { get; set; }
+
+	/// <summary>
 	/// Link to the XPBar component. Set this in the inspector!
 	/// </summary>
 	[Property, Group( "Links" )]
@@ -184,6 +190,21 @@ public sealed class HUDManagerScene : Component
 					Log.Info( "[HUDManagerScene] Disabled external HotbarHud (different GameObject)." );
 				}
 				HotbarPanel = Components.Create<HotbarHud>();
+			}
+		}
+
+		if ( AmmoPanel == null )
+		{
+			AmmoPanel = Components.Get<AmmoHud>();
+			if ( AmmoPanel == null )
+			{
+				var existing = Scene.GetAllComponents<AmmoHud>().FirstOrDefault();
+				if ( existing != null && existing.IsValid && existing.GameObject != GameObject )
+				{
+					existing.Enabled = false;
+					Log.Info( "[HUDManagerScene] Disabled external AmmoHud (different GameObject)." );
+				}
+				AmmoPanel = Components.Create<AmmoHud>();
 			}
 		}
 

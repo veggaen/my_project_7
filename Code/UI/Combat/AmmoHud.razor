@@ -1,0 +1,133 @@
+@using Sandbox
+@using Sandbox.UI
+@using System
+@namespace Sandbox.UI
+@inherits PanelComponent
+@attribute [StyleSheet( "/code/ui/combat/ammohud.razor.scss" )]
+
+<root>
+	@if ( _visible )
+	{
+		<div class="ammo-root">
+			<div class="ammo-top">
+				<span class="ammo-label">AMMO</span>
+				<span class="ammo-reserve">@_reserve</span>
+			</div>
+			<div class="ammo-row">
+				<div class="ammo-bar">
+					<div @ref="_fillRef" class="ammo-fill"></div>
+				</div>
+				<div class="ammo-mag">@_mag / @_cap</div>
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	global::Sandbox.VeggaInventory _inventory;
+	global::Sandbox.VeggaEquipmentController _equipment;
+	Panel _fillRef;
+	bool _registered;
+
+	bool _visible;
+	int _mag;
+	int _cap;
+	int _reserve;
+	float _magPct;
+
+	private static global::Sandbox.VeggaEquipmentController FindLocalEquipmentController()
+	{
+		var local = Connection.Local;
+		if ( local == null )
+			return null;
+
+		var stats = global::Sandbox.PlayerVeggaStats.Local;
+		var go = stats?.GameObject;
+		if ( go != null && go.IsValid() )
+		{
+			var eq = go.Components.Get<global::Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
+			if ( eq != null && eq.IsValid() )
+				return eq;
+		}
+
+		var scene = Game.ActiveScene;
+		if ( scene == null )
+			return null;
+
+		foreach ( var eq in scene.GetAllComponents<global::Sandbox.VeggaEquipmentController>() )
+		{
+			if ( eq == null || !eq.IsValid() )
+				continue;
+			if ( eq.Network?.IsProxy == true )
+				continue;
+			if ( eq.GameObject?.Network?.Owner == local )
+				return eq;
+		}
+
+		return null;
+	}
+
+	protected override void OnUpdate()
+	{
+		if ( Connection.Local == null )
+			return;
+
+		const string AmmoKey = "ammo_counter";
+
+		if ( !_registered )
+		{
+			_registered = true;
+			VeggaHudLayoutState.RegisterElement(
+				AmmoKey,
+				"Ammo",
+				VeggaHudLayoutState.GetDefaultPosition( AmmoKey )
+			);
+		}
+
+		if ( Panel != null )
+		{
+			VeggaHudLayoutApply.Apply( Panel, AmmoKey, VeggaHudLayoutState.GetDefaultPosition( AmmoKey ), 1f );
+			Panel.Style.PointerEvents = PointerEvents.None;
+			Panel.Style.ZIndex = VeggaHudLayoutState.IsActive && VeggaHudLayoutState.SelectedElement == AmmoKey ? 2601 : 0;
+		}
+
+		var invOwner = _inventory?.GameObject?.Network?.Owner;
+		if ( _inventory == null || !_inventory.IsValid() || invOwner != Connection.Local || _inventory.Network?.IsProxy == true )
+			_inventory = VeggaInventory.Local;
+
+		if ( _equipment == null || !_equipment.IsValid() )
+			_equipment = FindLocalEquipmentController();
+
+		_visible = false;
+		_mag = 0;
+		_cap = 0;
+		_reserve = 0;
+		_magPct = 0f;
+
+		if ( _inventory == null || !_inventory.IsValid() || _equipment == null || !_equipment.IsValid() )
+			return;
+
+		var slot = _equipment.ActiveHotbarSlot;
+		if ( slot < 0 || slot > 8 )
+			return;
+
+		var itemId = _inventory.GetSlotItemId( slot );
+		if ( !VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out var spec ) )
+			return;
+
+		_visible = true;
+		_cap = Math.Max( 0, spec.MagazineSize );
+		_mag = _inventory.GetSlotDurability( slot ).Clamp( 0, _cap );
+		_reserve = Math.Max( 0, _inventory.GetItemCount( spec.AmmoItemId ) );
+		_magPct = _cap > 0 ? (_mag / (float)_cap) * 100f : 0f;
+		_magPct = _magPct.Clamp( 0f, 100f );
+
+		_fillRef?.Style.Set( "width", $"{_magPct}%" );
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine( _visible, _mag, _cap, _reserve, _inventory?.Revision ?? 0, _equipment?.ActiveHotbarSlot ?? -1 );
+	}
+}

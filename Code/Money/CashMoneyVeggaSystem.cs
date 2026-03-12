@@ -8,14 +8,15 @@ namespace Sandbox.Money;
 /// <summary>
 /// CashMoneyVeggaSystem - Money prop with visual tiers and anti-exploit protection.
 ///
-/// Visual Tiers (via VeggaCurrency):
-/// - $1-$999,999: models/money/batch_clean.vmdl
-/// - $1,000,000-$9,999,999: models/money/batch_used.vmdl
-/// - $10,000,000+: models/money/box.vmdl
+/// Visual Tiers:
+/// - $1-100: models/money/single_clean_bended.vmdl (bent single bill)
+/// - $100-10,000: models/money/single_clean.vmdl (flat single bill)
+/// - $10,000-1,000,000: models/money/batch_clean.vmdl (stack of bills)
+/// - $100,000-10,000,000: models/money/box.vmdl (money box)
 /// </summary>
 public sealed class CashMoneyVeggaSystem : Component
 {
-	[Property, Sync] public int Amount { get; set; } = 100;
+	[Property] public int Amount { get; set; } = 100;
 	
 	[Sync] private string _ownerId { get; set; } // Player who dropped this
 	[Sync] private Guid _uniqueId { get; set; } // Unique ID to prevent double-consumption
@@ -23,20 +24,14 @@ public sealed class CashMoneyVeggaSystem : Component
 	[Sync] private float _dropTime { get; set; }
 
 	private const float ConsumeCooldown = 2.0f; // Can't be consumed for 2 seconds after drop
-	private int _lastVisualAmount = int.MinValue;
-	private int _lastPickupAmount = int.MinValue;
 
 	protected override void OnStart()
 	{
 		_uniqueId = Guid.NewGuid();
 		_dropTime = Time.Now;
-
-		EnsurePickupIsWired();
 		
 		// Set visual model based on amount
 		UpdateVisualModel();
-		_lastVisualAmount = Amount;
-		_lastPickupAmount = Amount;
 		
 		Log.Info( $"💵 CashMoneyVeggaSystem spawned: ${Amount} | ID: {_uniqueId}" );
 	}
@@ -48,7 +43,16 @@ public sealed class CashMoneyVeggaSystem : Component
 	{
 		var modelRenderer = Components.Get<ModelRenderer>();
 		if ( modelRenderer == null ) return;
-		modelRenderer.Model = Model.Load( VeggaCurrency.GetCashModelPathForAmount( Amount ) );
+
+		string modelPath = Amount switch
+		{
+			<= 10 => "models/money/single_clean_bended.vmdl",
+			<= 1000 => "models/money/single_clean.vmdl",
+			<= 100000 => "models/money/batch_clean.vmdl",
+			_ => "models/money/box.vmdl"
+		};
+
+		modelRenderer.Model = Model.Load( modelPath );
 	}
 
 	/// <summary>
@@ -59,20 +63,6 @@ public sealed class CashMoneyVeggaSystem : Component
 		if ( Network.IsProxy ) return;
 		if ( _consumed ) return;
 
-		// Keep pickup amount synced.
-		if ( Amount != _lastPickupAmount )
-		{
-			EnsurePickupIsWired();
-			_lastPickupAmount = Amount;
-		}
-
-		// Keep model in sync if Amount changed after spawn.
-		if ( Amount != _lastVisualAmount )
-		{
-			UpdateVisualModel();
-			_lastVisualAmount = Amount;
-		}
-
 		// Cooldown check
 		if ( Time.Now - _dropTime < ConsumeCooldown )
 		{
@@ -81,22 +71,6 @@ public sealed class CashMoneyVeggaSystem : Component
 
 		// Check for nearby money pots (simple proximity check for now)
 		// TODO: Implement proper collision detection when available
-	}
-
-	void EnsurePickupIsWired()
-	{
-		// This lets you place a prefab in the world with only a ModelRenderer,
-		// and we still make it pick-upable cash.
-		var pickup = Components.Get<VeggaPickupItem>();
-		if ( pickup == null )
-		{
-			pickup = Components.Create<VeggaPickupItem>();
-		}
-
-		pickup.ItemId = VeggaCurrency.CashItemId;
-		pickup.Quantity = Math.Clamp( Amount, 1, int.MaxValue );
-		if ( pickup.PickupDelay <= 0 )
-			pickup.PickupDelay = 0.25f;
 	}
 
 	/// <summary>

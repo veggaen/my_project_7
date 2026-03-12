@@ -35,6 +35,8 @@ public static class VeggaHudLayoutApply
 			VeggaHudLayoutState.KeyXpBar => new Vector2( 520f, 90f ),
 			// Cash drop progress bar is a slim horizontal widget.
 			VeggaHudLayoutState.KeyCashDropProgress => new Vector2( 360f, 70f ),
+			// Ammo counter is a compact horizontal widget.
+			VeggaHudLayoutState.KeyAmmo => new Vector2( 240f, 70f ),
 			// Minimap is typically square-ish.
 			VeggaHudLayoutState.KeyMinimap => new Vector2( 260f, 260f ),
 			// World container menus.

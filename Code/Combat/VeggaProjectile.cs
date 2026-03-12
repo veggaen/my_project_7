@@ -9,9 +9,16 @@ public sealed class VeggaProjectile : Component
 	[Sync] public float Damage { get; set; } = 10f;
 	[Sync] public float LifetimeSeconds { get; set; } = 3.0f;
 	[Sync] public Guid ShooterId { get; set; }
+	[Sync] public float Gravity { get; set; } = 300f;
+	[Sync] public float Drag { get; set; } = 0.002f;
 
 	private GameObject _shooter;
 	private TimeSince _sinceSpawn;
+
+	/// <summary>
+	/// Visual tracer trail length in units behind the projectile.
+	/// </summary>
+	[Property] public float TracerLength { get; set; } = 40f;
 
 	public void SetShooter( GameObject shooter )
 	{
@@ -41,6 +48,10 @@ public sealed class VeggaProjectile : Component
 			return;
 		}
 
+		// Apply drag then gravity (same order as SWB PhysicalBulletMover).
+		Velocity *= (1f - Drag);
+		Velocity += Vector3.Down * Gravity * Time.Delta;
+
 		var from = WorldPosition;
 		var to = from + Velocity * Time.Delta;
 
@@ -61,6 +72,15 @@ public sealed class VeggaProjectile : Component
 		}
 
 		WorldPosition = to;
+	}
+
+	protected override void OnUpdate()
+	{
+		// Rotate to face velocity direction so the object visually tracks.
+		if ( Velocity.LengthSquared > 0.01f )
+		{
+			WorldRotation = Rotation.LookAt( Velocity.Normal, Vector3.Up );
+		}
 	}
 
 	private void TryApplyDamage( GameObject hitObject )

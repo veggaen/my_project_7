@@ -263,8 +263,8 @@ public static class VeggaItemRegistry
 		Register( new VeggaItemDef
 		{
 			Id = VeggaItemIds.Pistol9mm,
-			Name = "9mm Pistol",
-			Description = "A simple semi-auto pistol.",
+			Name = "P250",
+			Description = "A simple semi-auto pistol (9mm).",
 			ModelPath = "models/weapons/sbox_pistol_usp/w_usp.vmdl",
 			PrefabPath = "pistol_9mm.prefab",
 			Value = 0,
@@ -277,10 +277,9 @@ public static class VeggaItemRegistry
 		Register( new VeggaItemDef
 		{
 			Id = VeggaItemIds.Rifle556,
-			Name = "5.56 Rifle",
-			Description = "A basic rifle.",
-			// Replace this with a proper rifle model once a weapon asset package is mounted.
-			ModelPath = "models/dev/box.vmdl",
+			Name = "MP5",
+			Description = "A compact SMG (9mm).",
+			ModelPath = "models/weapons/sbox_smg_mp5/w_mp5.vmdl",
 			PrefabPath = "rifle_556.prefab",
 			Value = 0,
 			MaxStack = 1,

@@ -11,6 +11,16 @@ bin
 Properties/*
 code/obj/*
 code/Properties/*
+Thumbs.db
+.DS_Store
+*.log
+
+# Local env / temp
+.env
+.env.*
+tmp/
+temp/
+.cache/
 
 # Auto-generated asset related files
 .sbox/*
@@ -27,3 +37,8 @@ code/Properties/*
 
 # Exported / standalone games
 Exports/
+
+# Common package / tooling outputs inside the workspace
+node_modules/
+dist/
+coverage/

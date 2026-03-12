@@ -48,6 +48,9 @@ public sealed class CameraVeggaMovement : Component
 	// Shoulder: blend between -1 (left) and +1 (right)
 	private float _shoulderBlend = 1f;
 	private int _targetShoulderSide = 1; // -1 or +1
+	public float ShoulderBlend => _shoulderBlend;
+	public int TargetShoulderSide => _targetShoulderSide;
+	public TimeSince TimeSinceShoulderSwap { get; private set; }
 
 	private bool IsFirstPersonTarget => _targetDistance <= 0.01f;
 	private bool IsFirstPerson => _currentDistance <= 0.05f;
@@ -61,6 +64,7 @@ public sealed class CameraVeggaMovement : Component
 		_currentDistance = ThirdPersonDistance;
 		_targetDistance = ThirdPersonDistance;
 		_shoulderBlend = _targetShoulderSide = 1;
+		TimeSinceShoulderSwap = 999f;
 
 		_currentFov = BaseFov;
 		if ( _camera is not null )
@@ -168,7 +172,14 @@ public sealed class CameraVeggaMovement : Component
 		}
 
 		EnsureViewModel();
-		_viewModelRenderer.Model = Model.Load( spec.ViewModelPath );
+		try
+		{
+			_viewModelRenderer.Model = Model.Load( spec.ViewModelPath );
+		}
+		catch
+		{
+			DestroyViewModel();
+		}
 	}
 
 	private void EnsureViewModel()
@@ -271,6 +282,7 @@ public sealed class CameraVeggaMovement : Component
 			if ( !IsFirstPersonTarget )
 			{
 				_targetShoulderSide *= -1; // flip target side, blend handled in OnUpdate
+				TimeSinceShoulderSwap = 0;
 			}
 		}
 	}

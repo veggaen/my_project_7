@@ -111,6 +111,28 @@
         "OnComponentUpdate": null
       },
       {
+        "__type": "Sandbox.PlayerVeggaAnimGraphDriver",
+        "__guid": "1c26bd93-66cb-4df0-b833-1f76ed94dbaf",
+        "__enabled": true,
+        "Body": {
+          "_type": "gameobject",
+          "go": "d39a869e-5ca3-42ac-bf54-9691a2cc1a4d"
+        },
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "RequireCustomAnimationGraph": false,
+        "TargetRenderer": {
+          "_type": "component",
+          "component_id": "3fed35f3-2f88-4250-97f2-78d7ba8ca334",
+          "go": "d39a869e-5ca3-42ac-bf54-9691a2cc1a4d",
+          "component_type": "SkinnedModelRenderer"
+        }
+      },
+      {
         "__type": "Sandbox.PlayerSessionStats",
         "__guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "__enabled": true,

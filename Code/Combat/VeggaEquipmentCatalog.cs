@@ -12,7 +12,15 @@ public readonly record struct VeggaWeaponSpec(
 	float ProjectileSpeed,
 	float FireRateRps,
 	string WorldModelPath,
-	string ViewModelPath
+	string ViewModelPath,
+	float ReloadTime = 1.8f,
+	float Spread = 0.015f,
+	float RecoilPitch = 1.5f,
+	float RecoilYaw = 0.4f,
+	string ShootSound = "sounds/weapon_shoot.sound",
+	string MuzzleFlashParticle = "",
+	float BulletGravity = 300f,
+	float BulletDrag = 0.002f
 );
 
 public static class VeggaEquipmentCatalog
@@ -60,13 +68,14 @@ public static class VeggaEquipmentCatalog
 				spec = new VeggaWeaponSpec(
 					ItemId: itemId,
 					HoldType: VeggaHoldType.Rifle,
-					AmmoItemId: VeggaItemIds.Ammo556,
+						// MP5 uses 9mm (same as pistol) per design.
+						AmmoItemId: VeggaItemIds.Ammo9mm,
 					MagazineSize: 30,
 					Damage: 9f,
 					ProjectileSpeed: 6800f,
 					FireRateRps: 10f,
-					WorldModelPath: "models/dev/box.vmdl",
-					ViewModelPath: null
+						WorldModelPath: "models/weapons/sbox_smg_mp5/w_mp5.vmdl",
+						ViewModelPath: "models/weapons/sbox_smg_mp5/v_mp5.vmdl"
 				);
 				return true;
 		}

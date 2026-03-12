@@ -57,6 +57,8 @@ public static class VeggaHudLayoutState
 		{ KeyStorageMenu, HudAnchor.TopLeft },
 		// Scoreboard is a big centered panel.
 		{ KeyScoreboard, HudAnchor.MiddleCenter },
+		// Ammo counter sits on the bottom-right.
+		{ KeyAmmo, HudAnchor.BottomRight },
 	};
 
 	// Runtime registry for modular HUD "plugins".
@@ -83,6 +85,7 @@ public static class VeggaHudLayoutState
 	public const string KeyStorageMenu = "storage_menu";
 	public const string KeyCashDropProgress = "cash_drop_progress";
 	public const string KeyScoreboard = "scoreboard";
+	public const string KeyAmmo = "ammo_counter";
 
 	/// <summary>
 	/// Available screen positions.
@@ -140,6 +143,8 @@ public static class VeggaHudLayoutState
 		{ KeyStorageMenu, new Vector2( 0.50f, 0.55f ) },
 		// Scoreboard default: center.
 		{ KeyScoreboard, new Vector2( 0.50f, 0.50f ) },
+		// Ammo counter default: bottom-right, above the hotbar.
+		{ KeyAmmo, new Vector2( 0.98f, 0.98f ) },
 	};
 
 	/// <summary>
@@ -161,6 +166,7 @@ public static class VeggaHudLayoutState
 		{ KeyHotbar, false },
 		{ KeyMinimap, false },
 		{ KeyCashDropProgress, false },
+		{ KeyAmmo, false },
 	};
 
 	/// <summary>
