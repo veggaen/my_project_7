@@ -29,6 +29,13 @@ public sealed class CameraVeggaMovement : Component
 
 	// FOV (fixed – you can still tweak)
 	[Property] public float BaseFov { get; set; } = 70f;
+	[Property] public float ViewModelForwardOffset { get; set; } = 2.0f;
+	[Property] public float ViewModelSideOffset { get; set; } = 5.5f;
+	[Property] public float ViewModelVerticalOffset { get; set; } = -2.0f;
+	[Property] public float DualViewModelForwardOffset { get; set; } = 1.5f;
+	[Property] public float DualViewModelSideOffset { get; set; } = 7.0f;
+	[Property] public float DualViewModelVerticalOffset { get; set; } = -2.5f;
+	[Property] public float DualViewModelYawDegrees { get; set; } = 8f;
 
 	// Input actions
 	[Property] public string ToggleViewAction { get; set; } = "FPView";
@@ -39,8 +46,10 @@ public sealed class CameraVeggaMovement : Component
 	private ModelRenderer[] _playerRenderers;
 	private float _currentFov;
 
-	private GameObject _viewModelObject;
-	private ModelRenderer _viewModelRenderer;
+	private GameObject _primaryViewModelObject;
+	private ModelRenderer _primaryViewModelRenderer;
+	private GameObject _secondaryViewModelObject;
+	private ModelRenderer _secondaryViewModelRenderer;
 
 	private float _currentDistance;
 	private float _targetDistance;
@@ -147,64 +156,132 @@ public sealed class CameraVeggaMovement : Component
 		// Only show viewmodel for the local player in first person.
 		if ( Player == null || !Player.IsValid() || Player.IsProxy || _camera is null )
 		{
-			DestroyViewModel();
+			DestroyViewModels();
 			return;
 		}
 
 		if ( !IsFirstPerson )
 		{
-			DestroyViewModel();
+			DestroyViewModels();
 			return;
 		}
 
 		var equipment = Player.Components.Get<Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
 		if ( equipment == null || !equipment.IsValid() )
 		{
-			DestroyViewModel();
+			DestroyViewModels();
 			return;
 		}
 
 		var itemId = equipment.GetEquippedItemId();
 		if ( !VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out var spec ) || string.IsNullOrWhiteSpace( spec.ViewModelPath ) )
 		{
-			DestroyViewModel();
+			DestroyViewModels();
 			return;
 		}
 
-		EnsureViewModel();
+		EnsurePrimaryViewModel();
 		try
 		{
-			_viewModelRenderer.Model = Model.Load( spec.ViewModelPath );
+			var model = Model.Load( spec.ViewModelPath );
+			_primaryViewModelRenderer.Model = model;
+
+			if ( spec.IsDualWield )
+			{
+				EnsureSecondaryViewModel();
+				_secondaryViewModelRenderer.Model = model;
+			}
+			else
+			{
+				DestroySecondaryViewModel();
+			}
+
+			UpdateViewModelTransforms( equipment, spec );
 		}
 		catch
 		{
-			DestroyViewModel();
+			DestroyViewModels();
 		}
 	}
 
-	private void EnsureViewModel()
+	private void EnsurePrimaryViewModel()
 	{
-		if ( _viewModelObject != null && _viewModelObject.IsValid() && _viewModelRenderer != null && _viewModelRenderer.IsValid() )
+		if ( _primaryViewModelObject != null && _primaryViewModelObject.IsValid() && _primaryViewModelRenderer != null && _primaryViewModelRenderer.IsValid() )
 			return;
 
-		DestroyViewModel();
+		DestroyPrimaryViewModel();
 
-		_viewModelObject = new GameObject( true, "weapon_viewmodel" );
-		_viewModelObject.Parent = GameObject;
-		// Most s&box viewmodels are authored to sit at the camera origin.
-		_viewModelObject.Transform.LocalPosition = Vector3.Zero;
-		_viewModelObject.Transform.LocalRotation = Rotation.Identity;
+		_primaryViewModelObject = new GameObject( true, "weapon_viewmodel_primary" );
+		_primaryViewModelObject.Parent = GameObject;
+		_primaryViewModelObject.Transform.LocalPosition = Vector3.Zero;
+		_primaryViewModelObject.Transform.LocalRotation = Rotation.Identity;
 
-		_viewModelRenderer = _viewModelObject.Components.Create<ModelRenderer>();
-		_viewModelRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
+		_primaryViewModelRenderer = _primaryViewModelObject.Components.Create<ModelRenderer>();
+		_primaryViewModelRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
 	}
 
-	private void DestroyViewModel()
+	private void EnsureSecondaryViewModel()
 	{
-		if ( _viewModelObject != null && _viewModelObject.IsValid() )
-			_viewModelObject.Destroy();
-		_viewModelObject = null;
-		_viewModelRenderer = null;
+		if ( _secondaryViewModelObject != null && _secondaryViewModelObject.IsValid() && _secondaryViewModelRenderer != null && _secondaryViewModelRenderer.IsValid() )
+			return;
+
+		DestroySecondaryViewModel();
+
+		_secondaryViewModelObject = new GameObject( true, "weapon_viewmodel_secondary" );
+		_secondaryViewModelObject.Parent = GameObject;
+		_secondaryViewModelObject.Transform.LocalPosition = Vector3.Zero;
+		_secondaryViewModelObject.Transform.LocalRotation = Rotation.Identity;
+
+		_secondaryViewModelRenderer = _secondaryViewModelObject.Components.Create<ModelRenderer>();
+		_secondaryViewModelRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
+	}
+
+	private void DestroyViewModels()
+	{
+		DestroyPrimaryViewModel();
+		DestroySecondaryViewModel();
+	}
+
+	private void DestroyPrimaryViewModel()
+	{
+		if ( _primaryViewModelObject != null && _primaryViewModelObject.IsValid() )
+			_primaryViewModelObject.Destroy();
+		_primaryViewModelObject = null;
+		_primaryViewModelRenderer = null;
+	}
+
+	private void DestroySecondaryViewModel()
+	{
+		if ( _secondaryViewModelObject != null && _secondaryViewModelObject.IsValid() )
+			_secondaryViewModelObject.Destroy();
+		_secondaryViewModelObject = null;
+		_secondaryViewModelRenderer = null;
+	}
+
+	private void UpdateViewModelTransforms( Sandbox.VeggaEquipmentController equipment, VeggaWeaponSpec spec )
+	{
+		if ( _primaryViewModelObject == null || !_primaryViewModelObject.IsValid() )
+			return;
+
+		var side = TargetShoulderSide >= 0 ? 1f : -1f;
+
+		if ( spec.IsDualWield )
+		{
+			_primaryViewModelObject.Transform.LocalPosition = new Vector3( DualViewModelForwardOffset, -DualViewModelSideOffset, DualViewModelVerticalOffset );
+			_primaryViewModelObject.Transform.LocalRotation = Rotation.From( 0f, DualViewModelYawDegrees, 0f );
+
+			if ( _secondaryViewModelObject != null && _secondaryViewModelObject.IsValid() )
+			{
+				_secondaryViewModelObject.Transform.LocalPosition = new Vector3( DualViewModelForwardOffset, DualViewModelSideOffset, DualViewModelVerticalOffset );
+				_secondaryViewModelObject.Transform.LocalRotation = Rotation.From( 0f, -DualViewModelYawDegrees, 0f );
+			}
+		}
+		else
+		{
+			_primaryViewModelObject.Transform.LocalPosition = new Vector3( ViewModelForwardOffset, -ViewModelSideOffset * side, ViewModelVerticalOffset );
+			_primaryViewModelObject.Transform.LocalRotation = Rotation.Identity;
+		}
+	}
 	}
 
 	private void CachePlayerRenderers()

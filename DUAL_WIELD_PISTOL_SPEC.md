@@ -45,6 +45,12 @@ The command also auto-equips slot 1 so single-pistol testing starts immediately.
 The runtime can now support dual-wield input, separate ammo state, HUD display, and animation parameters.
 It still does not solve the missing authored left/right dual-wield body poses.
 
+Temporary presentation fallback now does this:
+
+1. Third person shows two world pistols, one on `hold_R` and one on `hold_L`.
+2. First person shows two pistol viewmodels in dual mode.
+3. First person single-pistol presentation shifts toward the active shoulder side.
+
 That means:
 
 - gameplay state is now scaffolded correctly

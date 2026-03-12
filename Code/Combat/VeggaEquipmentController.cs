@@ -26,6 +26,8 @@ public sealed class VeggaEquipmentController : Component
 
 	private GameObject _worldModelObject;
 	private ModelRenderer _worldModelRenderer;
+	private GameObject _secondaryWorldModelObject;
+	private ModelRenderer _secondaryWorldModelRenderer;
 	private int _worldModelItemId;
 	private SkinnedModelRenderer _worldModelSkin;
 	private GameObject _worldModelBoneL;
@@ -198,12 +200,18 @@ public sealed class VeggaEquipmentController : Component
 		}
 
 		var itemId = _inventory.GetSlotItemId( ActiveHotbarSlot );
+		if ( !VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out var spec ) || string.IsNullOrWhiteSpace( spec.WorldModelPath ) )
+		{
+			DestroyWorldModel();
+			return;
+		}
+
 		if ( itemId == _worldModelItemId && _worldModelObject != null && _worldModelObject.IsValid() )
 		{
 			// Temporary fallback: keep the weapon attached to the stock right-hand hold
 			// so the body pose and weapon presentation stay consistent until the custom
 			// lead-side animgraph is authored.
-			UpdateWorldModelAttachment();
+			UpdateWorldModelAttachment( spec );
 
 			// Still update visibility (first-person hiding).
 			UpdateWorldModelVisibilityForLocalCamera();
@@ -212,14 +220,26 @@ public sealed class VeggaEquipmentController : Component
 
 		_worldModelItemId = itemId;
 
-		if ( !VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out var spec ) || string.IsNullOrWhiteSpace( spec.WorldModelPath ) )
-		{
-			DestroyWorldModel();
-			return;
-		}
-
 		EnsureWorldModel();
-		try { _worldModelRenderer.Model = Model.Load( spec.WorldModelPath ); } catch { _worldModelRenderer.Model = null; }
+		try
+		{
+			var model = Model.Load( spec.WorldModelPath );
+			_worldModelRenderer.Model = model;
+			if ( spec.IsDualWield )
+			{
+				EnsureSecondaryWorldModel();
+				_secondaryWorldModelRenderer.Model = model;
+			}
+			else
+			{
+				DestroySecondaryWorldModel();
+			}
+		}
+		catch
+		{
+			_worldModelRenderer.Model = null;
+			DestroySecondaryWorldModel();
+		}
 		AttachWorldModelToHoldBone();
 		UpdateWorldModelVisibilityForLocalCamera();
 	}
@@ -244,15 +264,41 @@ public sealed class VeggaEquipmentController : Component
 		_worldModelBoneR = null;
 	}
 
+	private void EnsureSecondaryWorldModel()
+	{
+		if ( _secondaryWorldModelObject != null && _secondaryWorldModelObject.IsValid() && _secondaryWorldModelRenderer != null && _secondaryWorldModelRenderer.IsValid() )
+			return;
+
+		DestroySecondaryWorldModel();
+
+		_secondaryWorldModelObject = new GameObject( true, "weapon_worldmodel_secondary" );
+		_secondaryWorldModelObject.Parent = GameObject;
+		_secondaryWorldModelObject.Transform.LocalPosition = Vector3.Zero;
+		_secondaryWorldModelObject.Transform.LocalRotation = Rotation.Identity;
+		_secondaryWorldModelObject.Transform.ClearInterpolation();
+
+		_secondaryWorldModelRenderer = _secondaryWorldModelObject.Components.Create<ModelRenderer>();
+		_secondaryWorldModelRenderer.RenderType = ModelRenderer.ShadowRenderType.On;
+	}
+
 	private void DestroyWorldModel()
 	{
 		if ( _worldModelObject != null && _worldModelObject.IsValid() )
 			_worldModelObject.Destroy();
 		_worldModelObject = null;
 		_worldModelRenderer = null;
+		DestroySecondaryWorldModel();
 		_worldModelSkin = null;
 		_worldModelBoneL = null;
 		_worldModelBoneR = null;
+	}
+
+	private void DestroySecondaryWorldModel()
+	{
+		if ( _secondaryWorldModelObject != null && _secondaryWorldModelObject.IsValid() )
+			_secondaryWorldModelObject.Destroy();
+		_secondaryWorldModelObject = null;
+		_secondaryWorldModelRenderer = null;
 	}
 
 	private void AttachWorldModelToHoldBone()
@@ -261,6 +307,8 @@ public sealed class VeggaEquipmentController : Component
 		if ( body == null || !body.IsValid() )
 		{
 			_worldModelObject.Parent = GameObject;
+			if ( _secondaryWorldModelObject != null && _secondaryWorldModelObject.IsValid() )
+				_secondaryWorldModelObject.Parent = GameObject;
 			return;
 		}
 
@@ -269,6 +317,8 @@ public sealed class VeggaEquipmentController : Component
 		if ( _worldModelSkin == null || !_worldModelSkin.IsValid() )
 		{
 			_worldModelObject.Parent = body;
+			if ( _secondaryWorldModelObject != null && _secondaryWorldModelObject.IsValid() )
+				_secondaryWorldModelObject.Parent = body;
 			return;
 		}
 
@@ -280,11 +330,17 @@ public sealed class VeggaEquipmentController : Component
 		// Keep the weapon object parented to the body so presentation remains body-anchored.
 		_worldModelObject.Parent = body;
 		_worldModelObject.Transform.ClearInterpolation();
+		if ( _secondaryWorldModelObject != null && _secondaryWorldModelObject.IsValid() )
+		{
+			_secondaryWorldModelObject.Parent = body;
+			_secondaryWorldModelObject.Transform.ClearInterpolation();
+		}
 
-		UpdateWorldModelAttachment();
+		if ( TryGetActiveWeaponSpec( out var spec ) )
+			UpdateWorldModelAttachment( spec );
 	}
 
-	private void UpdateWorldModelAttachment()
+	private void UpdateWorldModelAttachment( VeggaWeaponSpec spec )
 	{
 		if ( _worldModelObject == null || !_worldModelObject.IsValid() )
 			return;
@@ -299,6 +355,22 @@ public sealed class VeggaEquipmentController : Component
 		_worldModelObject.WorldRotation = _worldModelBoneR.WorldRotation;
 		_worldModelObject.LocalScale = Vector3.One;
 		_worldModelObject.Transform.ClearInterpolation();
+
+		if ( spec.IsDualWield )
+		{
+			EnsureSecondaryWorldModel();
+			if ( _secondaryWorldModelObject != null && _secondaryWorldModelObject.IsValid() && _worldModelBoneL != null && _worldModelBoneL.IsValid() )
+			{
+				_secondaryWorldModelObject.WorldPosition = _worldModelBoneL.WorldPosition;
+				_secondaryWorldModelObject.WorldRotation = _worldModelBoneL.WorldRotation;
+				_secondaryWorldModelObject.LocalScale = Vector3.One;
+				_secondaryWorldModelObject.Transform.ClearInterpolation();
+			}
+		}
+		else
+		{
+			DestroySecondaryWorldModel();
+		}
 	}
 
 	private void UpdateWorldModelVisibilityForLocalCamera()
@@ -319,6 +391,13 @@ public sealed class VeggaEquipmentController : Component
 		_worldModelRenderer.RenderType = hideForFirstPerson
 			? ModelRenderer.ShadowRenderType.Off
 			: ModelRenderer.ShadowRenderType.On;
+
+		if ( _secondaryWorldModelRenderer != null && _secondaryWorldModelRenderer.IsValid() )
+		{
+			_secondaryWorldModelRenderer.RenderType = hideForFirstPerson
+				? ModelRenderer.ShadowRenderType.Off
+				: ModelRenderer.ShadowRenderType.On;
+		}
 	}
 
 	private bool IsOwnedByLocalConnection()
