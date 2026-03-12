@@ -282,7 +282,6 @@ public sealed class CameraVeggaMovement : Component
 			_primaryViewModelObject.Transform.LocalRotation = Rotation.Identity;
 		}
 	}
-	}
 
 	private void CachePlayerRenderers()
 	{

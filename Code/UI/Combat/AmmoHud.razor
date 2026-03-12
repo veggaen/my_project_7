@@ -10,8 +10,14 @@
 	{
 		<div class="ammo-root @(_dual ? "dual" : "single")">
 			<div class="ammo-top">
-				<span class="ammo-label">@(_dual ? "DUAL 9MM" : "AMMO")</span>
-				<span class="ammo-reserve">RES @_reserve</span>
+				<div class="ammo-title-block">
+					<span class="ammo-label">COMBAT</span>
+					<span class="ammo-weapon">@_weaponLabel</span>
+				</div>
+				<div class="ammo-meta-block">
+					<span class="ammo-mode @(_ads ? "ads" : "")">@_modeLabel</span>
+					<span class="ammo-reserve">RES @_reserve</span>
+				</div>
 			</div>
 			@if ( _dual )
 			{
@@ -45,6 +51,9 @@
 					<div class="ammo-mag">@_mag / @_cap</div>
 				</div>
 			}
+			<div class="ammo-footer">
+				<span class="ammo-hint">@_footerHint</span>
+			</div>
 		</div>
 	}
 </root>
@@ -60,45 +69,37 @@
 
 	bool _visible;
 	bool _dual;
+	bool _ads;
 	int _mag;
 	int _cap;
 	int _reserve;
 	int _leftMag;
 	int _rightMag;
+	string _weaponLabel = string.Empty;
+	string _modeLabel = string.Empty;
+	string _footerHint = string.Empty;
 	float _magPct;
 	float _leftPct;
 	float _rightPct;
 
+	private bool IsLocalAimRequested()
+	{
+		var equipment = FindLocalEquipmentController();
+		if ( equipment == null || !equipment.IsValid() )
+			return false;
+		if ( VeggaUiMouse.WantsUiMouse )
+			return false;
+		if ( equipment.HoldType == VeggaHoldType.None )
+			return false;
+		if ( !equipment.CanAim() )
+			return false;
+
+		return Input.Down( "Attack2" ) || Input.Down( "attack2" );
+	}
+
 	private static global::Sandbox.VeggaEquipmentController FindLocalEquipmentController()
 	{
-		var local = Connection.Local;
-		if ( local == null )
-			return null;
-
-		var stats = global::Sandbox.PlayerVeggaStats.Local;
-		var go = stats?.GameObject;
-		if ( go != null && go.IsValid() )
-		{
-			var eq = go.Components.Get<global::Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
-			if ( eq != null && eq.IsValid() )
-				return eq;
-		}
-
-		var scene = Game.ActiveScene;
-		if ( scene == null )
-			return null;
-
-		foreach ( var eq in scene.GetAllComponents<global::Sandbox.VeggaEquipmentController>() )
-		{
-			if ( eq == null || !eq.IsValid() )
-				continue;
-			if ( eq.Network?.IsProxy == true )
-				continue;
-			if ( eq.GameObject?.Network?.Owner == local )
-				return eq;
-		}
-
-		return null;
+		return global::Sandbox.VeggaEquipmentController.Local;
 	}
 
 	protected override void OnUpdate()
@@ -129,37 +130,59 @@
 		if ( _inventory == null || !_inventory.IsValid() || invOwner != Connection.Local || _inventory.Network?.IsProxy == true )
 			_inventory = VeggaInventory.Local;
 
-		if ( _equipment == null || !_equipment.IsValid() )
-			_equipment = FindLocalEquipmentController();
+		var equipment = FindLocalEquipmentController();
+		_equipment = equipment;
 
 		_visible = false;
 		_dual = false;
+		_ads = false;
 		_mag = 0;
 		_cap = 0;
 		_reserve = 0;
 		_leftMag = 0;
 		_rightMag = 0;
+		_weaponLabel = string.Empty;
+		_modeLabel = string.Empty;
+		_footerHint = string.Empty;
 		_magPct = 0f;
 		_leftPct = 0f;
 		_rightPct = 0f;
 
-		if ( _inventory == null || !_inventory.IsValid() || _equipment == null || !_equipment.IsValid() )
+		if ( _inventory == null || !_inventory.IsValid() || equipment == null || !equipment.IsValid() )
 			return;
 
-		var slot = _equipment.ActiveHotbarSlot;
+		if ( equipment.HoldType == VeggaHoldType.None )
+			return;
+
+		var slot = equipment.ActiveHotbarSlot;
 		if ( slot < 0 || slot > 8 )
 			return;
 
-		if ( !_equipment.TryGetAmmoDisplay( out var dualWield, out var leftMag, out var rightMag, out var cap, out var reserve ) )
+		if ( !equipment.TryGetAmmoDisplay( out var dualWield, out var leftMag, out var rightMag, out var cap, out var reserve ) )
 			return;
 
 		_visible = true;
 		_dual = dualWield;
+		_ads = equipment.IsAiming || IsLocalAimRequested();
 		_cap = Math.Max( 0, cap );
 		_leftMag = Math.Max( 0, leftMag );
 		_rightMag = Math.Max( 0, rightMag );
 		_reserve = Math.Max( 0, reserve );
 		_mag = _rightMag;
+		if ( equipment.TryGetActiveWeaponSpec( out var spec ) )
+		{
+			var def = VeggaItemRegistry.Get( spec.ItemId );
+			_weaponLabel = def?.Name ?? (_dual ? "Dual Pistols" : "Weapon");
+			_modeLabel = _dual ? "DUAL" : (_ads ? "ADS" : "HIP");
+			if ( spec.IsDualWield )
+			{
+				_footerHint = equipment.LastFireSide < 0 ? "LEAD LEFT  |  M1 CAMERA SIDE  |  M2 OFF SIDE" : "LEAD RIGHT  |  M1 CAMERA SIDE  |  M2 OFF SIDE";
+			}
+			else
+			{
+				_footerHint = spec.SupportsAds ? (_ads ? "ADS STABLE  |  MOVE SLOWED" : "RMB TO AIM  |  ADS AVAILABLE") : "HIP FIRE ONLY";
+			}
+		}
 		_magPct = _cap > 0 ? (_mag / (float)_cap) * 100f : 0f;
 		_magPct = _magPct.Clamp( 0f, 100f );
 		_leftPct = _cap > 0 ? (_leftMag / (float)_cap) * 100f : 0f;
@@ -174,6 +197,12 @@
 
 	protected override int BuildHash()
 	{
-		return HashCode.Combine( _visible, _dual, _mag, _leftMag, _rightMag, _cap, _reserve, _inventory?.Revision ?? 0, _equipment?.ActiveHotbarSlot ?? -1 );
+		var equipment = FindLocalEquipmentController();
+		var localAimRequested = IsLocalAimRequested();
+		return HashCode.Combine(
+			HashCode.Combine( _visible, _dual, _mag, _leftMag ),
+			HashCode.Combine( _rightMag, _cap, _reserve, _inventory?.Revision ?? 0 ),
+			HashCode.Combine( equipment?.ActiveHotbarSlot ?? -1, (equipment?.IsAiming ?? false) || localAimRequested, equipment?.HoldType ?? VeggaHoldType.None, equipment?.GetEquippedItemId() ?? 0 )
+		);
 	}
 }

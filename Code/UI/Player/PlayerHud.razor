@@ -5,6 +5,7 @@
 
 <root>
 	<div class="hud-card">
+		<div class="hud-accent"></div>
 
 		<!-- Top row: Name + Wallet -->
 		<div class="row row-top">
@@ -26,7 +27,7 @@
 			<div class="job-values @(_jobPulse ? "pulse" : "")">
 				@if ( _salary > 0 )
 				{
-					<span class="job-salary">$@_salary</span>
+					<span class="job-salary">$@_salary / @FormatInterval( _salaryInterval )</span>
 				}
 			</div>
 		</div>

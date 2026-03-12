@@ -6,6 +6,77 @@ namespace Sandbox;
 
 public sealed class VeggaEquipmentController : Component
 {
+	private static VeggaEquipmentController _local;
+
+	private static VeggaEquipmentController ResolveFromRoot( GameObject root )
+	{
+		if ( root == null || !root.IsValid() )
+			return null;
+
+		var equipment = root.Components.Get<VeggaEquipmentController>( FindMode.InSelf | FindMode.InAncestors | FindMode.InDescendants );
+		return equipment != null && equipment.IsValid() ? equipment : null;
+	}
+
+	public static VeggaEquipmentController Local
+	{
+		get
+		{
+			var localConn = Connection.Local;
+			if ( localConn == null )
+				return null;
+
+			var movement = PlayerVeggaMovement.Local;
+			var movementGo = movement?.GameObject;
+			var resolved = ResolveFromRoot( movementGo );
+			if ( resolved != null )
+			{
+				_local = resolved;
+				return _local;
+			}
+
+			var stats = PlayerVeggaStats.Local;
+			var statsGo = stats?.GameObject;
+			resolved = ResolveFromRoot( statsGo );
+			if ( resolved != null )
+			{
+				_local = resolved;
+				return _local;
+			}
+
+			var inv = VeggaInventory.Local;
+			var invGo = inv?.GameObject;
+			resolved = ResolveFromRoot( invGo );
+			if ( resolved != null )
+			{
+				_local = resolved;
+				return _local;
+			}
+
+			var scene = Game.ActiveScene;
+			if ( scene == null )
+			{
+				_local = null;
+				return null;
+			}
+
+			foreach ( var eq in scene.GetAllComponents<VeggaEquipmentController>() )
+			{
+				if ( eq == null || !eq.IsValid() )
+					continue;
+				if ( eq.Network?.IsProxy == true )
+					continue;
+				if ( eq.GameObject?.Network?.Owner == localConn )
+				{
+					_local = eq;
+					return _local;
+				}
+			}
+
+			_local = null;
+			return null;
+		}
+	}
+
 	[Sync] public int ActiveHotbarSlot { get; private set; }
 	[Sync] public VeggaHoldType HoldType { get; private set; } = VeggaHoldType.None;
 	[Sync] public bool IsAiming { get; private set; }
@@ -56,9 +127,6 @@ public sealed class VeggaEquipmentController : Component
 		_inventory ??= Components.Get<VeggaInventory>();
 		_movement ??= Components.Get<PlayerVeggaMovement>();
 
-		// Keep third-person weapon visuals up to date for both owner and proxies.
-		UpdateWorldModelVisual();
-
 		// Always allow hotbar selection input for the owning client, even if this component
 		// is currently a proxy. In some network setups the player pawn/components can be
 		// proxies on the client, so we predict locally and request the host.
@@ -66,6 +134,10 @@ public sealed class VeggaEquipmentController : Component
 		{
 			HandleSlotSelectionInput();
 		}
+
+		// Keep third-person weapon visuals up to date after any local slot changes so the
+		// rendered weapon and HUD state are sourced from the same frame of equipment data.
+		UpdateWorldModelVisual();
 
 		// Local-owner input handling.
 		// Be permissive about ownership checks: depending on spawn/ownership, Network.IsOwner
@@ -166,6 +238,7 @@ public sealed class VeggaEquipmentController : Component
 		// Predict locally for immediate UI feedback.
 		ActiveHotbarSlot = slot;
 		UpdateDerivedState();
+		UpdateWorldModelVisual();
 
 		// If we just equipped a weapon and the mag is empty, auto-load it immediately.
 		// This makes "equip then shoot" feel responsive without requiring a manual reload.
@@ -199,10 +272,11 @@ public sealed class VeggaEquipmentController : Component
 			return;
 		}
 
-		var itemId = _inventory.GetSlotItemId( ActiveHotbarSlot );
+		var itemId = GetEquippedItemId();
 		if ( !VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out var spec ) || string.IsNullOrWhiteSpace( spec.WorldModelPath ) )
 		{
 			DestroyWorldModel();
+			_worldModelItemId = int.MinValue;
 			return;
 		}
 
@@ -491,6 +565,9 @@ public sealed class VeggaEquipmentController : Component
 
 	public bool CanAim()
 	{
+		if ( HoldType == VeggaHoldType.None )
+			return false;
+
 		if ( !TryGetActiveWeaponSpec( out var spec ) )
 			return false;
 		return spec.SupportsAds;
@@ -515,6 +592,9 @@ public sealed class VeggaEquipmentController : Component
 	public bool TryGetActiveWeaponSpec( out VeggaWeaponSpec spec )
 	{
 		spec = default;
+		if ( HoldType == VeggaHoldType.None )
+			return false;
+
 		if ( _inventory == null || !_inventory.IsValid() )
 			return false;
 
@@ -552,6 +632,9 @@ public sealed class VeggaEquipmentController : Component
 
 	public int GetEquippedItemId()
 	{
+		if ( HoldType == VeggaHoldType.None )
+			return 0;
+
 		_inventory ??= Components.Get<VeggaInventory>();
 		if ( _inventory == null || !_inventory.IsValid() )
 			return 0;
@@ -612,12 +695,27 @@ public sealed class VeggaEquipmentController : Component
 		if ( _inventory == null || !_inventory.IsValid() )
 		{
 			HoldType = VeggaHoldType.None;
+			IsAiming = false;
+			IsReloading = false;
 			IsDualWielding = false;
 			return;
 		}
 
 		var equippedItemId = _inventory.GetSlotItemId( ActiveHotbarSlot );
 		HoldType = VeggaEquipmentCatalog.GetHoldType( equippedItemId );
+
+		if ( HoldType == VeggaHoldType.None || !VeggaEquipmentCatalog.TryGetWeaponSpec( equippedItemId, out var spec ) )
+		{
+			IsAiming = false;
+			IsReloading = false;
+			IsDualWielding = false;
+			return;
+		}
+
+		if ( IsReloading && _pendingReloadSpec.ItemId != equippedItemId )
+			IsReloading = false;
+
+		IsDualWielding = spec.IsDualWield;
 	}
 
 	private void TryFireLocal( VeggaWeaponSpec spec, int fireSide )

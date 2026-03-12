@@ -11,12 +11,14 @@ AmmoHud root {
 	pointer-events: none;
 	
 	.ammo-root {
-		min-width: 240px;
-		padding: 10px 12px;
-		border-radius: 10px;
-		background: linear-gradient(135deg, rgba( 0, 0, 0, 0.72 ) 0%, rgba( 10, 10, 16, 0.62 ) 100%);
-		backdrop-filter: blur( 10px );
-		border: 1px solid rgba( 255, 255, 255, 0.10 );
+		min-width: 272px;
+		padding: 10px 12px 12px;
+		border-radius: 12px;
+		background:
+			linear-gradient(180deg, rgba(22, 28, 36, 0.92) 0%, rgba(9, 13, 19, 0.92) 100%);
+		backdrop-filter: blur( 14px );
+		border: 1px solid rgba( 122, 162, 247, 0.16 );
+		box-shadow: 0 18px 40px rgba( 0, 0, 0, 0.34 );
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
@@ -24,32 +26,67 @@ AmmoHud root {
 	}
 
 	.ammo-root.dual {
-		min-width: 280px;
+		min-width: 316px;
 		gap: 10px;
 	}
 
 	.ammo-top {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-start;
 		gap: 12px;
 		flex-wrap: nowrap;
-		//line-height: 1.15;
 		white-space: nowrap;
+		padding-bottom: 8px;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	}
+
+	.ammo-title-block,
+	.ammo-meta-block {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
 	}
 
 	.ammo-label {
 		font-size: 10px;
-		letter-spacing: 1.6px;
-		opacity: 0.70;
+		letter-spacing: 1.8px;
+		opacity: 0.62;
 		text-transform: uppercase;
-		font-weight: 700;
+		font-weight: 800;
 		white-space: nowrap;
 	}
 
-	.ammo-reserve {
+	.ammo-weapon {
 		font-size: 16px;
 		font-weight: 800;
+		color: rgba(235, 241, 255, 0.96);
+		letter-spacing: 0.03em;
+	}
+
+	.ammo-mode {
+		align-self: flex-end;
+		padding: 3px 8px;
+		border-radius: 999px;
+		background-color: rgba(255, 255, 255, 0.06);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		font-size: 10px;
+		font-weight: 900;
+		letter-spacing: 1.3px;
+		text-transform: uppercase;
+		color: rgba(214, 226, 255, 0.82);
+	}
+
+	.ammo-mode.ads {
+		background-color: rgba(96, 165, 250, 0.14);
+		border-color: rgba(96, 165, 250, 0.28);
+		color: rgba(191, 219, 254, 0.98);
+	}
+
+	.ammo-reserve {
+		font-size: 13px;
+		font-weight: 800;
+		color: rgba(220, 228, 240, 0.88);
 		white-space: nowrap;
 	}
 
@@ -73,9 +110,9 @@ AmmoHud root {
 		flex-direction: column;
 		gap: 6px;
 		padding: 8px 10px;
-		border-radius: 8px;
-		background: rgba( 255, 255, 255, 0.04 );
-		border: 1px solid rgba( 255, 255, 255, 0.08 );
+		border-radius: 10px;
+		background-color: rgba( 255, 255, 255, 0.035 );
+		border: 1px solid rgba( 255, 255, 255, 0.06 );
 	}
 
 	.ammo-column-top {
@@ -90,28 +127,46 @@ AmmoHud root {
 		font-weight: 900;
 		letter-spacing: 1.6px;
 		opacity: 0.75;
+		color: rgba(190, 205, 225, 0.88);
 	}
 
 	.ammo-bar {
 		flex-grow: 1;
 		height: 8px;
 		border-radius: 999px;
-		background-color: rgba( 255, 255, 255, 0.10 );
+		background-color: rgba( 255, 255, 255, 0.08 );
 		overflow: hidden;
-		border: 1px solid rgba( 0, 0, 0, 0.35 );
+		border: 1px solid rgba( 0, 0, 0, 0.22 );
 	}
 
 	.ammo-fill {
 		height: 100%;
 		width: 0%;
-		background: linear-gradient( 90deg, rgba( 255, 215, 0, 0.95 ), rgba( 255, 255, 255, 0.85 ) );
+		background: linear-gradient( 90deg, rgba( 120, 170, 255, 0.98 ), rgba( 248, 210, 117, 0.95 ) );
 	}
 
 	.ammo-mag {
-		min-width: 80px;
+		min-width: 72px;
 		text-align: right;
-		font-size: 16px;
+		font-size: 14px;
 		font-weight: 900;
+		color: rgba(244, 247, 255, 0.96);
+		white-space: nowrap;
+	}
+
+	.ammo-footer {
+		display: flex;
+		justify-content: flex-start;
+		padding-top: 2px;
+		border-top: 1px solid rgba(255, 255, 255, 0.06);
+	}
+
+	.ammo-hint {
+		font-size: 10px;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: rgba(186, 199, 216, 0.68);
 		white-space: nowrap;
 	}
 }

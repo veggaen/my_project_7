@@ -26,17 +26,17 @@ public static class VeggaHudLayoutApply
 			// Inventory: grid (520w) + details (240w) ≈ 760w, height varies.
 			VeggaHudLayoutState.KeyInventory => new Vector2( 780f, 460f ),
 			// Hotbar: 9 slots + padding/gap.
-			VeggaHudLayoutState.KeyHotbar => new Vector2( 520f, 80f ),
+			VeggaHudLayoutState.KeyHotbar => new Vector2( 760f, 88f ),
 			// Skills: min-width 480; height varies with list.
 			VeggaHudLayoutState.KeySkillsPanel => new Vector2( 560f, 420f ),
 			// Player modular HUD is relatively small.
-			VeggaHudLayoutState.KeyPlayerHud => new Vector2( 340f, 220f ),
+			VeggaHudLayoutState.KeyPlayerHud => new Vector2( 380f, 220f ),
 			// XP bar is a slim horizontal widget.
 			VeggaHudLayoutState.KeyXpBar => new Vector2( 520f, 90f ),
 			// Cash drop progress bar is a slim horizontal widget.
 			VeggaHudLayoutState.KeyCashDropProgress => new Vector2( 360f, 70f ),
 			// Ammo counter is a compact horizontal widget.
-			VeggaHudLayoutState.KeyAmmo => new Vector2( 240f, 70f ),
+			VeggaHudLayoutState.KeyAmmo => new Vector2( 320f, 120f ),
 			// Minimap is typically square-ish.
 			VeggaHudLayoutState.KeyMinimap => new Vector2( 260f, 260f ),
 			// World container menus.

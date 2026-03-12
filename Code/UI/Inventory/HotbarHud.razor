@@ -6,6 +6,16 @@
 
 <root>
 	<div class="hotbar-root">
+		<div class="hotbar-header">
+			<div class="hotbar-title-block">
+				<span class="hotbar-label">LOADOUT</span>
+				<span class="hotbar-title">@_activeWeaponName</span>
+			</div>
+			<div class="hotbar-state-block">
+				<span class="hotbar-state @(_isAiming ? "aiming" : "")">@_activeState</span>
+			</div>
+		</div>
+		<div class="hotbar-slots">
 		@if ( InventoryHudSlot.DebugInput )
 		{
 			<div class="hotbar-debug">@_debugText</div>
@@ -15,9 +25,10 @@
 			int slotIndex = i;
 			<InventoryHudSlot Inventory="@_inventory"
 						 SlotIndex="@slotIndex"
-						 IsSelected="@(_equipment?.ActiveHotbarSlot == slotIndex)"
+						 IsSelected="@(GetCurrentActiveSlot() == slotIndex)"
 						 OnSelected="@(OnSlotSelected)" />
 		}
+		</div>
 	</div>
 </root>
 
@@ -26,40 +37,106 @@
 	global::Sandbox.VeggaInventory _inventory;
 	global::Sandbox.VeggaEquipmentController _equipment;
 	string _debugText;
+	string _activeWeaponName = "Holstered";
+	string _activeState = "IDLE";
+	bool _isAiming;
 	TimeSince _sinceDebugUpdate;
+
+	private int GetCurrentActiveSlot()
+	{
+		var equipment = FindLocalEquipmentController();
+		if ( equipment == null || !equipment.IsValid() )
+			return -1;
+
+		return equipment.ActiveHotbarSlot.Clamp( -1, 8 );
+	}
+
+	private int GetCurrentActiveItemId()
+	{
+		var equipment = FindLocalEquipmentController();
+		if ( equipment != null && equipment.IsValid() )
+			return equipment.GetEquippedItemId();
+
+		if ( _inventory == null || !_inventory.IsValid() )
+			return 0;
+
+		var slot = GetCurrentActiveSlot();
+		if ( slot < 0 || slot >= 9 )
+			return 0;
+
+		return _inventory.GetSlotItemId( slot );
+	}
+
+	private bool IsLocalAimRequested()
+	{
+		var equipment = FindLocalEquipmentController();
+		if ( equipment == null || !equipment.IsValid() )
+			return false;
+		if ( VeggaUiMouse.WantsUiMouse )
+			return false;
+		if ( equipment.HoldType == VeggaHoldType.None )
+			return false;
+		if ( !equipment.CanAim() )
+			return false;
+
+		return Input.Down( "Attack2" ) || Input.Down( "attack2" );
+	}
+
+	private void RefreshHeaderState()
+	{
+		_activeWeaponName = "Holstered";
+		_activeState = "UNEQUIPPED";
+		_isAiming = false;
+
+		var equipment = FindLocalEquipmentController();
+		_equipment = equipment;
+
+		if ( equipment == null || !equipment.IsValid() )
+			return;
+
+		var slot = GetCurrentActiveSlot();
+		if ( slot < 0 )
+			return;
+
+		var itemId = GetCurrentActiveItemId();
+		if ( itemId <= 0 )
+		{
+			_activeWeaponName = "Empty Slot";
+			_activeState = $"SLOT {slot + 1}";
+			return;
+		}
+
+		_isAiming = equipment.IsAiming || IsLocalAimRequested();
+
+		if ( equipment.HoldType == VeggaHoldType.None )
+		{
+			_activeWeaponName = "Holstered";
+			_activeState = "UNEQUIPPED";
+			return;
+		}
+
+		var itemDef = VeggaItemRegistry.Get( itemId );
+		_activeWeaponName = itemDef?.Name ?? "Equipped";
+
+		if ( VeggaEquipmentCatalog.TryGetWeaponSpec( itemId, out var spec ) )
+		{
+			if ( equipment.IsReloading )
+				_activeState = "RELOAD";
+			else if ( spec.IsDualWield )
+				_activeState = "DUAL";
+			else if ( _isAiming )
+				_activeState = "ADS";
+			else
+				_activeState = "HIP";
+			return;
+		}
+
+		_activeState = itemDef?.Category == ItemCategory.Equipment ? "EQUIPPED" : "ITEM";
+	}
 
 	private static global::Sandbox.VeggaEquipmentController FindLocalEquipmentController()
 	{
-		var local = Connection.Local;
-		if ( local == null )
-			return null;
-
-		// Fast path: if local stats knows the player root.
-		var stats = global::Sandbox.PlayerVeggaStats.Local;
-		var go = stats?.GameObject;
-		if ( go != null && go.IsValid() )
-		{
-			var eq = go.Components.Get<global::Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InDescendants );
-			if ( eq != null && eq.IsValid() )
-				return eq;
-		}
-
-		// Robust fallback: scan scene for the locally-owned controller.
-		var scene = Game.ActiveScene;
-		if ( scene == null )
-			return null;
-
-		foreach ( var eq in scene.GetAllComponents<global::Sandbox.VeggaEquipmentController>() )
-		{
-			if ( eq == null || !eq.IsValid() )
-				continue;
-			if ( eq.Network?.IsProxy == true )
-				continue;
-			if ( eq.GameObject?.Network?.Owner == local )
-				return eq;
-		}
-
-		return null;
+		return global::Sandbox.VeggaEquipmentController.Local;
 	}
 
 	private void OnSlotSelected( int slot )
@@ -77,7 +154,12 @@
 
 	protected override int BuildHash()
 	{
-		return HashCode.Combine( _inventory?.Revision ?? 0, _equipment?.ActiveHotbarSlot ?? -1, InventoryHudSlot.HeldUiRevision, InventoryHud.IsOpenGlobal );
+		var equipment = FindLocalEquipmentController();
+		var localAimRequested = IsLocalAimRequested();
+		return HashCode.Combine(
+			HashCode.Combine( _inventory?.Revision ?? 0, GetCurrentActiveSlot(), GetCurrentActiveItemId(), InventoryHudSlot.HeldUiRevision ),
+			HashCode.Combine( InventoryHud.IsOpenGlobal, (equipment?.IsAiming ?? false) || localAimRequested, equipment?.IsReloading ?? false, equipment?.HoldType ?? VeggaHoldType.None )
+		);
 	}
 
 	protected override void OnUpdate()
@@ -104,17 +186,7 @@
 		if ( _inventory == null || !_inventory.IsValid() || invOwner != Connection.Local || _inventory.Network?.IsProxy == true )
 			_inventory = VeggaInventory.Local;
 
-		if ( _inventory != null && _inventory.IsValid() )
-		{
-			// Try to resolve equipment controller near the inventory.
-			// Inventory may live on a child object while equipment is on the player root,
-			// so search ancestors too.
-			_equipment = _inventory.GameObject?.Components.Get<global::Sandbox.VeggaEquipmentController>( FindMode.InSelf | FindMode.InAncestors | FindMode.InDescendants );
-		}
-
-		// If that failed, find it via local-player fallbacks.
-		if ( _equipment == null || !_equipment.IsValid() )
-			_equipment = FindLocalEquipmentController();
+		_equipment = FindLocalEquipmentController();
 
 		if ( InventoryHudSlot.DebugInput && _sinceDebugUpdate > 0.05f )
 		{
@@ -144,5 +216,7 @@
 
 			_debugText = $"dbg inv={(hasInv?1:0)}({invGo}) eq={(hasEq?1:0)}({eqGo}) stats={(hasStats?1:0)} slot={slot} uiMouse={(wantsMouse?1:0)} bag={(invOpen?1:0)} {pressed}";
 		}
+
+		RefreshHeaderState();
 	}
 }
